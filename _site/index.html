@@ -150,6 +150,37 @@
     </div>
   </section>
 
+  <!-- How It Works -->
+  <section class="py-20 px-6 bg-white">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-16">How It Works</h2>
+      <div class="grid md:grid-cols-3 gap-8 relative">
+
+        <!-- Connecting line (desktop only) -->
+        <div class="hidden md:block absolute top-8 left-[calc(16.67%+1rem)] right-[calc(16.67%+1rem)] border-t-2 border-dashed border-primary/20"></div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4 relative z-10">1</div>
+          <h3 class="font-semibold text-lg mb-2">Search</h3>
+          <p class="text-ink/60">Find datasets by keyword, topic, organization, or location.</p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4 relative z-10">2</div>
+          <h3 class="font-semibold text-lg mb-2">Cache</h3>
+          <p class="text-ink/60">Download into a local DuckDB database for fast access.</p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4 relative z-10">3</div>
+          <h3 class="font-semibold text-lg mb-2">Analyze</h3>
+          <p class="text-ink/60">Run SQL queries, statistical profiles, and spatial operations.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <script>
     function toggleCard(card) {
       const list = card.querySelector('.tool-list');
