@@ -213,7 +213,77 @@
     </div>
   </section>
 
+  <!-- Get Started -->
+  <section class="py-20 px-6 bg-white">
+    <div class="max-w-3xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-12">Get Started</h2>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-6 justify-center">
+        <button onclick="switchTab('desktop')" data-tab="desktop" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white transition-colors">Claude Desktop</button>
+        <button onclick="switchTab('code')" data-tab="code" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-primary hover:border-primary/30 transition-colors">Claude Code</button>
+        <button onclick="switchTab('vscode')" data-tab="vscode" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-primary hover:border-primary/30 transition-colors">VS Code</button>
+      </div>
+
+      <!-- Tab Panels -->
+      <div id="panel-desktop" class="tab-panel">
+        <div class="bg-ink rounded-xl p-6 relative">
+          <p class="text-sm text-white/50 mb-3">Add to your <code class="text-white/70">claude_desktop_config.json</code>:</p>
+          <pre class="text-sm text-green-400 font-mono overflow-x-auto"><code>{
+  "mcpServers": {
+    "ontario-data": {
+      "command": "uvx",
+      "args": ["ontario-data-mcp"]
+    }
+  }
+}</code></pre>
+          <button onclick="copyText(document.getElementById('panel-desktop').querySelector('code').textContent, this)" class="absolute top-4 right-4 px-3 py-1 bg-white/10 text-white/70 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors">Copy</button>
+        </div>
+      </div>
+
+      <div id="panel-code" class="tab-panel hidden">
+        <div class="bg-ink rounded-xl p-6 relative">
+          <p class="text-sm text-white/50 mb-3">Run in your terminal:</p>
+          <pre class="text-sm text-green-400 font-mono"><code>claude mcp add ontario-data -- uvx ontario-data-mcp</code></pre>
+          <button onclick="copyText('claude mcp add ontario-data -- uvx ontario-data-mcp', this)" class="absolute top-4 right-4 px-3 py-1 bg-white/10 text-white/70 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors">Copy</button>
+        </div>
+      </div>
+
+      <div id="panel-vscode" class="tab-panel hidden">
+        <div class="bg-ink rounded-xl p-6 relative">
+          <p class="text-sm text-white/50 mb-3">Add to <code class="text-white/70">.vscode/mcp.json</code>:</p>
+          <pre class="text-sm text-green-400 font-mono overflow-x-auto"><code>{
+  "mcpServers": {
+    "ontario-data": {
+      "command": "uvx",
+      "args": ["ontario-data-mcp"]
+    }
+  }
+}</code></pre>
+          <button onclick="copyText(document.getElementById('panel-vscode').querySelector('code').textContent, this)" class="absolute top-4 right-4 px-3 py-1 bg-white/10 text-white/70 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors">Copy</button>
+        </div>
+      </div>
+
+      <!-- From Source -->
+      <p class="text-center text-sm text-ink/40 mt-6">Or install from source:
+        <code class="text-ink/50">git clone https://github.com/AnshumanX304/data.ontario.ca-mcp && cd data.ontario.ca-mcp && uv sync</code>
+      </p>
+    </div>
+  </section>
+
   <script>
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById('panel-' + tab).classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tab) {
+          btn.className = 'tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white transition-colors';
+        } else {
+          btn.className = 'tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-primary hover:border-primary/30 transition-colors';
+        }
+      });
+    }
+
     function toggleCard(card) {
       const list = card.querySelector('.tool-list');
       const chevron = card.querySelector('.chevron');
