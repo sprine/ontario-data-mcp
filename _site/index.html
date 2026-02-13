@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ontario-data-mcp — 34 tools for Ontario open data</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0B6E4F',
+            accent: '#D4A843',
+            surface: '#FAFAF8',
+            ink: '#1A1A1A',
+          },
+          fontFamily: {
+            sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-surface text-ink">
+
+  <!-- Hero -->
+  <section class="py-24 px-6">
+    <div class="max-w-3xl mx-auto text-center">
+      <h1 class="text-5xl font-bold text-primary mb-6">34 tools for Ontario open data</h1>
+      <p class="text-xl text-ink/70 mb-10 leading-relaxed">Search, cache, and analyze thousands of datasets from Ontario's Open Data Catalogue — right from Claude. No API keys. One install.</p>
+
+      <div class="inline-flex items-center bg-white border border-stone-200 rounded-xl px-5 py-3 shadow-sm gap-3 mb-6">
+        <code class="text-lg font-mono text-ink/80">uvx ontario-data-mcp</code>
+        <button onclick="copyText('uvx ontario-data-mcp', this)" class="px-3 py-1 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">Copy</button>
+      </div>
+
+      <div class="block">
+        <a href="https://github.com/AnshumanX304/data.ontario.ca-mcp" class="text-primary/70 hover:text-primary underline underline-offset-4 transition-colors">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    function copyText(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = original, 1500);
+      });
+    }
+  </script>
+
+</body>
+</html>
