@@ -42,7 +42,122 @@
     </div>
   </section>
 
+  <!-- What's Inside -->
+  <section class="py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-12">What's Inside</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Discovery -->
+        <div class="border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" onclick="toggleCard(this)">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <h3 class="font-semibold">Discovery</h3>
+            </div>
+            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <span class="text-sm font-medium text-accent">6 tools</span>
+          <p class="text-sm text-ink/60 mt-2">Find datasets by keyword, topic, organization, or location.</p>
+          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">search_datasets, list_organizations, list_topics, get_popular_datasets, search_by_location, find_related_datasets</div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" onclick="toggleCard(this)">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+              <h3 class="font-semibold">Metadata</h3>
+            </div>
+            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <span class="text-sm font-medium text-accent">5 tools</span>
+          <p class="text-sm text-ink/60 mt-2">Inspect dataset details, schemas, resources, and update history.</p>
+          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">get_dataset_info, list_resources, get_resource_schema, get_update_history, compare_datasets</div>
+        </div>
+
+        <!-- Retrieval -->
+        <div class="border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" onclick="toggleCard(this)">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+              <h3 class="font-semibold">Retrieval</h3>
+            </div>
+            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <span class="text-sm font-medium text-accent">5 tools</span>
+          <p class="text-sm text-ink/60 mt-2">Download datasets into a local DuckDB cache for fast access.</p>
+          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">download_resource, list_cached_datasets, refresh_cache, cache_stats, remove_from_cache</div>
+        </div>
+
+        <!-- Querying -->
+        <div class="border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" onclick="toggleCard(this)">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              <h3 class="font-semibold">Querying</h3>
+            </div>
+            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <span class="text-sm font-medium text-accent">5 tools</span>
+          <p class="text-sm text-ink/60 mt-2">Run SQL queries, preview data, and filter with aggregations.</p>
+          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">query_resource, sql_query, query_cached, preview_data, filter_and_aggregate</div>
+        </div>
+
+        <!-- Data Quality -->
+        <div class="border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" onclick="toggleCard(this)">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              <h3 class="font-semibold">Data Quality</h3>
+            </div>
+            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <span class="text-sm font-medium text-accent">4 tools</span>
+          <p class="text-sm text-ink/60 mt-2">Check data quality, freshness, schema validity, and statistical profiles.</p>
+          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">check_data_quality, check_freshness, validate_schema, profile_dataset</div>
+        </div>
+
+        <!-- Analytics -->
+        <div class="border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" onclick="toggleCard(this)">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
+              <h3 class="font-semibold">Analytics</h3>
+            </div>
+            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <span class="text-sm font-medium text-accent">5 tools</span>
+          <p class="text-sm text-ink/60 mt-2">Summarize, correlate, cross-tabulate, and compare data over time.</p>
+          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">summarize, time_series_analysis, cross_tabulate, correlation_matrix, compare_periods</div>
+        </div>
+
+        <!-- Geospatial -->
+        <div class="border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" onclick="toggleCard(this)">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <h3 class="font-semibold">Geospatial</h3>
+            </div>
+            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <span class="text-sm font-medium text-accent">4 tools</span>
+          <p class="text-sm text-ink/60 mt-2">Load geodata, run spatial queries, and geocode locations across Ontario.</p>
+          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">load_geodata, spatial_query, list_geo_datasets, geocode_lookup</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <script>
+    function toggleCard(card) {
+      const list = card.querySelector('.tool-list');
+      const chevron = card.querySelector('.chevron');
+      list.classList.toggle('hidden');
+      chevron.style.transform = list.classList.contains('hidden') ? '' : 'rotate(180deg)';
+    }
+
     function copyText(text, btn) {
       navigator.clipboard.writeText(text).then(() => {
         const original = btn.textContent;
