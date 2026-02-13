@@ -3,274 +3,416 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ontario-data-mcp — 34 tools for Ontario open data</title>
-  <meta name="description" content="Search, cache, and analyze thousands of datasets from Ontario's Open Data Catalogue — right from Claude. No API keys. One install.">
-  <meta property="og:title" content="ontario-data-mcp — 34 tools for Ontario open data">
-  <meta property="og:description" content="Search, cache, and analyze thousands of datasets from Ontario's Open Data Catalogue — right from Claude. No API keys. One install.">
+  <title>ontario-data-mcp — MCP server for Ontario open data</title>
+  <meta name="description" content="An MCP server with 34 tools to search, cache, and analyze 2,900+ datasets from Ontario's Open Data Catalogue. Works with any MCP client.">
+  <meta property="og:title" content="ontario-data-mcp — MCP server for Ontario open data">
+  <meta property="og:description" content="An MCP server with 34 tools to search, cache, and analyze 2,900+ datasets from Ontario's Open Data Catalogue. Works with any MCP client.">
   <meta property="og:type" content="website">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍁</text></svg>">
   <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    button:focus-visible, a:focus-visible { outline: 2px solid #0B6E4F; outline-offset: 2px; border-radius: 4px; }
-    .card:focus-visible { outline: 2px solid #0B6E4F; outline-offset: 2px; }
-  </style>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#0B6E4F',
-            accent: '#D4A843',
-            surface: '#FAFAF8',
-            ink: '#1A1A1A',
-          },
-          fontFamily: {
-            sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-          },
-        },
-      },
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a1a; background: #fff; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible { outline: 2px solid #0B6E4F; outline-offset: 2px; border-radius: 2px; }
+    code, pre { font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace; }
+
+    /* Hero */
+    .hero {
+      padding: 100px 24px 72px;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(11,110,79,0.07) 0%, transparent 70%);
     }
-  </script>
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #0B6E4F;
+      background: rgba(11,110,79,0.08);
+      border: 1px solid rgba(11,110,79,0.2);
+      border-radius: 100px;
+      padding: 6px 16px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .hero h1 span { color: #0B6E4F; }
+    .hero .subtitle {
+      font-size: 1.1rem;
+      color: #555;
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.65;
+    }
+    .install-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: #111;
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-size: 0.95rem;
+    }
+    .install-box code { color: #a8d8a8; }
+    .install-box button {
+      background: rgba(255,255,255,0.1);
+      border: none; color: #aaa; cursor: pointer;
+      font-size: 0.75rem; font-weight: 500;
+      padding: 5px 12px; border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .install-box button:hover { background: rgba(255,255,255,0.18); color: #fff; }
+    .links { margin-top: 28px; font-size: 0.85rem; display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+    .links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .links a:hover { color: #0B6E4F; }
+
+    /* Stats ribbon */
+    .stats {
+      display: flex; justify-content: center; gap: 48px;
+      padding: 40px 24px; border-bottom: 1px solid #f0f0f0;
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; color: #0B6E4F; }
+    .stat-label { font-size: 0.78rem; color: #999; margin-top: 2px; }
+
+    /* Sections */
+    section { padding: 80px 24px; }
+    .section-header { text-align: center; margin-bottom: 48px; }
+    .section-header h2 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 8px; }
+    .section-header p { font-size: 1rem; color: #888; max-width: 520px; margin: 0 auto; }
+    .container { max-width: 720px; margin: 0 auto; }
+    .container--wide { max-width: 960px; margin: 0 auto; }
+
+    /* Tool cards */
+    .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+    .tool-card {
+      border: 1px solid #eee; border-radius: 12px; padding: 24px;
+      cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+    }
+    .tool-card::before {
+      content: ''; position: absolute; top: 0; left: 0;
+      width: 3px; height: 100%; background: #0B6E4F; opacity: 0; transition: opacity 0.2s;
+    }
+    .tool-card:hover { border-color: #ddd; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+    .tool-card:hover::before { opacity: 1; }
+    .tool-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .tool-card-name { font-weight: 600; font-size: 1rem; }
+    .tool-card-count { font-size: 0.7rem; font-weight: 600; color: #0B6E4F; background: rgba(11,110,79,0.08); padding: 3px 8px; border-radius: 100px; }
+    .tool-card-desc { font-size: 0.88rem; color: #777; }
+    .tool-card-detail {
+      display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0;
+      font-size: 0.78rem; color: #aaa; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1.8;
+    }
+    .tool-card.open .tool-card-detail { display: block; }
+
+    /* How it works */
+    .how-section { background: #fafafa; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; max-width: 720px; margin: 0 auto; }
+    .step-num { font-size: 2.5rem; font-weight: 800; color: rgba(11,110,79,0.1); line-height: 1; margin-bottom: 8px; }
+    .step-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
+    .step-desc { font-size: 0.88rem; color: #888; line-height: 1.5; }
+
+    /* Examples */
+    .examples-section { background: #fafafa; }
+    .examples { display: grid; gap: 20px; max-width: 760px; margin: 0 auto; }
+    .example {
+      background: #fff; border-radius: 12px; padding: 28px 28px 24px;
+      border: 1px solid #eee; transition: all 0.2s;
+    }
+    .example:hover { border-color: #ddd; box-shadow: 0 2px 12px rgba(0,0,0,0.03); }
+    .example-q {
+      font-size: 1.05rem; font-weight: 500; margin-bottom: 12px; line-height: 1.4;
+      color: #1a1a1a;
+    }
+    .example-a {
+      font-size: 0.9rem; color: #666; line-height: 1.6;
+      padding-left: 16px; border-left: 2px solid rgba(11,110,79,0.25);
+    }
+    .example-tag {
+      display: inline-block; font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #0B6E4F; background: rgba(11,110,79,0.06);
+      padding: 3px 8px; border-radius: 4px; margin-bottom: 10px;
+    }
+
+    /* Recent updates */
+    .recent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 960px; margin: 0 auto; }
+    .recent-item {
+      border: 1px solid #eee; border-radius: 12px; padding: 20px 22px;
+      transition: all 0.2s; text-decoration: none; display: block;
+    }
+    .recent-item:hover { border-color: #ddd; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+    .recent-item-title { font-weight: 600; font-size: 0.95rem; color: #1a1a1a; margin-bottom: 6px; line-height: 1.35; }
+    .recent-item-desc { font-size: 0.82rem; color: #888; line-height: 1.5; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .recent-item-time { font-size: 0.72rem; color: #bbb; }
+    .recent-placeholder { color: #ccc; text-align: center; font-size: 0.88rem; padding: 40px 0; }
+    @media (max-width: 640px) {
+      .recent-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Install */
+    .install-inner { max-width: 640px; margin: 0 auto; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab-btn {
+      background: none; border: none;
+      padding: 8px 16px; font-size: 0.82rem; font-weight: 500;
+      color: #999; cursor: pointer; border-radius: 6px; transition: all 0.15s;
+    }
+    .tab-btn:hover { color: #333; }
+    .tab-btn.active { background: #f0f0f0; color: #1a1a1a; }
+    .code-block { background: #111; border-radius: 10px; padding: 24px; position: relative; }
+    .code-block p { font-size: 0.8rem; color: #555; margin-bottom: 12px; }
+    .code-block pre { font-size: 0.85rem; color: #a8d8a8; overflow-x: auto; line-height: 1.7; }
+    .code-block .copy-btn {
+      position: absolute; top: 14px; right: 14px;
+      background: rgba(255,255,255,0.06); border: none;
+      color: #555; font-size: 0.72rem; font-weight: 500;
+      cursor: pointer; padding: 5px 10px; border-radius: 5px;
+    }
+    .code-block .copy-btn:hover { color: #999; background: rgba(255,255,255,0.12); }
+    .source-note { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #bbb; }
+    .source-note code { font-size: 0.75rem; color: #999; }
+
+    /* Feedback */
+    .feedback { text-align: center; font-size: 0.85rem; color: #999; padding: 32px 24px; }
+    .feedback a { color: #666; text-decoration: underline; text-underline-offset: 3px; }
+    .feedback a:hover { color: #0B6E4F; }
+
+    /* Footer */
+    footer { padding: 48px 24px; text-align: center; font-size: 0.8rem; color: #bbb; border-top: 1px solid #f0f0f0; }
+    footer a { color: #999; text-decoration: none; }
+    footer a:hover { color: #0B6E4F; }
+    footer .footer-links { display: flex; gap: 24px; justify-content: center; margin-bottom: 12px; }
+    footer .footer-meta { font-size: 0.75rem; }
+
+    @media (max-width: 640px) {
+      .hero { padding: 72px 24px 56px; }
+      .stats { gap: 24px; flex-wrap: wrap; }
+      .stat-num { font-size: 1.4rem; }
+      .steps { grid-template-columns: 1fr; gap: 28px; }
+      .examples { gap: 16px; }
+      .tools-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-<body class="bg-surface text-ink">
+<body>
 
   <!-- Hero -->
-  <section class="py-24 px-6">
-    <div class="max-w-3xl mx-auto text-center">
-      <h1 class="text-3xl md:text-5xl font-bold text-primary mb-6">34 tools for Ontario open data</h1>
-      <p class="text-lg md:text-xl text-ink/70 mb-10 leading-relaxed">Search, cache, and analyze thousands of datasets from Ontario's Open Data Catalogue — right from Claude. No API keys. One install.</p>
-
-      <div class="inline-flex items-center bg-white border border-stone-200 rounded-xl px-4 md:px-5 py-3 shadow-sm gap-3 mb-6">
-        <code class="text-base md:text-lg font-mono text-ink/80">uvx ontario-data-mcp</code>
-        <button onclick="copyText('uvx ontario-data-mcp', this)" class="px-3 py-1 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">Copy</button>
+  <div class="hero">
+    <div style="max-width: 640px; margin: 0 auto;">
+      <div class="badge">MCP Server</div>
+      <h1>Ontario's open data, <span>at your fingertips</span></h1>
+      <p class="subtitle">Search 2,900+ government datasets, cache them locally, and run SQL, time series, and spatial queries. All in natural language through MCP.</p>
+      <div class="install-box">
+        <code>uvx ontario-data-mcp</code>
+        <button onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
       </div>
-
-      <div class="flex items-center justify-center gap-6">
-        <a href="https://data.ontario.ca/" class="text-primary/70 hover:text-primary underline underline-offset-4 transition-colors">Ontario Data Catalogue</a>
-        <span class="text-ink/20">|</span>
-        <a href="https://github.com/AnshumanX304/data.ontario.ca-mcp" class="text-primary/70 hover:text-primary underline underline-offset-4 transition-colors">View on GitHub</a>
+      <div class="links">
+        <a href="https://github.com/AnshumanX304/data.ontario.ca-mcp">GitHub</a>
+        <a href="https://data.ontario.ca/">Ontario Data Catalogue</a>
+        <a href="https://modelcontextprotocol.io/">What is MCP?</a>
       </div>
-    </div>
-  </section>
-
-  <!-- Feedback Callout -->
-  <div class="px-6 pb-12">
-    <div class="max-w-2xl mx-auto text-center bg-accent/10 border border-accent/20 rounded-xl px-6 py-5">
-      <p class="text-sm text-ink/70">Have feedback on the data catalogue itself? <a href="https://www.ontario.ca/form/provide-feedback-ontario-data-catalogue?utm_source=ontario-data-mcp&utm_medium=marketing-site&utm_campaign=community-feedback" class="text-primary font-medium underline underline-offset-4 hover:text-primary/80 transition-colors">Let Ontario know</a></p>
     </div>
   </div>
 
-  <!-- What's Inside -->
-  <section class="py-20 px-6">
-    <div class="max-w-5xl mx-auto">
-      <h2 class="text-3xl font-bold text-center mb-12">What's Inside</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">2,939</div>
+      <div class="stat-label">datasets</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">25+</div>
+      <div class="stat-label">ministries</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">34</div>
+      <div class="stat-label">tools</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">0</div>
+      <div class="stat-label">API keys</div>
+    </div>
+  </div>
 
-        <!-- Discovery -->
-        <div class="card border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" tabindex="0" role="button" onclick="toggleCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCard(this)}">
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <h3 class="font-semibold">Discovery</h3>
-            </div>
-            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-          <span class="text-sm font-medium text-accent">6 tools</span>
-          <p class="text-sm text-ink/60 mt-2">Find datasets by keyword, topic, organization, or location.</p>
-          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">search_datasets, list_organizations, list_topics, get_popular_datasets, search_by_location, find_related_datasets</div>
+  <!-- Examples — the heart of the page -->
+  <section class="examples-section">
+    <div class="container--wide">
+      <div class="section-header">
+        <h2>Ask questions. Get answers.</h2>
+        <p>Real datasets. Real queries. Just type what you're curious about.</p>
+      </div>
+      <div class="examples">
+
+        <div class="example">
+          <div class="example-tag">Cross-dataset</div>
+          <div class="example-q">How has the number of public servants earning over $100K changed relative to Ontario's population?</div>
+          <div class="example-a">Downloads salary disclosure data from 1996 to 2024 (205K+ records per year across 20 datasets) and population projections from Finance. <strong>In 1996, 4,319 people made the list. By 2024, it's over 260,000 — a 60x increase while the population grew 1.4x.</strong></div>
         </div>
 
-        <!-- Metadata -->
-        <div class="card border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" tabindex="0" role="button" onclick="toggleCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCard(this)}">
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
-              <h3 class="font-semibold">Metadata</h3>
-            </div>
-            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-          <span class="text-sm font-medium text-accent">5 tools</span>
-          <p class="text-sm text-ink/60 mt-2">Inspect dataset details, schemas, resources, and update history.</p>
-          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">get_dataset_info, list_resources, get_resource_schema, get_update_history, compare_datasets</div>
+        <div class="example">
+          <div class="example-tag">Time series</div>
+          <div class="example-q">Show me the seasonal pattern of marriages in Ontario. Did COVID change it?</div>
+          <div class="example-a">Pulls vital events data by month going back to 1994. Marriages peak in August-September every year. <strong>In 2020, total marriages dropped 45% — the lowest since 1925. By 2023, they'd rebounded above the pre-pandemic average.</strong></div>
         </div>
 
-        <!-- Retrieval -->
-        <div class="card border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" tabindex="0" role="button" onclick="toggleCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCard(this)}">
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-              <h3 class="font-semibold">Retrieval</h3>
-            </div>
-            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-          <span class="text-sm font-medium text-accent">5 tools</span>
-          <p class="text-sm text-ink/60 mt-2">Download datasets into a local DuckDB cache for fast access.</p>
-          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">download_resource, list_cached_datasets, refresh_cache, cache_stats, remove_from_cache</div>
+        <div class="example">
+          <div class="example-tag">440K records</div>
+          <div class="example-q">Are phosphorus levels in the Great Lakes trending up or down over the last decade?</div>
+          <div class="example-a">Caches 439,841 water quality measurements from drinking water intakes across Lakes Erie, Ontario, Huron, and Superior. Runs a time series analysis on phosphorus readings. <strong>Lake Erie shows a 14% decline since 2015, while Lake Ontario levels have been stable.</strong></div>
         </div>
 
-        <!-- Querying -->
-        <div class="card border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" tabindex="0" role="button" onclick="toggleCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCard(this)}">
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-              <h3 class="font-semibold">Querying</h3>
-            </div>
-            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-          <span class="text-sm font-medium text-accent">5 tools</span>
-          <p class="text-sm text-ink/60 mt-2">Run SQL queries, preview data, and filter with aggregations.</p>
-          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">query_resource, sql_query, query_cached, preview_data, filter_and_aggregate</div>
+        <div class="example">
+          <div class="example-tag">Geospatial</div>
+          <div class="example-q">Load provincial park boundaries and tell me which parks are within 100km of Ottawa.</div>
+          <div class="example-a">Loads the Provincial Parks shapefile into DuckDB with the spatial extension, then runs a radius query around Ottawa's coordinates. <strong>Finds 12 parks including Bon Echo, Fitzroy, and Silver Lake.</strong> Cross-references with visitation data to show occupancy rates.</div>
         </div>
 
-        <!-- Data Quality -->
-        <div class="card border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" tabindex="0" role="button" onclick="toggleCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCard(this)}">
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-              <h3 class="font-semibold">Data Quality</h3>
-            </div>
-            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-          <span class="text-sm font-medium text-accent">4 tools</span>
-          <p class="text-sm text-ink/60 mt-2">Check data quality, freshness, schema validity, and statistical profiles.</p>
-          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">check_data_quality, check_freshness, validate_schema, profile_dataset</div>
+        <div class="example">
+          <div class="example-tag">Investigation</div>
+          <div class="example-q">Which sector pays the highest salaries in Ontario? Break it down by employer type.</div>
+          <div class="example-a">Downloads the 2024 sunshine list and cross-tabulates salary by sector. <strong>Hospitals top the list at a median of $142K, followed by universities. The single highest salary is $1.2M at a hospital.</strong> Professors represent the largest group by headcount.</div>
         </div>
 
-        <!-- Analytics -->
-        <div class="card border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" tabindex="0" role="button" onclick="toggleCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCard(this)}">
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
-              <h3 class="font-semibold">Analytics</h3>
-            </div>
-            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-          <span class="text-sm font-medium text-accent">5 tools</span>
-          <p class="text-sm text-ink/60 mt-2">Summarize, correlate, cross-tabulate, and compare data over time.</p>
-          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">summarize, time_series_analysis, cross_tabulate, correlation_matrix, compare_periods</div>
-        </div>
-
-        <!-- Geospatial -->
-        <div class="card border border-stone-200 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors" tabindex="0" role="button" onclick="toggleCard(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCard(this)}">
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <svg class="w-6 h-6 text-primary flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              <h3 class="font-semibold">Geospatial</h3>
-            </div>
-            <svg class="w-4 h-4 text-ink/40 transition-transform chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-          <span class="text-sm font-medium text-accent">4 tools</span>
-          <p class="text-sm text-ink/60 mt-2">Load geodata, run spatial queries, and geocode locations across Ontario.</p>
-          <div class="tool-list hidden mt-3 pt-3 border-t border-stone-100 text-sm text-ink/50">load_geodata, spatial_query, list_geo_datasets, geocode_lookup</div>
+        <div class="example">
+          <div class="example-tag">Cross-dataset</div>
+          <div class="example-q">How did COVID impact mortality in different Ontario municipalities compared to the historical average?</div>
+          <div class="example-a">Combines 1.7M COVID case records (with outcomes by health region) with death registrations going back to 1940 and monthly vital events since 1994. <strong>Shows excess mortality by region, with the hardest-hit municipalities seeing 18–24% above their 10-year average in 2021.</strong></div>
         </div>
 
       </div>
     </div>
   </section>
 
-  <!-- How It Works -->
-  <section class="py-20 px-6 bg-white">
-    <div class="max-w-4xl mx-auto">
-      <h2 class="text-3xl font-bold text-center mb-16">How It Works</h2>
-      <div class="grid md:grid-cols-3 gap-8 relative">
-
-        <!-- Connecting line (desktop only) -->
-        <div class="hidden md:block absolute top-8 left-[calc(16.67%+1rem)] right-[calc(16.67%+1rem)] border-t-2 border-dashed border-primary/20"></div>
-
-        <div class="text-center">
-          <div class="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4 relative z-10">1</div>
-          <h3 class="font-semibold text-lg mb-2">Search</h3>
-          <p class="text-ink/60">Find datasets by keyword, topic, organization, or location.</p>
+  <!-- How it works -->
+  <section class="how-section">
+    <div class="container--wide">
+      <div class="section-header">
+        <h2>How it works</h2>
+        <p>Three steps from curiosity to insight.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-title">Search</div>
+          <div class="step-desc">Find datasets across 25 ministries by keyword, topic, or location. The catalogue has everything from vital statistics to water quality to park boundaries.</div>
         </div>
-
-        <div class="text-center">
-          <div class="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4 relative z-10">2</div>
-          <h3 class="font-semibold text-lg mb-2">Cache</h3>
-          <p class="text-ink/60">Download into a local DuckDB database for fast access.</p>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-title">Cache</div>
+          <div class="step-desc">Download any dataset into a local DuckDB database. Query it offline, join it with other datasets, run it through the analytics tools.</div>
         </div>
-
-        <div class="text-center">
-          <div class="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4 relative z-10">3</div>
-          <h3 class="font-semibold text-lg mb-2">Analyze</h3>
-          <p class="text-ink/60">Run SQL queries, statistical profiles, and spatial operations.</p>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-title">Analyze</div>
+          <div class="step-desc">SQL, time series, cross-tabulations, correlations, statistical profiles, and spatial queries. Ask follow-up questions. Go deeper.</div>
         </div>
-
       </div>
     </div>
   </section>
 
-  <!-- Try Asking Claude -->
-  <section class="py-20 px-6">
-    <div class="max-w-4xl mx-auto">
-      <h2 class="text-3xl font-bold text-center mb-12">Try Asking Claude</h2>
-      <div class="grid md:grid-cols-2 gap-6">
-
-        <div class="space-y-3">
-          <div class="bg-primary/5 rounded-xl rounded-bl-sm p-5">
-            <span class="text-xs font-medium text-ink/40 uppercase tracking-wide">You</span>
-            <p class="mt-1.5">"Find datasets about housing prices in Toronto"</p>
+  <!-- Tools -->
+  <section>
+    <div class="container--wide">
+      <div class="section-header">
+        <h2>34 tools, 7 categories</h2>
+        <p>Each tool is designed for structured output that LLMs can reason over.</p>
+      </div>
+      <div class="tools-grid">
+        <div class="tool-card" onclick="toggleCard(this)">
+          <div class="tool-card-head">
+            <span class="tool-card-name">Discovery</span>
+            <span class="tool-card-count">6 tools</span>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl rounded-tl-sm p-5">
-            <span class="text-xs font-medium text-primary/50 uppercase tracking-wide">Claude</span>
-            <p class="mt-1.5 text-ink/70 text-sm">Found 12 datasets. The most relevant is <strong>Land Transfer Tax</strong> from the Ministry of Finance — 847K records updated monthly with sale prices by municipality.</p>
-          </div>
+          <div class="tool-card-desc">Search by keyword, topic, ministry, or geographic area.</div>
+          <div class="tool-card-detail">search_datasets, list_organizations, list_topics, get_popular_datasets, search_by_location, find_related_datasets</div>
         </div>
-
-        <div class="space-y-3">
-          <div class="bg-primary/5 rounded-xl rounded-bl-sm p-5">
-            <span class="text-xs font-medium text-ink/40 uppercase tracking-wide">You</span>
-            <p class="mt-1.5">"Download the Ontario sunshine list and show me the top earners"</p>
+        <div class="tool-card" onclick="toggleCard(this)">
+          <div class="tool-card-head">
+            <span class="tool-card-name">Metadata</span>
+            <span class="tool-card-count">5 tools</span>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl rounded-tl-sm p-5">
-            <span class="text-xs font-medium text-primary/50 uppercase tracking-wide">Claude</span>
-            <p class="mt-1.5 text-ink/70 text-sm">Cached 261K records in DuckDB. The top earner is a hospital CEO at $1.2M. Here's the top 10 by salary across all sectors.</p>
-          </div>
+          <div class="tool-card-desc">Inspect schemas, resources, update history, and compare datasets side by side.</div>
+          <div class="tool-card-detail">get_dataset_info, list_resources, get_resource_schema, get_update_history, compare_datasets</div>
         </div>
-
-        <div class="space-y-3">
-          <div class="bg-primary/5 rounded-xl rounded-bl-sm p-5">
-            <span class="text-xs font-medium text-ink/40 uppercase tracking-wide">You</span>
-            <p class="mt-1.5">"Compare water quality datasets from the last 5 years"</p>
+        <div class="tool-card" onclick="toggleCard(this)">
+          <div class="tool-card-head">
+            <span class="tool-card-name">Retrieval</span>
+            <span class="tool-card-count">5 tools</span>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl rounded-tl-sm p-5">
-            <span class="text-xs font-medium text-primary/50 uppercase tracking-wide">Claude</span>
-            <p class="mt-1.5 text-ink/70 text-sm">Compared 3 datasets across 2019–2024. Phosphorus levels in Lake Erie dropped 18% while E. coli exceedances increased in 4 beach regions.</p>
-          </div>
+          <div class="tool-card-desc">Download and cache datasets locally in DuckDB for fast, offline access.</div>
+          <div class="tool-card-detail">download_resource, list_cached_datasets, refresh_cache, cache_stats, remove_from_cache</div>
         </div>
-
-        <div class="space-y-3">
-          <div class="bg-primary/5 rounded-xl rounded-bl-sm p-5">
-            <span class="text-xs font-medium text-ink/40 uppercase tracking-wide">You</span>
-            <p class="mt-1.5">"Find geospatial data that covers Ottawa and load it for spatial queries"</p>
+        <div class="tool-card" onclick="toggleCard(this)">
+          <div class="tool-card-head">
+            <span class="tool-card-name">Querying</span>
+            <span class="tool-card-count">5 tools</span>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl rounded-tl-sm p-5">
-            <span class="text-xs font-medium text-primary/50 uppercase tracking-wide">Claude</span>
-            <p class="mt-1.5 text-ink/70 text-sm">Loaded Ontario Municipal Boundaries into DuckDB with the spatial extension. Ottawa's polygon is ready — you can query any point or region intersection.</p>
-          </div>
+          <div class="tool-card-desc">Run SQL against remote or cached data. Preview, filter, aggregate.</div>
+          <div class="tool-card-detail">query_resource, sql_query, query_cached, preview_data, filter_and_aggregate</div>
         </div>
-
+        <div class="tool-card" onclick="toggleCard(this)">
+          <div class="tool-card-head">
+            <span class="tool-card-name">Data Quality</span>
+            <span class="tool-card-count">4 tools</span>
+          </div>
+          <div class="tool-card-desc">Freshness checks, schema validation, completeness, and statistical profiles.</div>
+          <div class="tool-card-detail">check_data_quality, check_freshness, validate_schema, profile_dataset</div>
+        </div>
+        <div class="tool-card" onclick="toggleCard(this)">
+          <div class="tool-card-head">
+            <span class="tool-card-name">Analytics</span>
+            <span class="tool-card-count">5 tools</span>
+          </div>
+          <div class="tool-card-desc">Time series, cross-tabulations, correlation matrices, and period comparisons.</div>
+          <div class="tool-card-detail">summarize, time_series_analysis, cross_tabulate, correlation_matrix, compare_periods</div>
+        </div>
+        <div class="tool-card" onclick="toggleCard(this)">
+          <div class="tool-card-head">
+            <span class="tool-card-name">Geospatial</span>
+            <span class="tool-card-count">4 tools</span>
+          </div>
+          <div class="tool-card-desc">Load shapefiles and GeoJSON, run spatial queries, geocode locations.</div>
+          <div class="tool-card-detail">load_geodata, spatial_query, list_geo_datasets, geocode_lookup</div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Get Started -->
-  <section class="py-20 px-6 bg-white">
-    <div class="max-w-3xl mx-auto">
-      <h2 class="text-3xl font-bold text-center mb-12">Get Started</h2>
+  <!-- Recent updates -->
+  <section id="recent-section" style="display: none;">
+    <div class="container--wide">
+      <div class="section-header">
+        <h2>Recently updated</h2>
+        <p>Live from the <a href="https://data.ontario.ca/" style="color:#0B6E4F; text-decoration: underline; text-underline-offset: 3px;">Ontario Data Catalogue</a> feed.</p>
+      </div>
+      <div id="recent-feed" class="recent-grid"></div>
+    </div>
+  </section>
 
-      <!-- Tabs -->
-      <div class="flex gap-2 mb-6 justify-center">
-        <button onclick="switchTab('desktop')" data-tab="desktop" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white transition-colors">Claude Desktop</button>
-        <button onclick="switchTab('code')" data-tab="code" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-primary hover:border-primary/30 transition-colors">Claude Code</button>
-        <button onclick="switchTab('vscode')" data-tab="vscode" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-primary hover:border-primary/30 transition-colors">VS Code</button>
+  <!-- Install -->
+  <section style="background: #fafafa;">
+    <div class="install-inner">
+      <div class="section-header">
+        <h2>Get started</h2>
+        <p>Works with any <a href="https://modelcontextprotocol.io/" style="color:#0B6E4F; text-decoration: underline; text-underline-offset: 3px;">MCP-compatible</a> client. No API keys needed.</p>
       </div>
 
-      <!-- Tab Panels -->
-      <div id="panel-desktop" class="tab-panel">
-        <div class="bg-ink rounded-xl p-6 relative">
-          <p class="text-sm text-white/50 mb-3">Add to your <code class="text-white/70">claude_desktop_config.json</code>:</p>
-          <pre class="text-sm text-green-400 font-mono overflow-x-auto"><code>{
+      <div class="tabs">
+        <button onclick="switchTab('json')" data-tab="json" class="tab-btn active">JSON config</button>
+        <button onclick="switchTab('cli')" data-tab="cli" class="tab-btn">CLI</button>
+      </div>
+
+      <div id="panel-json" class="tab-panel">
+        <div class="code-block">
+          <p>Add to your MCP client config</p>
+          <pre><code>{
   "mcpServers": {
     "ontario-data": {
       "command": "uvx",
@@ -278,81 +420,130 @@
     }
   }
 }</code></pre>
-          <button onclick="copyText(document.getElementById('panel-desktop').querySelector('code').textContent, this)" class="absolute top-4 right-4 px-3 py-1 bg-white/10 text-white/70 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors">Copy</button>
+          <button class="copy-btn" onclick="copyText(this.closest('.code-block').querySelector('pre code').textContent, this)">Copy</button>
         </div>
       </div>
 
-      <div id="panel-code" class="tab-panel hidden">
-        <div class="bg-ink rounded-xl p-6 relative">
-          <p class="text-sm text-white/50 mb-3">Run in your terminal:</p>
-          <pre class="text-sm text-green-400 font-mono"><code>claude mcp add ontario-data -- uvx ontario-data-mcp</code></pre>
-          <button onclick="copyText('claude mcp add ontario-data -- uvx ontario-data-mcp', this)" class="absolute top-4 right-4 px-3 py-1 bg-white/10 text-white/70 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors">Copy</button>
+      <div id="panel-cli" class="tab-panel" style="display:none">
+        <div class="code-block">
+          <p>Or run directly</p>
+          <pre><code>uvx ontario-data-mcp</code></pre>
+          <button class="copy-btn" onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
         </div>
       </div>
 
-      <div id="panel-vscode" class="tab-panel hidden">
-        <div class="bg-ink rounded-xl p-6 relative">
-          <p class="text-sm text-white/50 mb-3">Add to <code class="text-white/70">.vscode/mcp.json</code>:</p>
-          <pre class="text-sm text-green-400 font-mono overflow-x-auto"><code>{
-  "mcpServers": {
-    "ontario-data": {
-      "command": "uvx",
-      "args": ["ontario-data-mcp"]
-    }
-  }
-}</code></pre>
-          <button onclick="copyText(document.getElementById('panel-vscode').querySelector('code').textContent, this)" class="absolute top-4 right-4 px-3 py-1 bg-white/10 text-white/70 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors">Copy</button>
-        </div>
+      <div class="source-note">
+        Or clone from source: <code>git clone https://github.com/AnshumanX304/data.ontario.ca-mcp && uv sync</code>
       </div>
-
-      <!-- From Source -->
-      <p class="text-center text-sm text-ink/40 mt-6">Or install from source:<br>
-        <code class="text-ink/50 text-xs break-all">git clone https://github.com/AnshumanX304/data.ontario.ca-mcp && cd data.ontario.ca-mcp && uv sync</code>
-      </p>
     </div>
   </section>
+
+  <!-- Feedback -->
+  <div class="feedback">
+    Have feedback on the data catalogue itself? <a href="https://www.ontario.ca/form/provide-feedback-ontario-data-catalogue?utm_source=ontario-data-mcp&utm_medium=marketing-site&utm_campaign=community-feedback">Let Ontario know</a>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-links">
+      <a href="https://github.com/AnshumanX304/data.ontario.ca-mcp">GitHub</a>
+      <a href="https://data.ontario.ca/">Data Catalogue</a>
+      <a href="https://github.com/AnshumanX304/data.ontario.ca-mcp/blob/main/LICENSE">MIT License</a>
+    </div>
+    <div class="footer-meta">
+      Built with <a href="https://github.com/jlowin/fastmcp">FastMCP</a> and <a href="https://duckdb.org">DuckDB</a>.
+      Datasets subject to <a href="https://data.ontario.ca/about#licensing">Ontario's Open Government Licence</a>.
+    </div>
+  </footer>
 
   <script>
     function switchTab(tab) {
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
-      document.getElementById('panel-' + tab).classList.remove('hidden');
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('panel-' + tab).style.display = 'block';
       document.querySelectorAll('.tab-btn').forEach(btn => {
-        if (btn.dataset.tab === tab) {
-          btn.className = 'tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white transition-colors';
-        } else {
-          btn.className = 'tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-primary hover:border-primary/30 transition-colors';
-        }
+        btn.classList.toggle('active', btn.dataset.tab === tab);
       });
     }
 
     function toggleCard(card) {
-      const list = card.querySelector('.tool-list');
-      const chevron = card.querySelector('.chevron');
-      list.classList.toggle('hidden');
-      chevron.style.transform = list.classList.contains('hidden') ? '' : 'rotate(180deg)';
+      card.classList.toggle('open');
+    }
+
+    // Fetch recent updates from Ontario Data Catalogue Atom feed
+    (function loadRecentUpdates() {
+      fetch('https://data.ontario.ca/feeds/dataset.atom')
+        .then(r => r.text())
+        .then(xml => {
+          const doc = new DOMParser().parseFromString(xml, 'application/xml');
+          const entries = doc.querySelectorAll('entry');
+          const container = document.getElementById('recent-feed');
+          const section = document.getElementById('recent-section');
+          const items = Array.from(entries).slice(0, 3);
+          if (!items.length) return;
+
+          items.forEach(entry => {
+            const title = entry.querySelector('title')?.textContent || '';
+            const updated = entry.querySelector('updated')?.textContent || '';
+            const content = entry.querySelector('content')?.textContent || '';
+
+            // Extract slug from enclosure link to build human-readable URL
+            const enclosure = entry.querySelector('link[rel="enclosure"]');
+            const href = enclosure?.getAttribute('href') || '';
+            const slugMatch = href.match(/id=([^&]+)$/);
+            const slug = slugMatch ? slugMatch[1] : '';
+            const url = slug ? 'https://data.ontario.ca/dataset/' + slug : '#';
+
+            // Clean content: strip HTML entities, take first sentence
+            const clean = content.replace(/&#13;/g, ' ').replace(/<[^>]*>/g, '').trim();
+            const desc = clean.split(/\.\s/)[0] + (clean.includes('.') ? '.' : '');
+
+            // Relative time
+            const ago = timeAgo(new Date(updated));
+
+            const el = document.createElement('a');
+            el.className = 'recent-item';
+            el.href = url;
+            el.target = '_blank';
+            el.rel = 'noopener';
+            el.innerHTML =
+              '<div class="recent-item-title">' + escapeHtml(title) + '</div>' +
+              '<div class="recent-item-desc">' + escapeHtml(desc) + '</div>' +
+              '<div class="recent-item-time">Updated ' + ago + '</div>';
+            container.appendChild(el);
+          });
+
+          section.style.display = '';
+        })
+        .catch(function() { /* silently skip if CORS or network error */ });
+    })();
+
+    function timeAgo(date) {
+      var seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return 'just now';
+      var minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + 'm ago';
+      var hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + 'h ago';
+      var days = Math.floor(hours / 24);
+      if (days === 1) return 'yesterday';
+      if (days < 30) return days + 'd ago';
+      return date.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+    }
+
+    function escapeHtml(str) {
+      var d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
     }
 
     function copyText(text, btn) {
-      navigator.clipboard.writeText(text).then(() => {
-        const original = btn.textContent;
+      navigator.clipboard.writeText(text.trim()).then(() => {
+        const orig = btn.textContent;
         btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = original, 1500);
+        setTimeout(() => btn.textContent = orig, 1200);
       });
     }
   </script>
-
-  <!-- Footer -->
-  <footer class="bg-stone-100 py-10 px-6">
-    <div class="max-w-4xl mx-auto text-center">
-      <div class="flex items-center justify-center gap-6 text-sm mb-4">
-        <a href="https://github.com/AnshumanX304/data.ontario.ca-mcp" class="text-ink/50 hover:text-primary transition-colors">GitHub</a>
-        <a href="https://data.ontario.ca/" class="text-ink/50 hover:text-primary transition-colors">Ontario Data Catalogue</a>
-        <a href="https://github.com/AnshumanX304/data.ontario.ca-mcp/blob/main/LICENSE" class="text-ink/50 hover:text-primary transition-colors">MIT License</a>
-      </div>
-      <p class="text-xs text-ink/40 mb-2">Built with <a href="https://github.com/jlowin/fastmcp" class="underline underline-offset-2 hover:text-ink/60 transition-colors">FastMCP</a> and <a href="https://duckdb.org" class="underline underline-offset-2 hover:text-ink/60 transition-colors">DuckDB</a></p>
-      <p class="text-xs text-ink/40">Datasets subject to <a href="https://data.ontario.ca/about#licensing" class="underline underline-offset-2 hover:text-ink/60 transition-colors">Ontario's Open Government Licence</a></p>
-    </div>
-  </footer>
 
 </body>
 </html>
