@@ -57,7 +57,7 @@ uv run ontario-data-mcp
 
 ## Tools
 
-### Discovery
+### Discovery (6 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -66,29 +66,27 @@ uv run ontario-data-mcp
 | `list_topics` | List all tags/topics in the catalogue |
 | `get_popular_datasets` | Get popular or recently updated datasets |
 | `search_by_location` | Find datasets covering a specific geographic area |
-| `find_related_datasets` | Find datasets related to a given dataset by tags and organization |
+| `find_related_datasets` | Find datasets related by tags and organization |
 
-### Metadata
+### Metadata (4 tools)
 
 | Tool | Description |
 |------|-------------|
 | `get_dataset_info` | Get full metadata for a dataset including all resources |
 | `list_resources` | List all files in a dataset with formats and sizes |
 | `get_resource_schema` | Get column schema and sample values for a datastore resource |
-| `get_update_history` | Check creation date, last modified, and update frequency |
 | `compare_datasets` | Compare metadata side-by-side for multiple datasets |
 
-### Retrieval & Caching
+### Retrieval & Caching (4 tools)
 
 | Tool | Description |
 |------|-------------|
-| `download_resource` | Download a resource and cache it locally in DuckDB |
-| `list_cached_datasets` | List all datasets in the local DuckDB cache |
+| `download_resource` | Download a resource and cache it locally in DuckDB (returns staleness info if already cached) |
+| `cache_info` | Cache statistics + list all cached datasets with staleness |
+| `cache_manage` | Remove single resource, clear all, or refresh (action enum) |
 | `refresh_cache` | Re-download cached resources with latest data |
-| `cache_stats` | Get cache statistics: size, table count, staleness |
-| `remove_from_cache` | Remove cached data to free disk space |
 
-### Querying
+### Querying (4 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -96,41 +94,28 @@ uv run ontario-data-mcp
 | `sql_query` | Run SQL against the CKAN Datastore (remote) |
 | `query_cached` | Run SQL against locally cached data in DuckDB |
 | `preview_data` | Quick preview of first N rows of a resource |
-| `filter_and_aggregate` | Filter and aggregate cached data using natural parameters |
 
-### Data Quality
+### Data Quality (3 tools)
 
 | Tool | Description |
 |------|-------------|
 | `check_data_quality` | Analyze nulls, type consistency, duplicates, outliers |
 | `check_freshness` | Check if a dataset is current vs. its update schedule |
-| `validate_schema` | Compare cached schema with the current live version |
-| `profile_dataset` | Generate a comprehensive statistical profile |
+| `profile_data` | Statistical profile using DuckDB SUMMARIZE |
 
-### Analytics
-
-| Tool | Description |
-|------|-------------|
-| `summarize` | Descriptive statistics for numeric columns |
-| `time_series_analysis` | Analyze trends and patterns in time-indexed data |
-| `cross_tabulate` | Create cross-tabulation (pivot table) from cached data |
-| `correlation_matrix` | Pairwise correlations between numeric columns |
-| `compare_periods` | Compare metrics between two time periods |
-
-### Geospatial
+### Geospatial (3 tools)
 
 | Tool | Description |
 |------|-------------|
 | `load_geodata` | Cache a geospatial resource (SHP, KML, GeoJSON) into DuckDB |
 | `spatial_query` | Run spatial queries against cached geospatial data |
 | `list_geo_datasets` | Find datasets containing geospatial resources |
-| `geocode_lookup` | Find datasets covering a geographic point or bounding box |
 
 ## Prompts
 
-The server includes guided workflow prompts:
+Context-aware guided workflow prompts:
 
-- **`explore_topic`** — Guided exploration of a topic across Ontario's open data
+- **`explore_topic`** — Guided exploration of a topic (fetches live catalogue context)
 - **`data_investigation`** — Deep dive into a specific dataset: schema, quality, statistics
 - **`compare_data`** — Side-by-side analysis of multiple datasets
 
@@ -139,13 +124,23 @@ The server includes guided workflow prompts:
 - `ontario://cache/index` — List all locally cached datasets with freshness info
 - `ontario://dataset/{dataset_id}` — Full metadata for a specific dataset
 - `ontario://portal/stats` — Overview statistics about the Ontario Data Catalogue
+- `ontario://guides/duckdb-sql` — DuckDB SQL reference with tips for Ontario data analysis
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `LOG_LEVEL` | `WARNING` | Python logging level |
+| `ONTARIO_DATA_CACHE_DIR` | `~/.cache/ontario-data` | DuckDB storage + log file location |
+| `ONTARIO_DATA_TIMEOUT` | `30` | HTTP timeout in seconds |
+| `ONTARIO_DATA_RATE_LIMIT` | `10` | Max CKAN requests per second |
 
 ## How It Works
 
 1. **Search** the Ontario Data Catalogue using CKAN API tools
 2. **Download** resources into a local DuckDB database for fast access
-3. **Query** cached data with SQL or use built-in analytics tools
-4. **Analyze** with statistical profiling, time series analysis, and geospatial queries
+3. **Query** cached data with full DuckDB SQL (time series, correlations, pivots, window functions)
+4. **Analyze** with statistical profiling, data quality checks, and geospatial queries
 
 Data is cached at `~/.cache/ontario-data/ontario_data.duckdb`. No API keys required — the Ontario Data Catalogue is fully public.
 
@@ -153,7 +148,7 @@ Data is cached at `~/.cache/ontario-data/ontario_data.duckdb`. No API keys requi
 
 ```bash
 uv sync
-uv run pytest tests/ -v
+uv run python -m pytest tests/ -v
 ```
 
 ## License

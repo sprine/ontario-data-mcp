@@ -60,9 +60,10 @@ async def check_data_quality(
 
         quality_report.append(stats)
 
-    # Duplicate row check
+    # Duplicate row check using COLUMNS(*)
+    col_names = ", ".join(f'"{col[0]}"' for col in columns)
     dup_count = cache.conn.execute(
-        f'SELECT count(*) FROM (SELECT *, count(*) OVER (PARTITION BY * ) as _cnt FROM "{table_name}") WHERE _cnt > 1'
+        f'SELECT count(*) FROM (SELECT {col_names}, count(*) OVER (PARTITION BY {col_names}) as _cnt FROM "{table_name}") WHERE _cnt > 1'
     ).fetchone()
 
     return json_response(

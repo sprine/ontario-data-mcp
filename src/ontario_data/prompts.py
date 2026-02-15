@@ -1,22 +1,58 @@
 from __future__ import annotations
 
+import logging
+
 from fastmcp import Context
 from fastmcp.prompts import Message
 
 from ontario_data.server import mcp
+from ontario_data.utils import get_deps
+
+logger = logging.getLogger("ontario_data.prompts")
+
+
+def _format_cached_context(cache) -> str:
+    """Build context string from cached datasets."""
+    cached = cache.list_cached()
+    if not cached:
+        return ""
+    lines = [f"\nYou have {len(cached)} cached dataset(s):"]
+    for c in cached[:10]:
+        lines.append(f"  - {c['table_name']} ({c['row_count']} rows, downloaded {c['downloaded_at']})")
+    return "\n".join(lines)
+
+
+async def _get_topic_context(ckan, topic: str) -> str:
+    """Fetch live context for a topic, with fallback on error."""
+    try:
+        result = await ckan.package_search(query=topic, rows=5)
+        count = result["count"]
+        titles = [ds.get("title", "?") for ds in result["results"][:5]]
+        return (
+            f"\nThe catalogue has {count} dataset(s) matching '{topic}'."
+            f"\nTop results: {', '.join(titles)}"
+        )
+    except Exception as e:
+        logger.warning("Failed to fetch topic context: %s", e)
+        return ""
 
 
 @mcp.prompt
-async def explore_topic(topic: str) -> list[Message]:
+async def explore_topic(topic: str, ctx: Context = None) -> list[Message]:
     """Guided exploration of a topic in Ontario's open data.
 
     Searches for datasets, summarizes what's available, and suggests deep dives.
     """
+    ckan, cache = get_deps(ctx)
+    topic_ctx = await _get_topic_context(ckan, topic)
+    cache_ctx = _format_cached_context(cache)
+
     return [
         Message(
             role="user",
             content=(
-                f"I want to explore Ontario open data about: {topic}\n\n"
+                f"I want to explore Ontario open data about: {topic}\n"
+                f"{topic_ctx}{cache_ctx}\n\n"
                 "Please:\n"
                 "1. Use search_datasets to find relevant datasets\n"
                 "2. Summarize the top results — what data is available, from which ministries\n"
@@ -29,13 +65,26 @@ async def explore_topic(topic: str) -> list[Message]:
 
 
 @mcp.prompt
-async def data_investigation(dataset_id: str) -> list[Message]:
+async def data_investigation(dataset_id: str, ctx: Context = None) -> list[Message]:
     """Deep investigation of a specific dataset: schema, quality, statistics, insights."""
+    ckan, cache = get_deps(ctx)
+
+    # Try to get dataset title for context
+    ds_title = dataset_id
+    try:
+        ds = await ckan.package_show(dataset_id)
+        ds_title = ds.get("title", dataset_id)
+    except Exception as e:
+        logger.warning("Failed to fetch dataset context: %s", e)
+
+    cache_ctx = _format_cached_context(cache)
+
     return [
         Message(
             role="user",
             content=(
-                f"Investigate this Ontario dataset thoroughly: {dataset_id}\n\n"
+                f"Investigate this Ontario dataset thoroughly: {ds_title} ({dataset_id})\n"
+                f"{cache_ctx}\n\n"
                 "Please follow this workflow:\n"
                 "1. get_dataset_info — understand what this dataset contains\n"
                 "2. list_resources — see all available files\n"
@@ -43,29 +92,33 @@ async def data_investigation(dataset_id: str) -> list[Message]:
                 "   a. get_resource_schema — understand the columns\n"
                 "   b. download_resource — cache it locally\n"
                 "   c. check_data_quality — assess completeness and consistency\n"
-                "   d. profile_dataset — full statistical profile\n"
-                "   e. summarize — key statistics\n"
+                "   d. profile_data — statistical profile using DuckDB SUMMARIZE\n"
                 "4. Provide insights: What stories does this data tell? What's surprising?\n"
-                "5. Suggest follow-up analyses or related datasets"
+                "5. Suggest follow-up analyses or related datasets\n"
+                "6. For time series or correlations, write DuckDB SQL directly with query_cached"
             ),
         ),
     ]
 
 
 @mcp.prompt
-async def compare_data(dataset_ids: str) -> list[Message]:
+async def compare_data(dataset_ids: str, ctx: Context = None) -> list[Message]:
     """Side-by-side analysis of multiple datasets (comma-separated IDs)."""
+    _, cache = get_deps(ctx)
     ids = [d.strip() for d in dataset_ids.split(",")]
+    cache_ctx = _format_cached_context(cache)
+
     return [
         Message(
             role="user",
             content=(
-                f"Compare these Ontario datasets side by side: {', '.join(ids)}\n\n"
+                f"Compare these Ontario datasets side by side: {', '.join(ids)}\n"
+                f"{cache_ctx}\n\n"
                 "Please:\n"
                 "1. compare_datasets — metadata comparison\n"
                 "2. For each dataset, download the primary resource\n"
-                "3. profile_dataset on each — compare structure, size, quality\n"
-                "4. If they share common columns, look for relationships\n"
+                "3. profile_data on each — compare structure, size, quality\n"
+                "4. If they share common columns, use query_cached with DuckDB SQL to find relationships\n"
                 "5. Summarize: How do these datasets complement each other? Can they be joined?"
             ),
         ),
