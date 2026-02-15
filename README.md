@@ -49,7 +49,7 @@ Add to `.vscode/mcp.json`:
 ### From Source
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ontario-data-mcp
+git clone https://github.com/sprine/ontario-data-mcp
 cd ontario-data-mcp
 uv sync
 uv run ontario-data-mcp
