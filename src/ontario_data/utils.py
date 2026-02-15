@@ -6,7 +6,7 @@ from typing import Any
 
 from fastmcp import Context
 
-from ontario_data.cache import CacheManager
+from ontario_data.cache import CacheManager, InvalidQueryError  # noqa: F401
 from ontario_data.ckan_client import CKANClient
 
 
@@ -17,11 +17,6 @@ class ResourceNotCachedError(Exception):
 
 class DatastoreNotAvailableError(Exception):
     """Raised when a resource has no datastore."""
-    pass
-
-
-class InvalidQueryError(Exception):
-    """Raised for invalid or unsafe SQL queries."""
     pass
 
 

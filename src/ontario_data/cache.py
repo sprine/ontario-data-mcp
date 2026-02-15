@@ -1,12 +1,47 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any
 
 import duckdb
 import pandas as pd
+
+logger = logging.getLogger("ontario_data.cache")
+
+# SQL statements allowed for user queries
+_ALLOWED_PREFIXES = ("select", "with", "explain", "describe", "show", "pragma", "summarize")
+
+
+class InvalidQueryError(Exception):
+    """Raised for invalid or unsafe SQL queries."""
+    pass
+
+
+def _validate_sql(sql: str) -> None:
+    """Validate that SQL is read-only and safe.
+
+    Raises InvalidQueryError for mutations or injection attempts.
+    """
+    # Strip leading whitespace and comments
+    cleaned = re.sub(r"(/\*.*?\*/|--[^\n]*\n?)", "", sql, flags=re.DOTALL).strip()
+
+    # Reject semicolons anywhere (defense-in-depth against injection)
+    if ";" in sql:
+        raise InvalidQueryError(
+            "SQL queries must not contain semicolons. Send one statement at a time."
+        )
+
+    # Check statement starts with allowed prefix
+    first_word = cleaned.split()[0].lower() if cleaned.split() else ""
+    if first_word not in _ALLOWED_PREFIXES:
+        raise InvalidQueryError(
+            f"Only read-only queries are allowed. "
+            f"Got '{first_word}...'. Use SELECT, WITH, EXPLAIN, DESCRIBE, SHOW, or SUMMARIZE."
+        )
 
 
 class CacheManager:
@@ -14,11 +49,14 @@ class CacheManager:
 
     def __init__(self, db_path: str | None = None):
         if db_path is None:
-            cache_dir = os.path.expanduser("~/.cache/ontario-data")
+            cache_dir = os.path.expanduser(
+                os.environ.get("ONTARIO_DATA_CACHE_DIR", "~/.cache/ontario-data")
+            )
             os.makedirs(cache_dir, exist_ok=True)
             db_path = os.path.join(cache_dir, "ontario_data.duckdb")
         self.db_path = db_path
         self.conn = duckdb.connect(db_path)
+        self._has_spatial = False
 
     def initialize(self):
         """Create metadata tables and install extensions."""
@@ -42,7 +80,7 @@ class CacheManager:
             )
         """)
         # Install extensions (ignore errors if already installed)
-        for ext in ["spatial", "httpfs", "json"]:
+        for ext in ["httpfs", "json"]:
             try:
                 self.conn.execute(f"INSTALL {ext}")
                 self.conn.execute(f"LOAD {ext}")
@@ -51,6 +89,24 @@ class CacheManager:
                     self.conn.execute(f"LOAD {ext}")
                 except Exception:
                     pass
+
+        # Spatial extension — track availability
+        try:
+            self.conn.execute("INSTALL spatial")
+            self.conn.execute("LOAD spatial")
+            self._has_spatial = True
+        except Exception:
+            try:
+                self.conn.execute("LOAD spatial")
+                self._has_spatial = True
+            except Exception:
+                self._has_spatial = False
+                logger.info("DuckDB spatial extension not available")
+
+    @property
+    def has_spatial_extension(self) -> bool:
+        """Whether the DuckDB spatial extension is loaded."""
+        return self._has_spatial
 
     def store_resource(
         self,
@@ -65,13 +121,13 @@ class CacheManager:
         if self.is_cached(resource_id):
             old_table = self.get_table_name(resource_id)
             if old_table:
-                self.conn.execute(f"DROP TABLE IF EXISTS \"{old_table}\"")
+                self.conn.execute(f'DROP TABLE IF EXISTS "{old_table}"')
             self.conn.execute(
                 "DELETE FROM _cache_metadata WHERE resource_id = ?", [resource_id]
             )
 
         # Create table from DataFrame
-        self.conn.execute(f"CREATE TABLE \"{table_name}\" AS SELECT * FROM df")
+        self.conn.execute(f'CREATE TABLE "{table_name}" AS SELECT * FROM df')
 
         # Record metadata
         now = datetime.now(timezone.utc)
@@ -120,11 +176,10 @@ class CacheManager:
         """Remove a resource from the cache."""
         table_name = self.get_table_name(resource_id)
         if table_name:
-            self.conn.execute(f"DROP TABLE IF EXISTS \"{table_name}\"")
+            self.conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
         self.conn.execute(
             "DELETE FROM _cache_metadata WHERE resource_id = ?", [resource_id]
         )
-
     def remove_all(self):
         """Remove all cached resources."""
         for item in self.list_cached():
@@ -145,14 +200,16 @@ class CacheManager:
         }
 
     def query(self, sql: str) -> list[dict[str, Any]]:
-        """Run a SQL query against the cache and return results as dicts."""
+        """Run a validated read-only SQL query against the cache."""
+        _validate_sql(sql)
         result = self.conn.execute(sql)
         columns = [desc[0] for desc in result.description]
         rows = result.fetchall()
         return [dict(zip(columns, row)) for row in rows]
 
     def query_df(self, sql: str) -> pd.DataFrame:
-        """Run a SQL query and return a DataFrame."""
+        """Run a validated read-only SQL query and return a DataFrame."""
+        _validate_sql(sql)
         return self.conn.execute(sql).fetchdf()
 
     def update_expires_at(self, resource_id: str, expires_at):
