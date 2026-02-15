@@ -1,21 +1,31 @@
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 
+import httpx
 from fastmcp import FastMCP
 
 from ontario_data.cache import CacheManager
 from ontario_data.ckan_client import CKANClient
+from ontario_data.logging_config import setup_logging
 
 
 @asynccontextmanager
 async def lifespan(server):
     """Initialize shared resources for the server."""
-    client = CKANClient()
+    logger = setup_logging()
+    logger.info("Ontario Data MCP server starting")
+    http_client = httpx.AsyncClient(
+        timeout=float(os.environ.get("ONTARIO_DATA_TIMEOUT", "30"))
+    )
+    client = CKANClient(http_client=http_client)
     cache = CacheManager()
     cache.initialize()
     yield {"ckan": client, "cache": cache}
     cache.close()
+    await client.close()
+    logger.info("Ontario Data MCP server stopped")
 
 
 mcp = FastMCP(
@@ -23,9 +33,9 @@ mcp = FastMCP(
     instructions=(
         "Search, download, cache, and analyze datasets from Ontario's Open Data Catalogue "
         "(data.ontario.ca). Use discovery tools to find datasets, retrieval tools to cache them "
-        "locally in DuckDB, and analytics tools to query and analyze the data."
+        "locally in DuckDB, and querying tools to analyze the data."
     ),
-    version="0.1.0",
+    version="0.1.1",
     lifespan=lifespan,
 )
 

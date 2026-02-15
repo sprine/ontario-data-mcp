@@ -1,7 +1,18 @@
 from __future__ import annotations
 
-import httpx
+import asyncio
+import logging
+import os
+import random
+import time
 from typing import Any
+
+import httpx
+
+
+logger = logging.getLogger("ontario_data.ckan")
+
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 class CKANError(Exception):
@@ -10,28 +21,90 @@ class CKANError(Exception):
 
 
 class CKANClient:
-    """Async client for the CKAN 2.8 Action API."""
+    """Async client for the CKAN 2.8 Action API with retry and rate limiting."""
 
     def __init__(
         self,
         base_url: str = "https://data.ontario.ca",
-        timeout: float = 30.0,
+        timeout: float | None = None,
+        http_client: httpx.AsyncClient | None = None,
+        max_retries: int = 3,
+        base_delay: float = 1.0,
+        rate_limit: float | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_url = f"{self.base_url}/api/3/action"
+        if timeout is None:
+            timeout = float(os.environ.get("ONTARIO_DATA_TIMEOUT", "30"))
         self.timeout = timeout
+        self._http_client = http_client
+        self._owns_client = http_client is None
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        if rate_limit is None:
+            rate_limit = float(os.environ.get("ONTARIO_DATA_RATE_LIMIT", "10"))
+        self._min_interval = 1.0 / rate_limit if rate_limit > 0 else 0
+        self._last_request_time: float = 0
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._http_client is None:
+            self._http_client = httpx.AsyncClient(timeout=self.timeout)
+            self._owns_client = True
+        return self._http_client
+
+    async def _rate_limit(self):
+        """Enforce per-session rate limiting."""
+        if self._min_interval <= 0:
+            return
+        now = time.monotonic()
+        elapsed = now - self._last_request_time
+        if elapsed < self._min_interval:
+            await asyncio.sleep(self._min_interval - elapsed)
+        self._last_request_time = time.monotonic()
 
     async def _request(self, action: str, params: dict[str, Any] | None = None) -> Any:
-        """Make a GET request to a CKAN action endpoint."""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.get(f"{self.api_url}/{action}", params=params)
-            response.raise_for_status()
-            data = response.json()
-            if not data.get("success"):
-                error = data.get("error", {})
-                msg = error.get("message", str(error))
-                raise CKANError(msg)
-            return data["result"]
+        """Make a GET request with retry and rate limiting."""
+        client = await self._get_client()
+        url = f"{self.api_url}/{action}"
+
+        for attempt in range(self.max_retries + 1):
+            await self._rate_limit()
+            try:
+                response = await client.get(url, params=params)
+
+                if response.status_code in RETRYABLE_STATUS_CODES and attempt < self.max_retries:
+                    delay = self.base_delay * (2 ** attempt) + random.uniform(0, 0.5)
+                    logger.warning(
+                        "Retryable HTTP %d from %s (attempt %d/%d), waiting %.1fs",
+                        response.status_code, action, attempt + 1, self.max_retries, delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                response.raise_for_status()
+                data = response.json()
+                if not data.get("success"):
+                    error = data.get("error", {})
+                    msg = error.get("message", str(error))
+                    raise CKANError(msg)
+                return data["result"]
+
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout) as e:
+                if attempt < self.max_retries:
+                    delay = self.base_delay * (2 ** attempt) + random.uniform(0, 0.5)
+                    logger.warning(
+                        "Connection error for %s (attempt %d/%d): %s, waiting %.1fs",
+                        action, attempt + 1, self.max_retries, e, delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                raise
+
+    async def close(self):
+        """Close the HTTP client if we own it."""
+        if self._owns_client and self._http_client is not None:
+            await self._http_client.aclose()
+            self._http_client = None
 
     async def package_search(
         self,
@@ -109,13 +182,13 @@ class CKANClient:
         offset: int = 0,
     ) -> dict[str, Any]:
         """Query data from the CKAN Datastore."""
+        import json
         params: dict[str, Any] = {
             "resource_id": resource_id,
             "limit": limit,
             "offset": offset,
         }
         if filters:
-            import json
             params["filters"] = json.dumps(filters)
         if fields:
             params["fields"] = ",".join(fields)

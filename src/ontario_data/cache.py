@@ -30,7 +30,8 @@ class CacheManager:
                 downloaded_at TIMESTAMP,
                 row_count INTEGER,
                 size_bytes BIGINT,
-                source_url VARCHAR
+                source_url VARCHAR,
+                expires_at TIMESTAMP
             )
         """)
         self.conn.execute("""
@@ -153,6 +154,13 @@ class CacheManager:
     def query_df(self, sql: str) -> pd.DataFrame:
         """Run a SQL query and return a DataFrame."""
         return self.conn.execute(sql).fetchdf()
+
+    def update_expires_at(self, resource_id: str, expires_at):
+        """Set the expires_at timestamp for a cached resource."""
+        self.conn.execute(
+            "UPDATE _cache_metadata SET expires_at = ? WHERE resource_id = ?",
+            [expires_at, resource_id],
+        )
 
     def store_dataset_metadata(self, dataset_id: str, metadata: dict[str, Any]):
         """Cache dataset metadata."""
