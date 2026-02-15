@@ -1,17 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from fastmcp import Context
 
 from ontario_data.server import mcp
-from ontario_data.ckan_client import CKANClient
-from ontario_data.cache import CacheManager
-
-
-def _get_deps(ctx: Context) -> tuple[CKANClient, CacheManager]:
-    return ctx.lifespan_context["ckan"], ctx.lifespan_context["cache"]
+from ontario_data.utils import get_deps, json_response
 
 
 @mcp.tool
@@ -34,7 +28,7 @@ async def search_datasets(
         sort_by: Sort order (default: relevance)
         limit: Max results to return (1-50)
     """
-    ckan, _ = _get_deps(ctx)
+    ckan, _ = get_deps(ctx)
     filters = {}
     if organization:
         filters["organization"] = organization
@@ -63,11 +57,11 @@ async def search_datasets(
             "update_frequency": ds.get("update_frequency", "unknown"),
         })
 
-    return json.dumps({
-        "total_count": result["count"],
-        "returned": len(datasets),
-        "datasets": datasets,
-    }, indent=2)
+    return json_response(
+        total_count=result["count"],
+        returned=len(datasets),
+        datasets=datasets,
+    )
 
 
 @mcp.tool
@@ -79,7 +73,7 @@ async def list_organizations(
 
     Use this to discover which ministries publish data and how much.
     """
-    ckan, _ = _get_deps(ctx)
+    ckan, _ = get_deps(ctx)
     orgs = await ckan.organization_list(all_fields=True, include_dataset_count=include_counts)
     result = []
     for org in orgs:
@@ -103,7 +97,7 @@ async def list_topics(
     Args:
         query: Optional filter to match tag names
     """
-    ckan, _ = _get_deps(ctx)
+    ckan, _ = get_deps(ctx)
     tags = await ckan.tag_list(query=query, all_fields=True)
     if isinstance(tags, list) and tags and isinstance(tags[0], dict):
         result = [{"name": t["name"], "count": t.get("count", 0)} for t in tags]
@@ -124,7 +118,7 @@ async def get_popular_datasets(
         sort: "recent" for recently modified, "name" for alphabetical
         limit: Number of results (1-50)
     """
-    ckan, _ = _get_deps(ctx)
+    ckan, _ = get_deps(ctx)
     sort_map = {
         "recent": "metadata_modified desc",
         "name": "title asc",
@@ -142,7 +136,7 @@ async def get_popular_datasets(
             "last_modified": ds.get("metadata_modified"),
             "update_frequency": ds.get("update_frequency", "unknown"),
         })
-    return json.dumps({"total": result["count"], "datasets": datasets}, indent=2)
+    return json_response(total=result["count"], datasets=datasets)
 
 
 @mcp.tool
@@ -157,8 +151,7 @@ async def search_by_location(
         region: Geographic area (e.g. "Toronto", "Northern Ontario", "Ottawa", "province-wide")
         limit: Max results
     """
-    ckan, _ = _get_deps(ctx)
-    # Search using geographic_coverage field and general query
+    ckan, _ = get_deps(ctx)
     result = await ckan.package_search(
         query=region,
         filters=None,
@@ -174,7 +167,7 @@ async def search_by_location(
             "geographic_coverage": ds.get("geographic_coverage", "Not specified"),
             "description": (ds.get("notes") or "")[:200],
         })
-    return json.dumps({"total": result["count"], "datasets": datasets}, indent=2)
+    return json_response(total=result["count"], datasets=datasets)
 
 
 @mcp.tool
@@ -189,14 +182,12 @@ async def find_related_datasets(
         dataset_id: The ID or name of the source dataset
         limit: Max related datasets to return
     """
-    ckan, _ = _get_deps(ctx)
-    # Get the source dataset
+    ckan, _ = get_deps(ctx)
     source = await ckan.package_show(dataset_id)
     tags = [t["name"] for t in source.get("tags", [])]
     org = source.get("organization", {}).get("name", "")
 
     related = []
-    # Search by tags
     if tags:
         tag_query = " OR ".join(tags[:5])
         result = await ckan.package_search(query=tag_query, rows=min(limit + 5, 50))
@@ -211,7 +202,6 @@ async def find_related_datasets(
                     "relevance": "tags",
                 })
 
-    # Search by organization
     if org:
         result = await ckan.package_search(filters={"organization": org}, rows=min(limit, 50))
         seen_ids = {r["id"] for r in related}
@@ -225,7 +215,7 @@ async def find_related_datasets(
                     "relevance": "same_organization",
                 })
 
-    return json.dumps({
-        "source": {"id": source["id"], "title": source.get("title"), "tags": tags},
-        "related": related[:limit],
-    }, indent=2)
+    return json_response(
+        source={"id": source["id"], "title": source.get("title"), "tags": tags},
+        related=related[:limit],
+    )

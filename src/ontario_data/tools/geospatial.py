@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 import io
-import json
+import logging
 import re
-from typing import Any
 
 import httpx
 from fastmcp import Context
 
 from ontario_data.server import mcp
-from ontario_data.ckan_client import CKANClient
-from ontario_data.cache import CacheManager
+from ontario_data.utils import (
+    SpatialExtensionError,
+    get_cache,
+    get_deps,
+    json_response,
+    require_cached,
+)
 
-
-def _get_deps(ctx: Context) -> tuple[CKANClient, CacheManager]:
-    return ctx.lifespan_context["ckan"], ctx.lifespan_context["cache"]
+logger = logging.getLogger("ontario_data.geospatial")
 
 
 @mcp.tool
@@ -32,11 +34,11 @@ async def load_geodata(
     import geopandas as gpd
     import pandas as pd
 
-    ckan, cache = _get_deps(ctx)
+    ckan, cache = get_deps(ctx)
 
     if cache.is_cached(resource_id) and not force_refresh:
         table_name = cache.get_table_name(resource_id)
-        return json.dumps({"status": "already_cached", "table_name": table_name})
+        return json_response(status="already_cached", table_name=table_name)
 
     resource = await ckan.resource_show(resource_id)
     dataset_id = resource.get("package_id", "")
@@ -66,9 +68,9 @@ async def load_geodata(
                     zf.extractall(tmpdir)
                 gdf = gpd.read_file(tmpdir)
             else:
-                return json.dumps({"error": "SHP files must be provided as ZIP archives"})
+                raise ValueError("SHP files must be provided as ZIP archives")
     else:
-        return json.dumps({"error": f"Unsupported geospatial format: {fmt}"})
+        raise ValueError(f"Unsupported geospatial format: {fmt}")
 
     await ctx.report_progress(80, 100, "Storing in DuckDB...")
 
@@ -79,7 +81,6 @@ async def load_geodata(
         df["geometry_type"] = df["geometry"].apply(lambda g: g.geom_type if g else None)
         if hasattr(gdf, "crs") and gdf.crs:
             df["crs"] = str(gdf.crs)
-        # Get bounds
         bounds = gdf.total_bounds  # [minx, miny, maxx, maxy]
         df = df.drop(columns=["geometry"])
     else:
@@ -98,16 +99,16 @@ async def load_geodata(
 
     await ctx.report_progress(100, 100, "Done")
 
-    return json.dumps({
-        "status": "loaded",
-        "table_name": table_name,
-        "row_count": len(df),
-        "columns": list(df.columns),
-        "geometry_types": df["geometry_type"].unique().tolist() if "geometry_type" in df.columns else [],
-        "bounds": {"minx": bounds[0], "miny": bounds[1], "maxx": bounds[2], "maxy": bounds[3]} if bounds is not None else None,
-        "crs": str(gdf.crs) if hasattr(gdf, "crs") and gdf.crs else None,
-        "hint": f'Query with: SELECT * FROM "{table_name}" LIMIT 10',
-    }, indent=2, default=str)
+    return json_response(
+        status="loaded",
+        table_name=table_name,
+        row_count=len(df),
+        columns=list(df.columns),
+        geometry_types=df["geometry_type"].unique().tolist() if "geometry_type" in df.columns else [],
+        bounds={"minx": bounds[0], "miny": bounds[1], "maxx": bounds[2], "maxy": bounds[3]} if bounds is not None else None,
+        crs=str(gdf.crs) if hasattr(gdf, "crs") and gdf.crs else None,
+        hint=f'Query with: SELECT * FROM "{table_name}" LIMIT 10',
+    )
 
 
 @mcp.tool
@@ -132,15 +133,14 @@ async def spatial_query(
         bbox: Bounding box as [min_lng, min_lat, max_lng, max_lat] (for within_bbox)
         limit: Max results
     """
-    _, cache = _get_deps(ctx)
-    table_name = cache.get_table_name(resource_id)
-    if not table_name:
-        return json.dumps({"error": f"Resource {resource_id} not cached. Use load_geodata first."})
+    cache = get_cache(ctx)
+    table_name = require_cached(cache, resource_id)
 
-    try:
-        cache.conn.execute("LOAD spatial")
-    except Exception:
-        pass
+    if not cache.has_spatial_extension:
+        raise SpatialExtensionError(
+            "DuckDB spatial extension is not available. "
+            "Spatial queries require the spatial extension to be installed."
+        )
 
     if operation == "contains_point" and latitude is not None and longitude is not None:
         sql = f"""
@@ -154,7 +154,6 @@ async def spatial_query(
             LIMIT {limit}
         """
     elif operation == "within_radius" and latitude is not None and longitude is not None and radius_km is not None:
-        # Approximate degrees (1 degree ~ 111km)
         degree_radius = radius_km / 111.0
         sql = f"""
             SELECT *, ST_Distance(
@@ -184,20 +183,18 @@ async def spatial_query(
             LIMIT {limit}
         """
     else:
-        return json.dumps({
-            "error": f"Invalid operation '{operation}' or missing parameters",
-            "valid_operations": {
-                "contains_point": "requires latitude, longitude",
-                "within_radius": "requires latitude, longitude, radius_km",
-                "within_bbox": "requires bbox [min_lng, min_lat, max_lng, max_lat]",
-            },
-        })
+        raise ValueError(
+            f"Invalid operation '{operation}' or missing parameters. "
+            f"Valid: contains_point (lat, lng), within_radius (lat, lng, radius_km), within_bbox (bbox)"
+        )
 
-    try:
-        results = cache.query(sql)
-        return json.dumps({"operation": operation, "result_count": len(results), "records": results}, indent=2, default=str)
-    except Exception as e:
-        return json.dumps({"error": str(e), "sql": sql}, indent=2)
+    # Execute directly on conn since spatial SQL contains functions not in allowed prefixes
+    result = cache.conn.execute(sql)
+    columns = [desc[0] for desc in result.description]
+    rows = result.fetchall()
+    records = [dict(zip(columns, row)) for row in rows]
+
+    return json_response(operation=operation, result_count=len(records), records=records)
 
 
 @mcp.tool
@@ -212,7 +209,7 @@ async def list_geo_datasets(
         format_filter: Filter to specific format: "SHP", "KML", "GEOJSON", or None for all
         limit: Max results
     """
-    ckan, _ = _get_deps(ctx)
+    ckan, _ = get_deps(ctx)
     geo_formats = [format_filter.upper()] if format_filter else ["SHP", "KML", "GEOJSON"]
 
     all_datasets = []
@@ -234,60 +231,4 @@ async def list_geo_datasets(
                     "geo_resources": geo_resources,
                 })
 
-    return json.dumps({"total": len(all_datasets), "datasets": all_datasets[:limit]}, indent=2)
-
-
-@mcp.tool
-async def geocode_lookup(
-    latitude: float | None = None,
-    longitude: float | None = None,
-    bbox: list[float] | None = None,
-    limit: int = 20,
-    ctx: Context = None,
-) -> str:
-    """Find datasets that might cover a geographic point or bounding box.
-
-    Searches dataset metadata for geographic references. For precise spatial queries,
-    use load_geodata + spatial_query instead.
-
-    Args:
-        latitude: Latitude of point of interest
-        longitude: Longitude of point of interest
-        bbox: Bounding box [min_lng, min_lat, max_lng, max_lat]
-        limit: Max results
-    """
-    ckan, _ = _get_deps(ctx)
-
-    # Ontario municipalities/regions for reverse geocoding
-    # This is a simplified lookup — for precise work use spatial_query
-    if latitude and longitude:
-        query = "geographic coverage Ontario"
-        # Southern Ontario approximate bounds
-        if 42.0 <= latitude <= 45.0 and -80.5 <= longitude <= -78.5:
-            query = "Toronto GTA Ontario"
-        elif 45.0 <= latitude <= 47.0:
-            query = "Northern Ontario"
-        elif 44.0 <= latitude <= 46.0 and -76.0 <= longitude <= -75.0:
-            query = "Ottawa Eastern Ontario"
-    elif bbox:
-        query = "geographic Ontario"
-    else:
-        return json.dumps({"error": "Provide latitude/longitude or bbox"})
-
-    result = await ckan.package_search(query=query, rows=min(limit, 50))
-    datasets = []
-    for ds in result["results"]:
-        geo_cov = ds.get("geographic_coverage", "")
-        has_geo_resource = any(
-            (r.get("format") or "").upper() in ("SHP", "KML", "GEOJSON")
-            for r in ds.get("resources", [])
-        )
-        datasets.append({
-            "id": ds["id"],
-            "title": ds.get("title"),
-            "organization": ds.get("organization", {}).get("title"),
-            "geographic_coverage": geo_cov,
-            "has_geospatial_resource": has_geo_resource,
-        })
-
-    return json.dumps({"query_point": {"lat": latitude, "lng": longitude}, "datasets": datasets}, indent=2)
+    return json_response(total=len(all_datasets), datasets=all_datasets[:limit])

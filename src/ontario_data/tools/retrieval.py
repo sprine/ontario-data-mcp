@@ -1,29 +1,20 @@
 from __future__ import annotations
 
 import io
-import json
-import re
+import logging
 from typing import Any
 
 import httpx
 import pandas as pd
 from fastmcp import Context
 
-from ontario_data.server import mcp
-from ontario_data.ckan_client import CKANClient
 from ontario_data.cache import CacheManager
+from ontario_data.ckan_client import CKANClient
+from ontario_data.server import mcp
+from ontario_data.staleness import compute_expires_at, get_staleness_info
+from ontario_data.utils import get_cache, get_deps, json_response, make_table_name
 
-
-def _get_deps(ctx: Context) -> tuple[CKANClient, CacheManager]:
-    return ctx.lifespan_context["ckan"], ctx.lifespan_context["cache"]
-
-
-def _make_table_name(dataset_name: str, resource_id: str) -> str:
-    """Generate a safe DuckDB table name."""
-    slug = re.sub(r"[^a-z0-9]", "_", (dataset_name or "unknown").lower())
-    slug = re.sub(r"_+", "_", slug).strip("_")[:40]
-    prefix = resource_id[:8]
-    return f"ds_{slug}_{prefix}"
+logger = logging.getLogger("ontario_data.retrieval")
 
 
 async def _download_resource_data(
@@ -31,7 +22,6 @@ async def _download_resource_data(
     resource_id: str,
 ) -> tuple[pd.DataFrame, dict[str, Any], dict[str, Any]]:
     """Download a resource and return (dataframe, resource_meta, dataset_meta)."""
-    # Get resource metadata
     resource = await ckan.resource_show(resource_id)
     dataset_id = resource.get("package_id")
     dataset = await ckan.package_show(dataset_id) if dataset_id else {}
@@ -43,7 +33,6 @@ async def _download_resource_data(
     if resource.get("datastore_active"):
         result = await ckan.datastore_search_all(resource_id)
         df = pd.DataFrame(result["records"])
-        # Remove internal CKAN columns
         internal_cols = [c for c in df.columns if c.startswith("_")]
         df = df.drop(columns=internal_cols, errors="ignore")
         return df, resource, dataset
@@ -72,38 +61,39 @@ async def _download_resource_data(
 @mcp.tool
 async def download_resource(
     resource_id: str,
-    force_refresh: bool = False,
     ctx: Context = None,
 ) -> str:
     """Download a dataset resource and cache it locally in DuckDB for fast querying.
 
     Supports CSV, XLSX, JSON, and datastore-active resources.
+    If already cached, returns staleness info so you can decide whether to refresh.
 
     Args:
         resource_id: The resource ID to download
-        force_refresh: Re-download even if already cached
     """
-    ckan, cache = _get_deps(ctx)
+    ckan, cache = get_deps(ctx)
 
-    if cache.is_cached(resource_id) and not force_refresh:
+    if cache.is_cached(resource_id):
         table_name = cache.get_table_name(resource_id)
         meta = cache.conn.execute(
             "SELECT row_count, downloaded_at FROM _cache_metadata WHERE resource_id = ?",
             [resource_id],
         ).fetchone()
-        return json.dumps({
-            "status": "already_cached",
-            "table_name": table_name,
-            "row_count": meta[0],
-            "downloaded_at": str(meta[1]),
-            "hint": "Use query_cached tool with SQL to analyze this data. Use force_refresh=True to re-download.",
-        }, indent=2)
+        staleness = get_staleness_info(cache, resource_id)
+        return json_response(
+            status="already_cached",
+            table_name=table_name,
+            row_count=meta[0],
+            downloaded_at=str(meta[1]),
+            staleness=staleness,
+            hint="Use query_cached tool with SQL to analyze this data. Use cache_manage(action='refresh', resource_id=...) to re-download.",
+        )
 
     await ctx.report_progress(0, 100, "Downloading resource...")
     df, resource, dataset = await _download_resource_data(ckan, resource_id)
     await ctx.report_progress(70, 100, "Storing in DuckDB...")
 
-    table_name = _make_table_name(dataset.get("name", ""), resource_id)
+    table_name = make_table_name(dataset.get("name", ""), resource_id)
     cache.store_resource(
         resource_id=resource_id,
         dataset_id=dataset.get("id", ""),
@@ -113,27 +103,108 @@ async def download_resource(
     )
     cache.store_dataset_metadata(dataset.get("id", ""), dataset)
 
+    # Set staleness expiry based on update frequency
+    update_freq = dataset.get("update_frequency")
+    from datetime import datetime, timezone
+    expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
+    cache.update_expires_at(resource_id, expires_at)
+
     await ctx.report_progress(100, 100, "Done")
 
-    return json.dumps({
-        "status": "downloaded",
-        "table_name": table_name,
-        "row_count": len(df),
-        "columns": list(df.columns),
-        "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-        "hint": f"Use query_cached tool with SQL like: SELECT * FROM \"{table_name}\" LIMIT 10",
-    }, indent=2)
+    return json_response(
+        status="downloaded",
+        table_name=table_name,
+        row_count=len(df),
+        columns=list(df.columns),
+        dtypes={col: str(dtype) for col, dtype in df.dtypes.items()},
+        hint=f'Use query_cached tool with SQL like: SELECT * FROM "{table_name}" LIMIT 10',
+    )
 
 
 @mcp.tool
-async def list_cached_datasets(ctx: Context = None) -> str:
-    """List all datasets currently cached in the local DuckDB database."""
-    _, cache = _get_deps(ctx)
+async def cache_info(ctx: Context = None) -> str:
+    """Get cache statistics and list all cached datasets.
+
+    Returns size, table count, and details for every cached resource.
+    """
+    cache = get_cache(ctx)
+    stats = cache.get_stats()
     cached = cache.list_cached()
-    return json.dumps({
-        "cached_count": len(cached),
-        "datasets": cached,
-    }, indent=2)
+
+    # Add staleness info for each cached resource
+    items = []
+    for c in cached:
+        staleness = get_staleness_info(cache, c["resource_id"])
+        items.append({
+            "table_name": c["table_name"],
+            "resource_id": c["resource_id"],
+            "dataset_id": c["dataset_id"],
+            "row_count": c["row_count"],
+            "downloaded_at": c["downloaded_at"],
+            "is_stale": staleness["is_stale"] if staleness else None,
+        })
+
+    return json_response(
+        **stats,
+        total_size_mb=round(stats["total_size_bytes"] / (1024 * 1024), 2),
+        datasets=items,
+    )
+
+
+@mcp.tool
+async def cache_manage(
+    action: str,
+    resource_id: str | None = None,
+    ctx: Context = None,
+) -> str:
+    """Manage the local DuckDB cache: remove, clear, or refresh cached data.
+
+    Args:
+        action: One of "remove" (single resource), "clear" (all), or "refresh" (re-download)
+        resource_id: Required for "remove" and "refresh" actions
+    """
+    ckan, cache = get_deps(ctx)
+
+    if action == "remove":
+        if not resource_id:
+            raise ValueError("resource_id is required for 'remove' action")
+        cache.remove_resource(resource_id)
+        return json_response(status="removed", resource_id=resource_id)
+
+    elif action == "clear":
+        count = len(cache.list_cached())
+        cache.remove_all()
+        return json_response(status="cleared", removed_count=count)
+
+    elif action == "refresh":
+        if not resource_id:
+            raise ValueError("resource_id is required for 'refresh' action")
+        cached = cache.list_cached()
+        item = next((c for c in cached if c["resource_id"] == resource_id), None)
+        if not item:
+            raise ValueError(f"Resource {resource_id} not found in cache")
+
+        df, resource, dataset = await _download_resource_data(ckan, resource_id)
+        cache.store_resource(
+            resource_id=resource_id,
+            dataset_id=item["dataset_id"],
+            table_name=item["table_name"],
+            df=df,
+            source_url=item["source_url"],
+        )
+        update_freq = dataset.get("update_frequency")
+        from datetime import datetime, timezone
+        expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
+        cache.update_expires_at(resource_id, expires_at)
+
+        return json_response(
+            status="refreshed",
+            resource_id=resource_id,
+            new_row_count=len(df),
+        )
+
+    else:
+        raise ValueError(f"Invalid action '{action}'. Use 'remove', 'clear', or 'refresh'.")
 
 
 @mcp.tool
@@ -146,13 +217,13 @@ async def refresh_cache(
     Args:
         resource_id: Specific resource to refresh, or omit to refresh all
     """
-    ckan, cache = _get_deps(ctx)
+    ckan, cache = get_deps(ctx)
     cached = cache.list_cached()
 
     if resource_id:
         cached = [c for c in cached if c["resource_id"] == resource_id]
         if not cached:
-            return json.dumps({"error": f"Resource {resource_id} not found in cache"})
+            raise ValueError(f"Resource {resource_id} not found in cache")
 
     results = []
     for i, item in enumerate(cached):
@@ -170,50 +241,4 @@ async def refresh_cache(
         except Exception as e:
             results.append({"resource_id": item["resource_id"], "status": "error", "error": str(e)})
 
-    return json.dumps({"refreshed": results}, indent=2)
-
-
-@mcp.tool
-async def cache_stats(ctx: Context = None) -> str:
-    """Get statistics about the local DuckDB cache: size, table count, staleness."""
-    _, cache = _get_deps(ctx)
-    stats = cache.get_stats()
-    cached = cache.list_cached()
-
-    return json.dumps({
-        **stats,
-        "total_size_mb": round(stats["total_size_bytes"] / (1024 * 1024), 2),
-        "tables": [
-            {
-                "table_name": c["table_name"],
-                "resource_id": c["resource_id"],
-                "row_count": c["row_count"],
-                "downloaded_at": c["downloaded_at"],
-            }
-            for c in cached
-        ],
-    }, indent=2)
-
-
-@mcp.tool
-async def remove_from_cache(
-    resource_id: str | None = None,
-    remove_all: bool = False,
-    ctx: Context = None,
-) -> str:
-    """Remove cached data to free disk space.
-
-    Args:
-        resource_id: Specific resource to remove
-        remove_all: Set to True to clear entire cache
-    """
-    _, cache = _get_deps(ctx)
-    if remove_all:
-        count = len(cache.list_cached())
-        cache.remove_all()
-        return json.dumps({"status": "cleared", "removed_count": count})
-    elif resource_id:
-        cache.remove_resource(resource_id)
-        return json.dumps({"status": "removed", "resource_id": resource_id})
-    else:
-        return json.dumps({"error": "Provide resource_id or set remove_all=True"})
+    return json_response(refreshed=results)
