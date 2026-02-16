@@ -8,3 +8,17 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Local config and cache
+.claude/
+.mcp.json
+*.duckdb
+*.duckdb.wal
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
