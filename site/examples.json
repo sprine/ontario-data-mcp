@@ -1,0 +1,262 @@
+[
+  {
+    "tag": "Time series",
+    "question": "How fast is electric vehicle adoption growing in Ontario?",
+    "answer": "Caches 16 quarterly CSVs of EV registrations by Forward Sortation Area. Runs province-wide totals with window functions.",
+    "punchline": "Ontario's registered EVs surged from 37,595 in Q1 2022 to 246,448 by Q4 2025 — a 6.6× increase in under four years, with battery-electric vehicles making up about three-quarters of the fleet.",
+    "sources": [
+      {
+        "title": "Electric Vehicles in Ontario -- By Forward Sortation Area",
+        "url": "https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area",
+        "org": "Transportation"
+      }
+    ],
+    "hood": {
+      "steps": [
+        {
+          "tool": "search_datasets",
+          "description": "b5696d0c"
+        },
+        {
+          "tool": "download_resource",
+          "description": "16 quarterly CSVs"
+        },
+        {
+          "tool": "query_cached",
+          "description": ""
+        }
+      ],
+      "sql": "SELECT quarter,\n  SUM(TRY_CAST(\"Total EV\" AS INTEGER)) AS total_evs,\n  ROUND(SUM(TRY_CAST(\"Total EV\" AS INTEGER)) * 1.0 /\n    LAG(SUM(TRY_CAST(\"Total EV\" AS INTEGER))) OVER (\n      ORDER BY quarter\n    ), 2) AS growth\nFROM ev_registrations\nGROUP BY quarter\nORDER BY quarter"
+    },
+    "followup": {
+      "question": "Which postal codes saw the fastest EV growth?",
+      "answer": "Your 16 quarterly CSVs are already cached. Compares Q1 2022 to Q4 2025 per FSA.",
+      "punchline": "BEVs consistently make up 72–75% of all EVs. Growth accelerated in 2025: Q4 2025 (246,448) is more than double Q4 2024 (119,846).",
+      "sources": [
+        {
+          "title": "Electric Vehicles in Ontario -- By Forward Sortation Area",
+          "url": "https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area",
+          "org": "Transportation"
+        }
+      ]
+    }
+  },
+  {
+    "tag": "Time series",
+    "question": "How much slower are Ontario ambulances compared to three years ago?",
+    "answer": "Downloads ambulance response time CSVs for 50+ coverage areas. Compares 2020 vs 2023 average response times by region.",
+    "punchline": "Response times jumped 1–2 minutes province-wide between 2020 and 2023. Kenora waits nearly 15 minutes (14:56) — almost 2 minutes longer than 2020. Even urban Durham went from 6:38 to 8:10.",
+    "sources": [
+      {
+        "title": "Land Ambulance Response Time Standard - Response Times",
+        "url": "https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times",
+        "org": "Health"
+      }
+    ],
+    "hood": {
+      "steps": [
+        {
+          "tool": "search_datasets",
+          "description": "0c4c8e2d"
+        },
+        {
+          "tool": "download_resource",
+          "description": "response times + population density"
+        },
+        {
+          "tool": "query_cached",
+          "description": ""
+        }
+      ],
+      "sql": "SELECT \"Ambulance Service Coverage Area\",\n  old.\"Average Response Time\" AS resp_2020,\n  new.\"Average Response Time\" AS resp_2023\nFROM ambulance_2023 new\nJOIN ambulance_2020 old\n  ON new.\"Ambulance Service Coverage Area\"\n   = old.\"Ambulance Service Coverage Area\"\nORDER BY new.\"Average Response Time\" DESC"
+    },
+    "followup": {
+      "question": "Does population density predict ambulance wait times?",
+      "answer": "Re-uses cached data, joins population density. Areas under 5 people/km² average 13–15 min; areas over 100/km² average 7–8 min.",
+      "punchline": "The gap between fastest (Weeneebayko, 6:18) and slowest (Kenora, 14:56) is 8 minutes and 38 seconds.",
+      "sources": [
+        {
+          "title": "Land Ambulance Response Time Standard - Response Times",
+          "url": "https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times",
+          "org": "Health"
+        }
+      ]
+    }
+  },
+  {
+    "tag": "Investigation",
+    "question": "Which Ontario facilities had the most air emission violations in 2024?",
+    "answer": "Downloads 2024 air emissions compliance data — 279 records across 44 facilities. Groups by facility owner using SUM on the exceedance count column.",
+    "punchline": "Three steel companies — Algoma Steel (408), ArcelorMittal Dofasco (385), and Stelco (307) — accounted for 1,100 of Ontario's 1,639 reported exceedances. Opacity (visible smoke) alone was 84% of all violations.",
+    "sources": [
+      {
+        "title": "Environmental Compliance Reports",
+        "url": "https://data.ontario.ca/dataset/environmental-compliance-reports",
+        "org": "Environment, Conservation and Parks"
+      }
+    ],
+    "hood": {
+      "steps": [
+        {
+          "tool": "search_datasets",
+          "description": "13cab7d0"
+        },
+        {
+          "tool": "list_resources",
+          "description": "2024 air emissions"
+        },
+        {
+          "tool": "download_resource",
+          "description": "c8d27e55"
+        },
+        {
+          "tool": "query_cached",
+          "description": ""
+        }
+      ],
+      "sql": "SELECT \"Facility Owner\",\n  SUM(TRY_CAST(\"No. of Exceedances\" AS INTEGER)) AS total\nFROM air_emissions_2024\nGROUP BY \"Facility Owner\"\nORDER BY total DESC\nLIMIT 10"
+    },
+    "followup": {
+      "question": "What contaminants are driving the violations?",
+      "answer": "Groups the same 279 records by contaminant type.",
+      "punchline": "Opacity alone accounts for 1,375 of 1,639 total exceedances (84%). The Iron and Steel sector generated 1,261 — more than all other industries combined.",
+      "sources": [
+        {
+          "title": "Environmental Compliance Reports",
+          "url": "https://data.ontario.ca/dataset/environmental-compliance-reports",
+          "org": "Environment, Conservation and Parks"
+        }
+      ]
+    }
+  },
+  {
+    "tag": "Cross-dataset",
+    "question": "How has phosphorus in Ontario's Great Lakes changed since the 1970s?",
+    "answer": "Caches 439,841 water quality readings from drinking water intakes (1976–2023). Averages total phosphorus by lake and decade.",
+    "punchline": "Lake Ontario saw the steepest decline — from 0.021 mg/L in the late 1970s to 0.010 mg/L by the 2010s, a 54% drop. Lake Erie fell 29% but remains more than double the concentration of Huron or Superior.",
+    "sources": [
+      {
+        "title": "Lake Water Quality at Drinking Water Intakes",
+        "url": "https://data.ontario.ca/dataset/lake-water-quality-at-drinking-water-intakes",
+        "org": "Environment, Conservation and Parks"
+      }
+    ],
+    "hood": {
+      "steps": [
+        {
+          "tool": "search_datasets",
+          "description": "324d6422"
+        },
+        {
+          "tool": "download_resource",
+          "description": "439k rows, XLSX"
+        },
+        {
+          "tool": "query_cached",
+          "description": ""
+        }
+      ],
+      "sql": "SELECT \"LAKE\",\n  FLOOR(\"YEAR\" / 10) * 10 AS decade,\n  ROUND(AVG(TRY_CAST(\"RESULT_VALUE\" AS DOUBLE)), 4)\n    AS avg_phosphorus_mg_L,\n  COUNT(*) AS n_readings\nFROM lake_water_quality\nWHERE \"PARAMETER\" LIKE '%Phosphorus%total%'\nGROUP BY \"LAKE\", decade\nORDER BY \"LAKE\", decade"
+    },
+    "followup": {
+      "question": "Is phosphorus in Lake Erie getting better or worse?",
+      "answer": "Filters to Lake Erie from the same cached 439k readings. Averages by decade.",
+      "punchline": "Lake Erie phosphorus dropped from 0.032 mg/L (1976–1989) to 0.024 (1990s), rebounded to 0.029 in the 2000s, then settled at 0.024 by 2010–2019. Still the most nutrient-rich Great Lake.",
+      "sources": [
+        {
+          "title": "Lake Water Quality at Drinking Water Intakes",
+          "url": "https://data.ontario.ca/dataset/lake-water-quality-at-drinking-water-intakes",
+          "org": "Environment, Conservation and Parks"
+        }
+      ]
+    }
+  },
+  {
+    "tag": "Scale callout",
+    "question": "Where are Ontario's 6,000+ licensed child care centres?",
+    "answer": "Downloads the Dec 2025 XLSX snapshot of all licensed facilities. Groups active centres by city and region.",
+    "punchline": "Ontario has 6,235 active licensed child care facilities across 750 cities. Toronto alone accounts for 972 — nearly 1 in 6. The YMCA of Greater Toronto operates 307 sites, making it the largest single operator.",
+    "sources": [
+      {
+        "title": "Licensed child care facilities in Ontario",
+        "url": "https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario",
+        "org": "Education"
+      }
+    ],
+    "hood": {
+      "steps": [
+        {
+          "tool": "search_datasets",
+          "description": "7efd8b4b"
+        },
+        {
+          "tool": "download_resource",
+          "description": "Dec 2025 XLSX"
+        },
+        {
+          "tool": "query_cached",
+          "description": ""
+        }
+      ],
+      "sql": "SELECT City,\n  COUNT(*) AS active_facilities\nFROM child_care\nWHERE \"Licence Status\" = 'Active'\nGROUP BY City\nORDER BY active_facilities DESC\nLIMIT 10"
+    },
+    "followup": {
+      "question": "Which regions are adding the most new facilities?",
+      "answer": "Filters by Original Issue Date since January 2024. Groups new licenses by region.",
+      "punchline": "512 new facilities licensed since Jan 2024. Southwest Ontario and West Region each added over 100 new facilities, outpacing Toronto's 34.",
+      "sources": [
+        {
+          "title": "Licensed child care facilities in Ontario",
+          "url": "https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario",
+          "org": "Education"
+        }
+      ]
+    }
+  },
+  {
+    "tag": "Investigation",
+    "question": "How fast is autism-related special education enrolment growing in Ontario?",
+    "answer": "Downloads 3 years of province-wide special education data (pipe-delimited TXT). Compares enrolment by exceptionality across 2021–22, 2023–24, and 2024–25.",
+    "punchline": "Autism enrolment surged from 27,095 to 35,335 students in three years — a 30.4% increase. It now accounts for 9.7% of all 362,620 special education students, up from 7.7%.",
+    "sources": [
+      {
+        "title": "Special Education Enrolment by Exceptionality",
+        "url": "https://data.ontario.ca/dataset/special-education-enrolment-by-exceptionality",
+        "org": "Education"
+      }
+    ],
+    "hood": {
+      "steps": [
+        {
+          "tool": "search_datasets",
+          "description": "b498b7ab"
+        },
+        {
+          "tool": "list_resources",
+          "description": "3 years of TXT files"
+        },
+        {
+          "tool": "download_resource",
+          "description": "× 3"
+        },
+        {
+          "tool": "query_cached",
+          "description": ""
+        }
+      ],
+      "sql": "SELECT \"Academic Year\",\n  \"Area of Exceptionality\",\n  TRY_CAST(\"Total Special Education Enrolment\"\n    AS INTEGER) AS total\nFROM special_education\nWHERE \"Area of Exceptionality\" = 'Autism'\nORDER BY \"Academic Year\""
+    },
+    "followup": {
+      "question": "What's the largest special education category overall?",
+      "answer": "Uses the same 3-year cached data. Ranks all exceptionalities by total enrolment for 2024–25.",
+      "punchline": "Learning Disability is the largest formally identified category at 50,155 students. But 'Non-Identified' dwarfs everything at 190,720 — 52.6% of all special education enrolment.",
+      "sources": [
+        {
+          "title": "Special Education Enrolment by Exceptionality",
+          "url": "https://data.ontario.ca/dataset/special-education-enrolment-by-exceptionality",
+          "org": "Education"
+        }
+      ]
+    }
+  }
+]

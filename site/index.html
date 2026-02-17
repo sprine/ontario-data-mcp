@@ -358,11 +358,11 @@
       white-space: pre;
       line-height: 1.5;
     }
-    .carousel-card .hood-code .kw { color: #ff79c6; }
+    .carousel-card .hood-code .kw { color: #ff79c6; font-weight: 700; }
     .carousel-card .hood-code .fn { color: #8be9fd; }
-    .carousel-card .hood-code .str { color: #f1fa8c; }
+    .carousel-card .hood-code .str { color: #f1fa8c; font-style: italic; }
     .carousel-card .hood-code .num { color: #bd93f9; }
-    .carousel-card .hood-code .comment { color: #6272a4; }
+    .carousel-card .hood-code .comment { color: #7283b5; font-style: italic; }
     .carousel-hint {
       text-align: center;
       font-size: 0.94rem;
@@ -478,191 +478,16 @@
   </section>
 
   <!-- Examples carousel (with follow-ups merged) -->
-  <section class="carousel-section" aria-labelledby="examples-heading">
+  <!-- Examples carousel (rendered from JSON by carousel.js) -->
+  <section class="carousel-section" aria-labelledby="examples-heading" role="region" aria-roledescription="carousel" style="display:none">
     <div class="carousel-header">
       <h2 id="examples-heading">See it in action</h2>
       <p>Real questions, real data, real SQL. Expand any card to see the tool calls or the follow-up question.</p>
     </div>
-    <div class="carousel-track">
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Time series</div>
-        <div class="carousel-q">How fast is EV adoption growing across Ontario?</div>
-        <div class="carousel-a">Caches 17 quarterly CSVs of EV registrations. Runs time series with window functions. <strong>Province-wide EVs grew 3.4× from Q1 2022 to Q4 2025 (73k → 249k). Toronto-area FSAs show the fastest growth rates.</strong></div>
-        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area" target="_blank" rel="noopener">EV Registrations by FSA</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">search_datasets</span> → <code style="color:#666">b5696d0c</code></div>
-            <div class="hood-step"><span class="tool-name">download_resource</span> → 17 CSVs</div>
-            <div class="hood-step"><span class="tool-name">query_cached</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> FSA, <span class="fn">ROUND</span>(Total_EV * <span class="num">1.0</span> /
-  <span class="fn">LAG</span>(Total_EV) <span class="kw">OVER</span> (
-    <span class="kw">PARTITION BY</span> FSA
-    <span class="kw">ORDER BY</span> quarter
-  ), <span class="num">2</span>) <span class="kw">AS</span> qoq_growth
-<span class="kw">FROM</span> ev_registrations
-<span class="kw">ORDER BY</span> qoq_growth <span class="kw">DESC</span></div>
-          </div>
-        </details>
-        <details>
-          <summary>Follow-up: Which postal codes saw the biggest EV explosion?</summary>
-          <div class="followup-content">
-            <div class="carousel-a">Your 17 quarterly CSVs are already cached. Compares Q1 2022 to Q4 2025 per FSA. <strong>M9W (Etobicoke) jumped from 139 to 1,465 EVs — a 10.5x increase. Province-wide: 73k to 248k, or 3.4x.</strong></div>
-            <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area" target="_blank" rel="noopener">EV Registrations by FSA</a> (already cached)</div>
-          </div>
-        </details>
-      </div>
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Time series</div>
-        <div class="carousel-q">Are ambulance response times getting worse across Ontario?</div>
-        <div class="carousel-a">Downloads ambulance response time data across Ontario regions. Compares 2019 vs 2023 by area. <strong>Every single region got slower — Thunder Bay went from 7:22 to 10:01, Algoma from 8:57 to 11:46.</strong></div>
-        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times" target="_blank" rel="noopener">Ambulance Response Times</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">search_datasets</span> → <code style="color:#666">0c4c8e2d</code></div>
-            <div class="hood-step"><span class="tool-name">download_resource</span> × 2 years</div>
-            <div class="hood-step"><span class="tool-name">query_cached</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> new.region,
-       old.avg_response <span class="kw">AS</span> resp_2019,
-       new.avg_response <span class="kw">AS</span> resp_2023
-<span class="kw">FROM</span> ambulance_2023 new
-<span class="kw">JOIN</span> ambulance_2019 old
-  <span class="kw">ON</span> new.region = old.region
-<span class="kw">ORDER BY</span> resp_2023 <span class="kw">DESC</span></div>
-          </div>
-        </details>
-        <details>
-          <summary>Follow-up: Did response times get worse after COVID?</summary>
-          <div class="followup-content">
-            <div class="carousel-a">Re-uses cached ambulance response data. Compares 2019 to 2023 by coverage area. <strong>Every single area got slower. Thunder Bay went from 7 min 22 sec to 10 min 1 sec. Algoma: 8:57 to 11:46.</strong></div>
-            <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times" target="_blank" rel="noopener">Ambulance Response Times</a> (already cached)</div>
-          </div>
-        </details>
-      </div>
-
-      <div class="carousel-card">
-        <div class="carousel-tag">170 datasets</div>
-        <div class="carousel-q">How have EQAO math scores changed over a decade?</div>
-        <div class="carousel-a">Pulls 14 XLSX files of school demographics. Pivots Grade 6 math by board. <strong>Shows year-over-year trends per school board, revealing which boards declined pre-pandemic and which recovered.</strong></div>
-        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/school-information-and-student-demographics" target="_blank" rel="noopener">School Demographics</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">search_datasets</span> → <code style="color:#666">d85f68c5</code></div>
-            <div class="hood-step"><span class="tool-name">list_resources</span> → 14 XLSX</div>
-            <div class="hood-step"><span class="tool-name">download_resource</span></div>
-            <div class="hood-step"><span class="tool-name">query_cached</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> Board_Name, School_Year,
-  <span class="fn">AVG</span>(Pct_Grade_6_Math) <span class="kw">AS</span> pct
-<span class="kw">FROM</span> school_demographics
-<span class="kw">GROUP BY</span> Board_Name, School_Year
-<span class="kw">ORDER BY</span> Board_Name, School_Year</div>
-          </div>
-        </details>
-        <details>
-          <summary>Follow-up: Which school boards bounced back fastest?</summary>
-          <div class="followup-content">
-            <div class="carousel-a">Uses the 14 XLSX files already cached — 7 school years from 2017-18 through 2023-24 (including preliminary data). Diffs Grade 6 math by board, pre vs. post pandemic.</div>
-            <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/school-information-and-student-demographics" target="_blank" rel="noopener">School Demographics</a> (14 XLSX files, already cached)</div>
-          </div>
-        </details>
-      </div>
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Geospatial</div>
-        <div class="carousel-q">Where are Ontario's child care deserts?</div>
-        <div class="carousel-a">Caches child care facilities, loads census boundaries. Calculates spots per child by ward. <strong>Maps which wards have the fewest licensed spots relative to child population.</strong></div>
-        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario" target="_blank" rel="noopener">Licensed Child Care Facilities</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">search_datasets</span> → <code style="color:#666">7efd8b4b</code></div>
-            <div class="hood-step"><span class="tool-name">download_resource</span></div>
-            <div class="hood-step"><span class="tool-name">load_geodata</span> → ward boundaries</div>
-            <div class="hood-step"><span class="tool-name">spatial_query</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> w.ward_name,
-  <span class="fn">SUM</span>(c.capacity) <span class="kw">AS</span> spots
-<span class="kw">FROM</span> wards w
-<span class="kw">LEFT JOIN</span> childcare c <span class="kw">ON</span>
-  <span class="fn">ST_Contains</span>(w.geom,
-    <span class="fn">ST_Point</span>(c.lng, c.lat))
-<span class="kw">GROUP BY</span> w.ward_name</div>
-          </div>
-        </details>
-        <details>
-          <summary>Follow-up: Which municipalities gained the most new spots?</summary>
-          <div class="followup-content">
-            <div class="carousel-a">Refreshes the Dec 2025 XLSX snapshot (6 resources, updated monthly) and diffs against your cached copy. Counts new facilities by municipality to find where capacity is growing.</div>
-            <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario" target="_blank" rel="noopener">Licensed Child Care Facilities</a> (updated monthly)</div>
-          </div>
-        </details>
-      </div>
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Investigation</div>
-        <div class="carousel-q">Which facilities are Ontario's biggest air polluters?</div>
-        <div class="carousel-a">Downloads 77 Environmental Compliance resources. Profiles data, queries by facility. <strong>Top 10 facilities account for 94% of all exceedances — mostly opacity and SO₂. Stelco alone had 466 in 2024.</strong></div>
-        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/environmental-compliance-reports" target="_blank" rel="noopener">Environmental Compliance Reports</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">search_datasets</span> → <code style="color:#666">13cab7d0</code></div>
-            <div class="hood-step"><span class="tool-name">list_resources</span> → 77 resources</div>
-            <div class="hood-step"><span class="tool-name">download_resource</span></div>
-            <div class="hood-step"><span class="tool-name">profile_data</span></div>
-            <div class="hood-step"><span class="tool-name">query_cached</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> Facility_Owner,
-  <span class="fn">SUM</span>(No_of_Exceedances) <span class="kw">AS</span> total
-<span class="kw">FROM</span> air_emissions
-<span class="kw">GROUP BY</span> Facility_Owner
-<span class="kw">ORDER BY</span> total <span class="kw">DESC</span>
-<span class="kw">LIMIT</span> <span class="num">10</span></div>
-          </div>
-        </details>
-        <details>
-          <summary>Follow-up: Are repeat offenders actually getting penalized?</summary>
-          <div class="followup-content">
-            <div class="carousel-a">Compares 2020 and 2024 air emissions (both cached). <strong>Stelco had 452 exceedances in 2020 and 466 in 2024 — still under "Voluntary Compliance." Imperial Oil got 51 exceedances and a Penalty Order.</strong></div>
-            <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/environmental-compliance-reports" target="_blank" rel="noopener">Environmental Compliance Reports</a> (77 resources, already cached)</div>
-          </div>
-        </details>
-      </div>
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Cross-dataset</div>
-        <div class="carousel-q">How does Great Lakes water quality compare to inland?</div>
-        <div class="carousel-a">Caches lake intakes (1976–2024) and provincial stream monitoring (24 resources). Joins on parameter. <strong>Stream phosphorus averages 65.5 µg/L vs 16.9 µg/L at lake intakes — about 3.9× higher.</strong></div>
-        <div class="carousel-sources">Sources: <a href="https://data.ontario.ca/dataset/lake-water-quality-at-drinking-water-intakes" target="_blank" rel="noopener">Lake Intakes</a>, <a href="https://data.ontario.ca/dataset/provincial-stream-water-quality-monitoring-network" target="_blank" rel="noopener">Provincial Monitoring</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">search_datasets</span> × 2</div>
-            <div class="hood-step"><span class="tool-name">download_resource</span> × 2</div>
-            <div class="hood-step"><span class="tool-name">query_cached</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> l.yr,
-  l.avg_p <span class="kw">AS</span> lake_p,
-  i.avg_p <span class="kw">AS</span> inland_p,
-  <span class="fn">ROUND</span>(i.avg_p / l.avg_p, <span class="num">1</span>)
-<span class="kw">FROM</span> lakes l
-<span class="kw">JOIN</span> inland i <span class="kw">ON</span> l.yr = i.yr</div>
-          </div>
-        </details>
-        <details>
-          <summary>Follow-up: Is phosphorus in Lake Erie getting better or worse?</summary>
-          <div class="followup-content">
-            <div class="carousel-a">Uses 439k cached readings (1976-2024). Averages total phosphorus by year. <strong>Dropped from 0.044 mg/L in 1976 to 0.022 in the 1990s. Rose to 0.031 in the 2000s, then fell back to 0.024 by 2023.</strong></div>
-            <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/lake-water-quality-at-drinking-water-intakes" target="_blank" rel="noopener">Lake Water Quality at Drinking Water Intakes</a> (439k rows, already cached)</div>
-          </div>
-        </details>
-      </div>
-
-    </div>
-    <div class="carousel-hint">← Scroll for more →</div>
-
+    <div class="carousel-track"></div>
+    <div class="carousel-hint">&larr; Scroll for more &rarr;</div>
   </section>
+
 
   <!-- CTA strip -->
   <div class="cta-strip">
@@ -997,6 +822,8 @@
       });
     }
   </script>
+  <script src="sql-highlight.js"></script>
+  <script src="carousel.js"></script>
 
 </body>
 </html>
