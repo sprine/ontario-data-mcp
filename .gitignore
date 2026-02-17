@@ -20,5 +20,9 @@ wheels/
 .idea/
 .vscode/
 
+# Project docs (local only)
+CLAUDE.md
+docs/plans/
+
 # OS
 .DS_Store
