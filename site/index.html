@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ontario-data-mcp — Ask plain questions, get real answers</title>
-  <meta name="description" content="Talk to Ontario's 2,900+ government datasets in plain English. No SQL, no APIs, no data wrangling. Just questions and answers.">
-  <meta property="og:title" content="ontario-data-mcp — Ask plain questions, get real answers">
-  <meta property="og:description" content="Talk to Ontario's 2,900+ government datasets in plain English. No SQL, no APIs, no data wrangling. Just questions and answers.">
+  <title>ontario-data-mcp — An MCP server for Ontario's open data</title>
+  <meta name="description" content="An MCP server for Ontario's open data catalogue. Search, cache, and query 2,900+ government datasets from any MCP client.">
+  <meta property="og:title" content="ontario-data-mcp — An MCP server for Ontario's open data">
+  <meta property="og:description" content="An MCP server for Ontario's open data catalogue. Search, cache, and query 2,900+ government datasets from any MCP client.">
   <meta property="og:type" content="website">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍁</text></svg>">
   <style>
@@ -260,13 +260,17 @@
     }
     .ticker-content {
       display: flex;
-      gap: 48px;
       white-space: nowrap;
-      animation: ticker-scroll 30s linear infinite;
-      padding-left: 20px;
     }
-    .ticker-content:hover {
+    .ticker-content:hover .ticker-set {
       animation-play-state: paused;
+    }
+    .ticker-set {
+      display: flex;
+      gap: 48px;
+      padding-right: 48px;
+      flex-shrink: 0;
+      animation: ticker-scroll var(--ticker-duration, 30s) linear infinite;
     }
     .ticker-item {
       display: inline-flex;
@@ -276,6 +280,9 @@
       color: #ccc;
       text-decoration: none;
       transition: color 0.15s;
+      padding: 4px 14px 4px 10px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, rgba(11,110,79,0.08) 0%, transparent 100%);
     }
     .ticker-item:hover {
       color: #fff;
@@ -301,7 +308,7 @@
     }
     @keyframes ticker-scroll {
       0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
+      100% { transform: translateX(-100%); }
     }
 
     /* Carousel for examples */
@@ -429,20 +436,11 @@
 </head>
 <body>
 
-  <!-- Ticker Feed -->
-  <div id="ticker-section" class="ticker-wrapper" style="display: none;">
-    <div class="ticker-label">Recently Updated</div>
-    <div class="ticker-track">
-      <div id="ticker-feed" class="ticker-content"></div>
-    </div>
-  </div>
-
   <!-- Hero -->
   <div class="hero">
     <div style="max-width: 640px; margin: 0 auto;">
-      <div class="badge">MCP Server</div>
-      <h1>Ask plain questions. <span>Get real answers.</span></h1>
-      <p class="subtitle">Ontario publishes 2,900+ datasets. You shouldn't need to know SQL, CKAN, or data formats to use them. Just ask what you want to know.</p>
+      <h1>An MCP server for <span>Ontario's open data.</span></h1>
+      <p class="subtitle">Search, cache, and query 2,900+ government datasets. Cross-dataset joins, iterative analysis, DuckDB-backed local storage. No API key required.</p>
       <div class="install-box">
         <code>uvx ontario-data-mcp</code>
         <button onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
@@ -473,17 +471,21 @@
       <div class="stat-num" data-target="4">0</div>
       <div class="stat-label">resources</div>
     </div>
-    <div class="stat">
-      <div class="stat-num" data-target="0" data-static="true">0</div>
-      <div class="stat-label">API keys</div>
+  </div>
+
+  <!-- Ticker Feed -->
+  <div id="ticker-section" class="ticker-wrapper" style="display: none;">
+    <div class="ticker-label">Recently Updated</div>
+    <div class="ticker-track">
+      <div id="ticker-feed" class="ticker-content"></div>
     </div>
   </div>
 
   <!-- Examples carousel -->
   <section class="carousel-section alt-bg">
     <div class="carousel-header">
-      <h2>You ask. It translates.</h2>
-      <p>Behind every question is a search, a download, a schema check, a SQL query. You don't see any of it.</p>
+      <h2>What happens behind a question</h2>
+      <p>Behind every question is a search, a download, a schema check, a SQL query. Expand any card to see exactly what happened.</p>
     </div>
     <div class="carousel-track">
 
@@ -627,24 +629,24 @@
   <section class="how-section">
     <div class="container--wide">
       <div class="section-header">
-        <h2>What happens when you ask</h2>
-        <p>You type a question. The tool handles everything else.</p>
+        <h2>How it works</h2>
+        <p>Each question triggers a pipeline of tool calls. Here's what runs.</p>
       </div>
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
-          <div class="step-title">Interpret</div>
-          <div class="step-desc">Your question becomes a search across 25 ministries. The right datasets surface — you never touch the catalogue.</div>
+          <div class="step-title">Search</div>
+          <div class="step-desc">Finds relevant datasets across 25 ministries. Keyword, topic, location, or related-dataset lookup.</div>
         </div>
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-title">Retrieve</div>
-          <div class="step-desc">CSVs, Excel files, shapefiles — downloaded, parsed, and loaded into a local database. No format wrangling.</div>
+          <div class="step-desc">Downloads CSVs, XLSX, shapefiles, GeoJSON. Parses and caches locally in DuckDB.</div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
-          <div class="step-title">Answer</div>
-          <div class="step-desc">SQL queries run automatically. Results come back as insight, not rows. Ask follow-ups to go deeper.</div>
+          <div class="step-title">Analyze</div>
+          <div class="step-desc">Runs SQL against cached data. Aggregations, joins, window functions — results come back as insight.</div>
         </div>
       </div>
     </div>
@@ -654,8 +656,8 @@
   <section>
     <div class="container--wide">
       <div class="section-header">
-        <h2>The machinery you don't see</h2>
-        <p>24 tools work behind the scenes. You just ask questions.</p>
+        <h2>24 tools under the hood</h2>
+        <p>Expand any category to see the individual tools.</p>
       </div>
       <div class="tools-grid">
         <div class="tool-card" onclick="toggleCard(this)">
@@ -715,8 +717,63 @@
     <div class="container--wide">
       <div class="section-header">
         <h2>Guided workflows</h2>
-        <p>Not sure where to start? Built-in prompts help you explore, investigate, and compare.</p>
+        <p>Built-in prompts that run multi-step tool sequences. Each one searches the live catalogue, checks your cache, and builds context before the LLM responds.</p>
       </div>
+
+      <div class="examples" style="margin-bottom: 48px;">
+        <div class="example">
+          <div class="example-tag">explore_topic</div>
+          <div class="example-q">Explore housing data in Ontario</div>
+          <div class="example-a">Searches the catalogue for "housing," returns the top results across ministries, inspects metadata on the most relevant datasets, and recommends which to download. <strong>Finds 40+ datasets spanning rent tribunals, social housing waitlists, and building permits.</strong></div>
+          <details>
+            <summary>What the prompt triggers</summary>
+            <div class="hood-content">
+              <div class="hood-step"><span class="tool-name">search_datasets</span> → "housing" (live catalogue search, top 5 shown)</div>
+              <div class="hood-step"><span class="tool-name">get_dataset_info</span> → inspects interesting results</div>
+              <div class="hood-step"><span class="tool-name">list_resources</span> → checks formats, row counts</div>
+              <div class="hood-step">Recommends downloads, suggests questions you can answer</div>
+            </div>
+          </details>
+          <div class="example-sources" style="margin-top: 12px;">Usage: <code>explore_topic(topic="housing")</code></div>
+        </div>
+
+        <div class="example">
+          <div class="example-tag">data_investigation</div>
+          <div class="example-q">Investigate the licensed child care facilities dataset</div>
+          <div class="example-a">Pulls full metadata, downloads the primary CSV, runs schema inspection, data quality checks, and statistical profiling. <strong>Surfaces 12% null rates in postal codes, flags capacity outliers, and suggests spatial joins with census boundaries.</strong></div>
+          <details>
+            <summary>What the prompt triggers</summary>
+            <div class="hood-content">
+              <div class="hood-step"><span class="tool-name">get_dataset_info</span> → full metadata</div>
+              <div class="hood-step"><span class="tool-name">list_resources</span> → finds primary CSV</div>
+              <div class="hood-step"><span class="tool-name">get_resource_schema</span> → column types and names</div>
+              <div class="hood-step"><span class="tool-name">download_resource</span> → caches in DuckDB</div>
+              <div class="hood-step"><span class="tool-name">check_data_quality</span> → nulls, duplicates, freshness</div>
+              <div class="hood-step"><span class="tool-name">profile_data</span> → distributions, outliers, patterns</div>
+              <div class="hood-step"><span class="tool-name">query_cached</span> → follow-up SQL for time series or correlations</div>
+            </div>
+          </details>
+          <div class="example-sources" style="margin-top: 12px;">Usage: <code>data_investigation(dataset_id="licensed-child-care-facilities-in-ontario")</code></div>
+        </div>
+
+        <div class="example">
+          <div class="example-tag">compare_data</div>
+          <div class="example-q">Compare ambulance response times with ER wait times</div>
+          <div class="example-a">Downloads both datasets, profiles each independently, then runs cross-dataset analysis. <strong>Finds shared region columns, confirms joinability, and shows regions with slow ambulance response also have 22% longer ER waits.</strong></div>
+          <details>
+            <summary>What the prompt triggers</summary>
+            <div class="hood-content">
+              <div class="hood-step"><span class="tool-name">compare_datasets</span> → metadata comparison</div>
+              <div class="hood-step"><span class="tool-name">download_resource</span> × 2 → caches both datasets</div>
+              <div class="hood-step"><span class="tool-name">profile_data</span> × 2 → structure, size, quality for each</div>
+              <div class="hood-step"><span class="tool-name">query_cached</span> → DuckDB SQL to find shared columns and join</div>
+              <div class="hood-step">Summarizes complementarity and join potential</div>
+            </div>
+          </details>
+          <div class="example-sources" style="margin-top: 12px;">Usage: <code>compare_data(dataset_ids="ambulance-response-times, ontario-wait-times")</code></div>
+        </div>
+      </div>
+
       <div class="tools-grid">
         <div class="tool-card" onclick="toggleCard(this)">
           <div class="tool-card-head">
@@ -880,8 +937,8 @@ Public School List    4 res  TXT</div>
   <section style="background: #fafafa;">
     <div class="install-inner">
       <div class="section-header">
-        <h2>Start asking</h2>
-        <p>One install. No API keys. Works with any <a href="https://modelcontextprotocol.io/" style="color:#0B6E4F; text-decoration: underline; text-underline-offset: 3px;">MCP-compatible</a> client.</p>
+        <h2>Get started</h2>
+        <p>Works with any <a href="https://modelcontextprotocol.io/" style="color:#0B6E4F; text-decoration: underline; text-underline-offset: 3px;">MCP-compatible</a> client. No API key required.</p>
       </div>
 
       <div class="tabs">
@@ -945,7 +1002,7 @@ Public School List    4 res  TXT</div>
 
   <!-- Feedback -->
   <div class="feedback">
-    Have feedback on the data catalogue itself? <a href="https://www.ontario.ca/form/provide-feedback-ontario-data-catalogue?utm_source=ontario-data-mcp&utm_medium=marketing-site&utm_campaign=community-feedback">Let Ontario know</a>
+    Found a bug or have a feature request? <a href="https://github.com/sprine/ontario-data-mcp/issues">Open an issue</a> · Feedback on the data catalogue itself? <a href="https://www.ontario.ca/form/provide-feedback-ontario-data-catalogue?utm_source=ontario-data-mcp&utm_medium=marketing-site&utm_campaign=community-feedback">Let Ontario know</a>
   </div>
 
   <!-- Footer -->
@@ -1007,8 +1064,8 @@ Public School List    4 res  TXT</div>
         }, delay);
       }
       
-      // Stagger delays: 0ms, 150ms, 280ms, 400ms, 520ms
-      const delays = [0, 150, 280, 400, 520];
+      // Stagger delays: 0ms, 150ms, 280ms, 400ms
+      const delays = [0, 150, 280, 400];
       let triggered = false;
       
       const observer = new IntersectionObserver((entries) => {
@@ -1047,7 +1104,7 @@ Public School List    4 res  TXT</div>
           const entries = doc.querySelectorAll('entry');
           const container = document.getElementById('ticker-feed');
           const section = document.getElementById('ticker-section');
-          const items = Array.from(entries).slice(0, 8); // More items for ticker
+          const items = Array.from(entries).slice(0, 8);
           if (!items.length) return;
 
           // Build ticker items
@@ -1056,14 +1113,12 @@ Public School List    4 res  TXT</div>
             const title = entry.querySelector('title')?.textContent || '';
             const updated = entry.querySelector('updated')?.textContent || '';
 
-            // Extract slug from enclosure link to build human-readable URL
             const enclosure = entry.querySelector('link[rel="enclosure"]');
             const href = enclosure?.getAttribute('href') || '';
             const slugMatch = href.match(/id=([^&]+)$/);
             const slug = slugMatch ? slugMatch[1] : '';
             const url = slug ? 'https://data.ontario.ca/dataset/' + slug : '#';
 
-            // Relative time
             const ago = timeAgo(new Date(updated));
 
             tickerHTML +=
@@ -1074,8 +1129,20 @@ Public School List    4 res  TXT</div>
               '</a>';
           });
 
-          // Duplicate content for seamless infinite scroll
-          container.innerHTML = tickerHTML + tickerHTML;
+          // Two identical sets for seamless looping — each scrolls its own -100%
+          container.innerHTML =
+            '<div class="ticker-set">' + tickerHTML + '</div>' +
+            '<div class="ticker-set">' + tickerHTML + '</div>';
+
+          // Set speed based on content width (~60px/s)
+          requestAnimationFrame(function() {
+            var setWidth = container.querySelector('.ticker-set').offsetWidth;
+            var duration = Math.max(setWidth / 60, 10);
+            container.querySelectorAll('.ticker-set').forEach(function(s) {
+              s.style.setProperty('--ticker-duration', duration + 's');
+            });
+          });
+
           section.style.display = '';
         })
         .catch(function() { /* silently skip if CORS or network error */ });
