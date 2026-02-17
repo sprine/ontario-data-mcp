@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 
 import httpx
 from fastmcp import FastMCP
@@ -35,7 +36,7 @@ mcp = FastMCP(
         "(data.ontario.ca). Use discovery tools to find datasets, retrieval tools to cache them "
         "locally in DuckDB, and querying tools to analyze the data."
     ),
-    version="0.1.1",
+    version=version("ontario-data-mcp"),
     lifespan=lifespan,
 )
 
