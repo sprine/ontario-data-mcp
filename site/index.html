@@ -123,6 +123,12 @@
     .step-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
     .step-desc { font-size: 0.88rem; color: #555; line-height: 1.65; }
 
+    .hero-inner { max-width: 640px; margin: 0 auto; }
+    .section-header--left { text-align: left; }
+    .steps--single { grid-template-columns: 1fr; max-width: none; gap: 24px; }
+    .duo-section { padding: 64px 0; }
+    .install-inner--flush { max-width: none; margin: 0; }
+
     /* Side-by-side layout */
     .duo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
 
@@ -365,8 +371,8 @@
 <body>
 
   <!-- Hero -->
-  <div class="hero">
-    <div style="max-width: 640px; margin: 0 auto;">
+  <header class="hero">
+    <div class="hero-inner">
       <h1>An MCP server for <span>Ontario's open data.</span></h1>
       <p class="subtitle">Search, cache, and query 2,900+ government datasets. Cross-dataset joins, iterative analysis, DuckDB-backed local storage. No API key required.</p>
       <div class="install-box">
@@ -379,7 +385,7 @@
         <a href="https://modelcontextprotocol.io/">What is MCP?</a>
       </div>
     </div>
-  </div>
+  </header>
 
   <!-- Stats - LED Counters -->
   <div class="stats">
@@ -410,9 +416,9 @@
   </div>
 
   <!-- Examples carousel -->
-  <section class="carousel-section">
+  <section class="carousel-section" aria-labelledby="examples-heading">
     <div class="carousel-header">
-      <h2>What happens behind a question</h2>
+      <h2 id="examples-heading">What happens behind a question</h2>
       <p>Behind every question is a search, a download, a schema check, a SQL query. Expand any card to see exactly what happened.</p>
     </div>
     <div class="carousel-track">
@@ -555,9 +561,9 @@
   </section>
 
   <!-- Follow-ups carousel -->
-  <section class="carousel-section">
+  <section class="carousel-section" aria-labelledby="followups-heading">
     <div class="carousel-header">
-      <h2>Go deeper with follow-ups</h2>
+      <h2 id="followups-heading">Go deeper with follow-ups</h2>
       <p>Each card below is a natural next question after one of the cards above. The tool remembers what's already cached.</p>
     </div>
     <div class="carousel-track">
@@ -708,10 +714,10 @@
   </section>
 
   <!-- Tools, Prompts & Resources -->
-  <section>
+  <section aria-labelledby="tools-heading">
     <div class="container--wide">
       <div class="section-header">
-        <h2>24 tools under the hood</h2>
+        <h2 id="tools-heading">24 tools under the hood</h2>
         <p>Expand any category to see the individual tools.</p>
       </div>
       <div class="tools-grid">
@@ -800,15 +806,15 @@
   </section>
 
   <!-- How it works + Get started (side by side) -->
-  <section style="padding: 64px 0;">
+  <section class="duo-section" aria-labelledby="how-heading">
     <div class="container--wide">
       <div class="duo-row">
         <div class="duo-col">
-          <div class="section-header" style="text-align: left;">
-            <h2>How it works</h2>
+          <div class="section-header section-header--left">
+            <h2 id="how-heading">How it works</h2>
             <p>Each question triggers a pipeline of tool calls.</p>
           </div>
-          <div class="steps" style="grid-template-columns: 1fr; max-width: none; gap: 24px;">
+          <div class="steps steps--single">
             <div class="step">
               <div class="step-num">1</div>
               <div class="step-title">Search</div>
@@ -827,8 +833,8 @@
           </div>
         </div>
         <div class="duo-col">
-          <div class="install-inner" style="max-width: none; margin: 0;">
-            <div class="section-header" style="text-align: left;">
+          <div class="install-inner install-inner--flush">
+            <div class="section-header section-header--left">
               <h2>Get started</h2>
               <p>Works with any <a href="https://modelcontextprotocol.io/" style="color:#0B6E4F; text-decoration: underline; text-underline-offset: 3px;">MCP-compatible</a> client. No API key required.</p>
             </div>
@@ -930,13 +936,6 @@
       function animateCounter(el, delay) {
         const target = parseInt(el.dataset.target, 10);
         const suffix = el.dataset.suffix || '';
-        const isStatic = el.dataset.static === 'true';
-        
-        if (isStatic) {
-          el.textContent = target + suffix;
-          return;
-        }
-        
         setTimeout(() => {
           const startTime = performance.now();
           
