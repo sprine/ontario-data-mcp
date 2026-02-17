@@ -63,5 +63,9 @@ async def duckdb_sql_guide() -> str:
             "Use LAG/LEAD window functions for period comparisons",
             "Common Ontario columns: _id, date, year, region, municipality",
             "SUMMARIZE <table> gives quick statistics for all columns",
+            "Many Ontario data columns are VARCHAR even when values are numeric — use TRY_CAST(col AS DOUBLE)",
+            "Values containing semicolons break query_cached — use LIKE patterns instead of exact matches",
+            "Use SUM(quantity_column) not COUNT(*) when rows represent aggregated counts",
+            "Column names may vary across resources in the same dataset (e.g. TotalEV vs Total EV)",
         ],
     }, indent=2)

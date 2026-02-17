@@ -21,6 +21,17 @@ class InvalidQueryError(Exception):
     pass
 
 
+def _has_semicolons_outside_strings(sql: str) -> bool:
+    """Check for semicolons outside of single-quoted string literals."""
+    in_string = False
+    for i, char in enumerate(sql):
+        if char == "'" and (i == 0 or sql[i - 1] != "\\"):
+            in_string = not in_string
+        elif char == ";" and not in_string:
+            return True
+    return False
+
+
 def _validate_sql(sql: str) -> None:
     """Validate that SQL is read-only and safe.
 
@@ -29,10 +40,11 @@ def _validate_sql(sql: str) -> None:
     # Strip leading whitespace and comments
     cleaned = re.sub(r"(/\*.*?\*/|--[^\n]*\n?)", "", sql, flags=re.DOTALL).strip()
 
-    # Reject semicolons anywhere (defense-in-depth against injection)
-    if ";" in sql:
+    # Reject semicolons outside string literals (defense-in-depth against injection)
+    if _has_semicolons_outside_strings(sql):
         raise InvalidQueryError(
-            "SQL queries must not contain semicolons. Send one statement at a time."
+            "SQL queries must not contain semicolons outside string literals. "
+            "Send one statement at a time."
         )
 
     # Check statement starts with allowed prefix

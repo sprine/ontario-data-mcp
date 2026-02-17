@@ -57,6 +57,10 @@ async def sql_query(
 ) -> str:
     """Run a SQL query against the CKAN Datastore (remote).
 
+    NOTE: Prefer download_resource + query_cached for repeated queries —
+    the remote API has rate limits (429 errors). Use this tool only for
+    quick one-off queries on datastore-active resources.
+
     Use resource IDs as table names in double quotes.
     Example: SELECT "Column Name" FROM "resource-id-here" WHERE "Year" > 2020 LIMIT 10
 
@@ -98,9 +102,12 @@ async def query_cached(
     except Exception as e:
         cached = cache.list_cached()
         table_names = [c["table_name"] for c in cached]
+        msg = str(e).lower()
+        hints = ["Quote table names with double quotes."]
+        if any(kw in msg for kw in ("conversion", "cast", "type mismatch", "could not convert")):
+            hints.append("Numeric columns may be stored as text. Use TRY_CAST(column AS DOUBLE).")
         raise type(e)(
-            f"{e}\n\nAvailable tables: {table_names}\n"
-            f"Hint: Quote table names with double quotes."
+            f"{e}\n\nAvailable tables: {table_names}\nHints: {' '.join(hints)}"
         ) from e
 
 

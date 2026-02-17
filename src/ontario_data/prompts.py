@@ -58,7 +58,8 @@ async def explore_topic(topic: str, ctx: Context = None) -> list[Message]:
                 "2. Summarize the top results — what data is available, from which ministries\n"
                 "3. For the most interesting datasets, use get_dataset_info to get details\n"
                 "4. Suggest which datasets to download and analyze, and what questions they could answer\n"
-                "5. If any have datastore_active resources, preview a few rows"
+                "5. Flag any datasets that are XLSX-only or have 0 datastore-active resources\n"
+                "6. If any have datastore_active resources, preview a few rows"
             ),
         ),
     ]
@@ -87,7 +88,8 @@ async def data_investigation(dataset_id: str, ctx: Context = None) -> list[Messa
                 f"{cache_ctx}\n\n"
                 "Please follow this workflow:\n"
                 "1. get_dataset_info — understand what this dataset contains\n"
-                "2. list_resources — see all available files\n"
+                "2. list_resources — check formats and datastore_active status; "
+                "XLSX-only resources must be downloaded before querying\n"
                 "3. For the primary CSV/data resource:\n"
                 "   a. get_resource_schema — understand the columns\n"
                 "   b. download_resource — cache it locally\n"
@@ -119,6 +121,7 @@ async def compare_data(dataset_ids: str, ctx: Context = None) -> list[Message]:
                 "2. For each dataset, download the primary resource\n"
                 "3. profile_data on each — compare structure, size, quality\n"
                 "4. If they share common columns, use query_cached with DuckDB SQL to find relationships\n"
+                "   IMPORTANT: Check unit columns before comparing values across datasets (e.g. mg/L vs µg/L)\n"
                 "5. Summarize: How do these datasets complement each other? Can they be joined?"
             ),
         ),

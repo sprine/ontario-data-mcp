@@ -34,7 +34,15 @@ mcp = FastMCP(
     instructions=(
         "Search, download, cache, and analyze datasets from Ontario's Open Data Catalogue "
         "(data.ontario.ca). Use discovery tools to find datasets, retrieval tools to cache them "
-        "locally in DuckDB, and querying tools to analyze the data."
+        "locally in DuckDB, and querying tools to analyze the data.\n\n"
+        "Key guidelines:\n"
+        "- Prefer download_resource + query_cached over sql_query (avoids remote API rate limits)\n"
+        "- Many numeric columns are stored as text — use TRY_CAST(col AS DOUBLE) in DuckDB queries\n"
+        "- Use SUM(quantity_col) not COUNT(*) when rows have a count/quantity column\n"
+        "- Check unit columns before comparing datasets (e.g. mg/L vs µg/L)\n"
+        "- Values may contain semicolons — use LIKE patterns instead of exact string matches\n"
+        "- Column names may vary across resources in the same dataset — always check with get_resource_schema\n"
+        "- Some resources are XLSX-only: downloadable via download_resource but not queryable via remote datastore API"
     ),
     version=version("ontario-data-mcp"),
     lifespan=lifespan,

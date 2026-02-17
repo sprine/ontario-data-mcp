@@ -94,6 +94,21 @@ async def get_resource_schema(
         sample_size: Number of sample rows to include
     """
     ckan, _ = get_deps(ctx)
+
+    # Check if resource has an active datastore before querying
+    try:
+        resource = await ckan.resource_show(resource_id)
+        if not resource.get("datastore_active"):
+            fmt = (resource.get("format") or "unknown").upper()
+            return json_response(
+                resource_id=resource_id,
+                datastore_active=False,
+                format=fmt,
+                hint=f"This {fmt} resource has no datastore. Use download_resource to cache it locally, then query_cached to analyze.",
+            )
+    except Exception:
+        pass  # Fall through to datastore_search which will give its own error
+
     result = await ckan.datastore_search(resource_id, limit=sample_size)
 
     fields = []

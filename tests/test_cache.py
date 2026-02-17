@@ -2,7 +2,7 @@ import pytest
 import duckdb
 import pandas as pd
 from datetime import datetime, timedelta, timezone
-from ontario_data.cache import CacheManager
+from ontario_data.cache import CacheManager, InvalidQueryError, _has_semicolons_outside_strings
 
 
 @pytest.fixture
@@ -101,6 +101,37 @@ class TestSQLQuery:
         result = cache.query("SELECT name, score FROM scores WHERE score > 87")
         assert len(result) == 1
         assert result[0]["name"] == "Alice"
+
+
+class TestSemicolonParser:
+    def test_bare_semicolon_detected(self):
+        assert _has_semicolons_outside_strings("SELECT 1; DROP TABLE x") is True
+
+    def test_semicolon_in_string_allowed(self):
+        assert _has_semicolons_outside_strings("SELECT * FROM t WHERE name = 'Phosphorus; total'") is False
+
+    def test_no_semicolons(self):
+        assert _has_semicolons_outside_strings("SELECT * FROM t") is False
+
+    def test_escaped_quote_with_semicolon(self):
+        # Semicolon after escaped quote — still inside string
+        assert _has_semicolons_outside_strings(r"SELECT * WHERE x = 'it\'s; here'") is False
+
+    def test_semicolon_after_closing_string(self):
+        assert _has_semicolons_outside_strings("SELECT * WHERE x = 'safe';") is True
+
+    def test_query_cached_allows_semicolons_in_strings(self, cache):
+        df = pd.DataFrame({"name": ["Phosphorus; total", "Nitrogen"], "value": [1.0, 2.0]})
+        cache.store_resource("r1", "ds1", "params", df, "http://example.com")
+        result = cache.query("SELECT * FROM params WHERE name = 'Phosphorus; total'")
+        assert len(result) == 1
+        assert result[0]["name"] == "Phosphorus; total"
+
+    def test_query_cached_rejects_bare_semicolons(self, cache):
+        df = pd.DataFrame({"x": [1]})
+        cache.store_resource("r1", "ds1", "tbl", df, "http://example.com")
+        with pytest.raises(InvalidQueryError):
+            cache.query("SELECT * FROM tbl; DROP TABLE tbl")
 
 
 class TestDatasetMetadata:
