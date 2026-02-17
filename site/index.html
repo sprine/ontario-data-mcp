@@ -113,88 +113,13 @@
     .tool-card.open .tool-card-detail { display: block; }
 
     /* How it works */
-    .how-section { background: #fafafa; }
     .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; max-width: 720px; margin: 0 auto; }
     .step-num { font-size: 2.5rem; font-weight: 800; color: rgba(11,110,79,0.1); line-height: 1; margin-bottom: 8px; }
     .step-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
     .step-desc { font-size: 0.88rem; color: #555; line-height: 1.65; }
 
-    /* Examples */
-    .examples-section { background: #fafafa; }
-    .examples { display: grid; gap: 24px; max-width: 760px; margin: 0 auto; }
-    .example {
-      background: #fff; border-radius: 12px; padding: 28px 28px 28px;
-      border: 1px solid #eee; transition: all 0.2s;
-    }
-    .example:hover { border-color: #ddd; box-shadow: 0 2px 12px rgba(0,0,0,0.03); }
-    .example-q {
-      font-size: 1.05rem; font-weight: 500; margin-bottom: 16px; line-height: 1.5;
-      color: #1a1a1a;
-    }
-    .example-a {
-      font-size: 0.9rem; color: #444; line-height: 1.7;
-      padding-left: 16px; border-left: 2px solid rgba(11,110,79,0.25);
-    }
-    .example-tag {
-      display: inline-block; font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.06em; color: #0B6E4F; background: rgba(11,110,79,0.06);
-      padding: 3px 8px; border-radius: 4px; margin-bottom: 10px;
-    }
-
-    /* Inline code in examples */
-    .example-a code { font-size: 0.8rem; background: rgba(11,110,79,0.06); color: #0B6E4F; padding: 2px 6px; border-radius: 4px; }
-
-    /* Example sources */
-    .example-sources {
-      margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0f0f0;
-      font-size: 0.78rem; color: #888; line-height: 1.7;
-    }
-    .example-sources a {
-      color: #0B6E4F; text-decoration: none; text-underline-offset: 2px;
-    }
-    .example-sources a:hover { text-decoration: underline; }
-
-    /* Collapsible under-the-hood */
-    .example details {
-      margin-top: 14px;
-    }
-    .example summary {
-      font-size: 0.75rem; font-weight: 600; color: #999; cursor: pointer;
-      letter-spacing: 0.03em; padding: 6px 0;
-      list-style: none; display: flex; align-items: center; gap: 6px;
-      user-select: none;
-    }
-    .example summary::-webkit-details-marker { display: none; }
-    .example summary::before {
-      content: '▸'; font-size: 0.7rem; color: #ccc; transition: transform 0.15s;
-      display: inline-block;
-    }
-    .example details[open] summary::before { transform: rotate(90deg); }
-    .example summary:hover { color: #666; }
-    .example .hood-content {
-      background: #1a1a1a; border-radius: 8px; padding: 16px 18px;
-      margin-top: 8px; overflow-x: auto;
-    }
-    .example .hood-step {
-      font-size: 0.72rem; color: #666; margin-bottom: 6px;
-      font-family: system-ui, sans-serif;
-    }
-    .example .hood-step .tool-name {
-      color: #a8d8a8; font-family: 'SF Mono', 'Fira Code', monospace;
-      font-weight: 600;
-    }
-    .example .hood-code {
-      font-size: 0.75rem; color: #bbb; font-family: 'SF Mono', 'Fira Code', monospace;
-      line-height: 1.65; white-space: pre-wrap; word-break: break-all;
-      margin: 4px 0 12px; padding-left: 12px;
-      border-left: 2px solid #333;
-    }
-    .example .hood-code:last-child { margin-bottom: 0; }
-    .example .hood-code .kw { color: #c792ea; }
-    .example .hood-code .fn { color: #82aaff; }
-    .example .hood-code .str { color: #c3e88d; }
-    .example .hood-code .num { color: #f78c6c; }
-    .example .hood-code .comment { color: #545454; }
+    /* Side-by-side layout */
+    .duo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
 
     /* Install */
     .install-inner { max-width: 640px; margin: 0 auto; }
@@ -313,7 +238,6 @@
 
     /* Carousel for examples */
     .carousel-section { padding: 64px 0; }
-    .carousel-section.alt-bg { background: #fafafa; }
     .carousel-header { text-align: center; margin-bottom: 32px; padding: 0 24px; }
     .carousel-header h2 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 8px; }
     .carousel-header p { font-size: 1rem; color: #555; line-height: 1.7; }
@@ -331,13 +255,12 @@
     .carousel-card {
       flex: 0 0 320px;
       scroll-snap-align: start;
-      background: #fff;
       border: 1px solid #eee;
       border-radius: 12px;
       padding: 20px;
       transition: border-color 0.2s, box-shadow 0.2s;
+      zoom: 1.25;
     }
-    .carousel-section.alt-bg .carousel-card { background: #fff; }
     .carousel-card:hover { border-color: #ddd; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
     .carousel-card:first-child { margin-left: calc(50% - 160px - 12px); }
     .carousel-card:last-child { margin-right: calc(50% - 160px - 12px); }
@@ -419,13 +342,14 @@
       margin-top: 8px;
     }
 
+
     @media (max-width: 640px) {
       .hero { padding: 72px 24px 56px; }
       .stats { gap: 24px; flex-wrap: wrap; }
       .stat-num { font-size: 1.4rem; }
       .steps { grid-template-columns: 1fr; gap: 28px; }
-      .examples { gap: 16px; }
       .tools-grid { grid-template-columns: 1fr; }
+      .duo-row { grid-template-columns: 1fr; gap: 40px; }
       .ticker-label { padding: 12px 12px; font-size: 0.65rem; }
       .ticker-item-title { max-width: 180px; }
       .carousel-card { flex: 0 0 260px; }
@@ -482,7 +406,7 @@
   </div>
 
   <!-- Examples carousel -->
-  <section class="carousel-section alt-bg">
+  <section class="carousel-section">
     <div class="carousel-header">
       <h2>What happens behind a question</h2>
       <p>Behind every question is a search, a download, a schema check, a SQL query. Expand any card to see exactly what happened.</p>
@@ -492,7 +416,7 @@
       <div class="carousel-card">
         <div class="carousel-tag">Time series</div>
         <div class="carousel-q">How fast is EV adoption growing across Ontario?</div>
-        <div class="carousel-a">Caches 17 quarterly CSVs of EV registrations. Runs time series with window functions. <strong>Province-wide EVs grew 3.2× in three years. Northern Ontario shows fastest growth rate.</strong></div>
+        <div class="carousel-a">Caches 17 quarterly CSVs of EV registrations. Runs time series with window functions. <strong>Province-wide EVs grew 3.4× from Q1 2022 to Q4 2025 (73k → 249k). Toronto-area FSAs show the fastest growth rates.</strong></div>
         <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area" target="_blank" rel="noopener">EV Registrations by FSA</a></div>
         <details>
           <summary>Under the hood</summary>
@@ -512,23 +436,23 @@
       </div>
 
       <div class="carousel-card">
-        <div class="carousel-tag">Cross-dataset</div>
-        <div class="carousel-q">Is there a link between ambulance and ER wait times?</div>
-        <div class="carousel-a">Downloads ambulance response data and hospital ER waits. Joins on health region. <strong>Regions with slow response also show 22% longer ER waits.</strong></div>
-        <div class="carousel-sources">Sources: <a href="https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times" target="_blank" rel="noopener">Ambulance Times</a>, <a href="https://data.ontario.ca/dataset/ontario-wait-times" target="_blank" rel="noopener">Wait Times</a></div>
+        <div class="carousel-tag">Time series</div>
+        <div class="carousel-q">Are ambulance response times getting worse across Ontario?</div>
+        <div class="carousel-a">Downloads ambulance response time data across Ontario regions. Compares 2019 vs 2023 by area. <strong>Every single region got slower — Thunder Bay went from 7:22 to 10:01, Algoma from 8:57 to 11:46.</strong></div>
+        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times" target="_blank" rel="noopener">Ambulance Response Times</a></div>
         <details>
           <summary>Under the hood</summary>
           <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">search_datasets</span> × 2</div>
-            <div class="hood-step"><span class="tool-name">download_resource</span> × 2</div>
+            <div class="hood-step"><span class="tool-name">search_datasets</span> → <code style="color:#666">0c4c8e2d</code></div>
+            <div class="hood-step"><span class="tool-name">download_resource</span> × 2 years</div>
             <div class="hood-step"><span class="tool-name">query_cached</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> amb.region,
-       amb.avg_response,
-       er.avg_wait
-<span class="kw">FROM</span> ambulance_times amb
-<span class="kw">JOIN</span> er_waits er
-  <span class="kw">ON</span> amb.region = er.region
-<span class="kw">ORDER BY</span> avg_response <span class="kw">DESC</span></div>
+            <div class="hood-code"><span class="kw">SELECT</span> new.region,
+       old.avg_response <span class="kw">AS</span> resp_2019,
+       new.avg_response <span class="kw">AS</span> resp_2023
+<span class="kw">FROM</span> ambulance_2023 new
+<span class="kw">JOIN</span> ambulance_2019 old
+  <span class="kw">ON</span> new.region = old.region
+<span class="kw">ORDER BY</span> resp_2023 <span class="kw">DESC</span></div>
           </div>
         </details>
       </div>
@@ -536,7 +460,7 @@
       <div class="carousel-card">
         <div class="carousel-tag">170 datasets</div>
         <div class="carousel-q">How have EQAO math scores changed over a decade?</div>
-        <div class="carousel-a">Pulls 14 XLSX files of school demographics. Pivots Grade 6 math by board. <strong>Provincial average dropped 8 points 2016–2019, partially recovered post-pandemic.</strong></div>
+        <div class="carousel-a">Pulls 14 XLSX files of school demographics. Pivots Grade 6 math by board. <strong>Shows year-over-year trends per school board, revealing which boards declined pre-pandemic and which recovered.</strong></div>
         <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/school-information-and-student-demographics" target="_blank" rel="noopener">School Demographics</a></div>
         <details>
           <summary>Under the hood</summary>
@@ -557,7 +481,7 @@
       <div class="carousel-card">
         <div class="carousel-tag">Geospatial</div>
         <div class="carousel-q">Where are Ontario's child care deserts?</div>
-        <div class="carousel-a">Caches child care facilities, loads census boundaries. Calculates spots per child by ward. <strong>6 wards in Scarborough have &lt;1 spot per 10 children.</strong></div>
+        <div class="carousel-a">Caches child care facilities, loads census boundaries. Calculates spots per child by ward. <strong>Maps which wards have the fewest licensed spots relative to child population.</strong></div>
         <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario" target="_blank" rel="noopener">Licensed Child Care Facilities</a></div>
         <details>
           <summary>Under the hood</summary>
@@ -580,7 +504,7 @@
       <div class="carousel-card">
         <div class="carousel-tag">Investigation</div>
         <div class="carousel-q">Which facilities are Ontario's biggest air polluters?</div>
-        <div class="carousel-a">Downloads 77 Environmental Compliance resources. Profiles data, queries by facility. <strong>Top 10 emitters account for 34% of total NOx.</strong></div>
+        <div class="carousel-a">Downloads 77 Environmental Compliance resources. Profiles data, queries by facility. <strong>Top 10 facilities account for 94% of all exceedances — mostly opacity and SO₂. Stelco alone had 466 in 2024.</strong></div>
         <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/environmental-compliance-reports" target="_blank" rel="noopener">Environmental Compliance Reports</a></div>
         <details>
           <summary>Under the hood</summary>
@@ -591,11 +515,11 @@
             <div class="hood-step"><span class="tool-name">profile_data</span></div>
             <div class="hood-step"><span class="tool-name">query_cached</span></div>
             <div class="hood-code"><span class="kw">SELECT</span> Facility_Owner,
-  <span class="fn">SUM</span>(Exceedance) <span class="kw">AS</span> total
+  <span class="fn">SUM</span>(No_of_Exceedances) <span class="kw">AS</span> total
 <span class="kw">FROM</span> air_emissions
-<span class="kw">WHERE</span> Contaminant = <span class="str">'NOx'</span>
 <span class="kw">GROUP BY</span> Facility_Owner
-<span class="kw">ORDER BY</span> total <span class="kw">DESC</span></div>
+<span class="kw">ORDER BY</span> total <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span></div>
           </div>
         </details>
       </div>
@@ -603,7 +527,7 @@
       <div class="carousel-card">
         <div class="carousel-tag">Cross-dataset</div>
         <div class="carousel-q">How does Great Lakes water quality compare to inland?</div>
-        <div class="carousel-a">Caches lake intakes (1976–2024) and provincial monitoring (24 resources). Joins on parameter. <strong>Inland phosphorus runs 2.4× higher than lake intakes.</strong></div>
+        <div class="carousel-a">Caches lake intakes (1976–2024) and provincial stream monitoring (24 resources). Joins on parameter. <strong>Stream phosphorus averages 65.5 µg/L vs 16.9 µg/L at lake intakes — about 3.9× higher.</strong></div>
         <div class="carousel-sources">Sources: <a href="https://data.ontario.ca/dataset/lake-water-quality-at-drinking-water-intakes" target="_blank" rel="noopener">Lake Intakes</a>, <a href="https://data.ontario.ca/dataset/provincial-stream-water-quality-monitoring-network" target="_blank" rel="noopener">Provincial Monitoring</a></div>
         <details>
           <summary>Under the hood</summary>
@@ -623,36 +547,163 @@
 
     </div>
     <div class="carousel-hint">← Scroll for more →</div>
+
   </section>
 
-  <!-- How it works -->
-  <section class="how-section">
-    <div class="container--wide">
-      <div class="section-header">
-        <h2>How it works</h2>
-        <p>Each question triggers a pipeline of tool calls. Here's what runs.</p>
-      </div>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-title">Search</div>
-          <div class="step-desc">Finds relevant datasets across 25 ministries. Keyword, topic, location, or related-dataset lookup.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-title">Retrieve</div>
-          <div class="step-desc">Downloads CSVs, XLSX, shapefiles, GeoJSON. Parses and caches locally in DuckDB.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-title">Analyze</div>
-          <div class="step-desc">Runs SQL against cached data. Aggregations, joins, window functions — results come back as insight.</div>
-        </div>
-      </div>
+  <!-- Follow-ups carousel -->
+  <section class="carousel-section">
+    <div class="carousel-header">
+      <h2>Go deeper with follow-ups</h2>
+      <p>Each card below is a natural next question after one of the cards above. The tool remembers what's already cached.</p>
     </div>
+    <div class="carousel-track">
+
+      <div class="carousel-card">
+        <div class="carousel-tag">Follows: EV adoption</div>
+        <div class="carousel-q">Which postal codes saw the biggest EV explosion?</div>
+        <div class="carousel-a">Your 17 quarterly CSVs are already cached. Compares Q1 2022 to Q4 2025 per FSA. <strong>M9W (Etobicoke) jumped from 139 to 1,465 EVs — a 10.5x increase. Province-wide: 73k to 248k, or 3.4x.</strong></div>
+        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area" target="_blank" rel="noopener">EV Registrations by FSA</a> (already cached)</div>
+        <details>
+          <summary>Under the hood</summary>
+          <div class="hood-content">
+            <div class="hood-step">Skips search — EV data already in DuckDB</div>
+            <div class="hood-step"><span class="tool-name">query_cached</span></div>
+            <div class="hood-code"><span class="kw">SELECT</span> q1.FSA,
+  q1.TotalEV <span class="kw">AS</span> ev_2022,
+  q4."Total EV" <span class="kw">AS</span> ev_2025,
+  <span class="fn">ROUND</span>(q4."Total EV" * <span class="num">1.0</span>
+    / q1.TotalEV, <span class="num">1</span>) <span class="kw">AS</span> growth
+<span class="kw">FROM</span> ev_q1_2022 q1
+<span class="kw">JOIN</span> ev_q4_2025 q4
+  <span class="kw">ON</span> q1.FSA = q4.FSA
+<span class="kw">WHERE</span> q1.TotalEV &gt; <span class="num">50</span>
+<span class="kw">ORDER BY</span> growth <span class="kw">DESC</span></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="carousel-card">
+        <div class="carousel-tag">Follows: Ambulance + ER</div>
+        <div class="carousel-q">Did ambulance response times get worse after COVID?</div>
+        <div class="carousel-a">Re-uses cached ambulance response data. Compares 2019 to 2023 by coverage area. <strong>Every single area got slower. Thunder Bay went from 7 min 22 sec to 10 min 1 sec. Algoma: 8:57 to 11:46.</strong></div>
+        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times" target="_blank" rel="noopener">Ambulance Response Times</a> (already cached)</div>
+        <details>
+          <summary>Under the hood</summary>
+          <div class="hood-content">
+            <div class="hood-step">Skips search — ambulance data in DuckDB</div>
+            <div class="hood-step"><span class="tool-name">query_cached</span></div>
+            <div class="hood-code"><span class="kw">SELECT</span>
+  a19."Ambulance Service Coverage Area",
+  a19."Average Response Time" <span class="kw">AS</span> t_2019,
+  a23."Average Response Time" <span class="kw">AS</span> t_2023
+<span class="kw">FROM</span> response_times a19
+<span class="kw">JOIN</span> response_times a23
+  <span class="kw">ON</span> a19.area = a23.area
+<span class="kw">WHERE</span> a19.year = <span class="str">'2019'</span>
+  <span class="kw">AND</span> a23.year = <span class="str">'2023'</span></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="carousel-card">
+        <div class="carousel-tag">Follows: EQAO scores</div>
+        <div class="carousel-q">Which school boards bounced back fastest after the pandemic?</div>
+        <div class="carousel-a">Uses the 14 XLSX files already cached — 7 school years from 2017-18 through 2023-24 (including preliminary data). Diffs Grade 6 math by board, pre vs. post pandemic.</div>
+        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/school-information-and-student-demographics" target="_blank" rel="noopener">School Demographics</a> (14 XLSX files, already cached)</div>
+        <details>
+          <summary>Under the hood</summary>
+          <div class="hood-content">
+            <div class="hood-step">Skips search — school data in DuckDB</div>
+            <div class="hood-step"><span class="tool-name">query_cached</span></div>
+            <div class="hood-code"><span class="kw">SELECT</span> Board_Name,
+  pre.pct <span class="kw">AS</span> score_2019,
+  post.pct <span class="kw">AS</span> score_2024,
+  post.pct - pre.pct <span class="kw">AS</span> recovery
+<span class="kw">FROM</span> scores_2019 pre
+<span class="kw">JOIN</span> scores_2024 post
+  <span class="kw">ON</span> pre.Board_Name
+    = post.Board_Name
+<span class="kw">ORDER BY</span> recovery <span class="kw">DESC</span></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="carousel-card">
+        <div class="carousel-tag">Follows: Child care deserts</div>
+        <div class="carousel-q">Which municipalities gained the most new child care spots?</div>
+        <div class="carousel-a">Refreshes the Dec 2025 XLSX snapshot (6 resources, updated monthly) and diffs against your cached copy. Counts new facilities by municipality to find where capacity is growing.</div>
+        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario" target="_blank" rel="noopener">Licensed Child Care Facilities</a> (updated monthly)</div>
+        <details>
+          <summary>Under the hood</summary>
+          <div class="hood-content">
+            <div class="hood-step">Uses cached child care data, then:</div>
+            <div class="hood-step"><span class="tool-name">refresh_cache</span> → gets Dec 2025 snapshot</div>
+            <div class="hood-step"><span class="tool-name">query_cached</span></div>
+            <div class="hood-code"><span class="kw">SELECT</span> Municipality,
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> new_centres
+<span class="kw">FROM</span> childcare_dec2025
+<span class="kw">WHERE</span> Licensee_Name <span class="kw">NOT IN</span> (
+  <span class="kw">SELECT</span> Licensee_Name
+  <span class="kw">FROM</span> childcare_prev
+)
+<span class="kw">GROUP BY</span> Municipality
+<span class="kw">ORDER BY</span> new_centres <span class="kw">DESC</span></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="carousel-card">
+        <div class="carousel-tag">Follows: Air polluters</div>
+        <div class="carousel-q">Are the repeat offenders actually getting penalized?</div>
+        <div class="carousel-a">Compares 2020 and 2024 air emissions (both cached). <strong>Stelco had 452 exceedances in 2020 and 466 in 2024 — still under "Voluntary Compliance." Imperial Oil got 51 exceedances and a Penalty Order.</strong></div>
+        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/environmental-compliance-reports" target="_blank" rel="noopener">Environmental Compliance Reports</a> (77 resources, already cached)</div>
+        <details>
+          <summary>Under the hood</summary>
+          <div class="hood-content">
+            <div class="hood-step">Skips search — compliance data in DuckDB</div>
+            <div class="hood-step"><span class="tool-name">query_cached</span></div>
+            <div class="hood-code"><span class="kw">SELECT</span> "Facility Owner",
+  <span class="fn">SUM</span>(<span class="kw">CAST</span>(
+    "No. of Exceedances"
+    <span class="kw">AS INT</span>)) <span class="kw">AS</span> total,
+  "Ministry Action"
+<span class="kw">FROM</span> air_emissions_2024
+<span class="kw">GROUP BY</span> "Facility Owner",
+  "Ministry Action"
+<span class="kw">ORDER BY</span> total <span class="kw">DESC</span></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="carousel-card">
+        <div class="carousel-tag">Follows: Water quality</div>
+        <div class="carousel-q">Is phosphorus in Lake Erie getting better or worse?</div>
+        <div class="carousel-a">Uses 439k cached readings (1976-2024). Averages total phosphorus by year. <strong>Dropped from 0.044 mg/L in 1976 to 0.022 in the 1990s. Rose to 0.031 in the 2000s, then fell back to 0.024 by 2023.</strong></div>
+        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/lake-water-quality-at-drinking-water-intakes" target="_blank" rel="noopener">Lake Water Quality at Drinking Water Intakes</a> (439k rows, already cached)</div>
+        <details>
+          <summary>Under the hood</summary>
+          <div class="hood-content">
+            <div class="hood-step">Skips search — lake data in DuckDB</div>
+            <div class="hood-step"><span class="tool-name">query_cached</span></div>
+            <div class="hood-code"><span class="kw">SELECT</span> YEAR,
+  <span class="fn">ROUND</span>(<span class="fn">AVG</span>(<span class="kw">CAST</span>(
+    RESULT_VALUE <span class="kw">AS DOUBLE</span>
+  )), <span class="num">4</span>) <span class="kw">AS</span> avg_p
+<span class="kw">FROM</span> lake_intakes
+<span class="kw">WHERE</span> LAKE = <span class="str">'Lake Erie'</span>
+  <span class="kw">AND</span> PARAMETER <span class="kw">LIKE</span>
+    <span class="str">'Phosphorus%total'</span>
+<span class="kw">GROUP BY</span> YEAR
+<span class="kw">ORDER BY</span> YEAR</div>
+          </div>
+        </details>
+      </div>
+
+    </div>
+    <div class="carousel-hint">← Scroll for more →</div>
   </section>
 
-  <!-- Tools -->
+  <!-- Tools, Prompts & Resources -->
   <section>
     <div class="container--wide">
       <div class="section-header">
@@ -708,73 +759,6 @@
           <div class="tool-card-desc">Load shapefiles, KML, and GeoJSON into DuckDB. Run spatial queries.</div>
           <div class="tool-card-detail">load_geodata, spatial_query, list_geo_datasets</div>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Prompts & Resources -->
-  <section style="background: #fafafa;">
-    <div class="container--wide">
-      <div class="section-header">
-        <h2>Guided workflows</h2>
-        <p>Built-in prompts that run multi-step tool sequences. Each one searches the live catalogue, checks your cache, and builds context before the LLM responds.</p>
-      </div>
-
-      <div class="examples" style="margin-bottom: 48px;">
-        <div class="example">
-          <div class="example-tag">explore_topic</div>
-          <div class="example-q">Explore housing data in Ontario</div>
-          <div class="example-a">Searches the catalogue for "housing," returns the top results across ministries, inspects metadata on the most relevant datasets, and recommends which to download. <strong>Finds 40+ datasets spanning rent tribunals, social housing waitlists, and building permits.</strong></div>
-          <details>
-            <summary>What the prompt triggers</summary>
-            <div class="hood-content">
-              <div class="hood-step"><span class="tool-name">search_datasets</span> → "housing" (live catalogue search, top 5 shown)</div>
-              <div class="hood-step"><span class="tool-name">get_dataset_info</span> → inspects interesting results</div>
-              <div class="hood-step"><span class="tool-name">list_resources</span> → checks formats, row counts</div>
-              <div class="hood-step">Recommends downloads, suggests questions you can answer</div>
-            </div>
-          </details>
-          <div class="example-sources" style="margin-top: 12px;">Usage: <code>explore_topic(topic="housing")</code></div>
-        </div>
-
-        <div class="example">
-          <div class="example-tag">data_investigation</div>
-          <div class="example-q">Investigate the licensed child care facilities dataset</div>
-          <div class="example-a">Pulls full metadata, downloads the primary CSV, runs schema inspection, data quality checks, and statistical profiling. <strong>Surfaces 12% null rates in postal codes, flags capacity outliers, and suggests spatial joins with census boundaries.</strong></div>
-          <details>
-            <summary>What the prompt triggers</summary>
-            <div class="hood-content">
-              <div class="hood-step"><span class="tool-name">get_dataset_info</span> → full metadata</div>
-              <div class="hood-step"><span class="tool-name">list_resources</span> → finds primary CSV</div>
-              <div class="hood-step"><span class="tool-name">get_resource_schema</span> → column types and names</div>
-              <div class="hood-step"><span class="tool-name">download_resource</span> → caches in DuckDB</div>
-              <div class="hood-step"><span class="tool-name">check_data_quality</span> → nulls, duplicates, freshness</div>
-              <div class="hood-step"><span class="tool-name">profile_data</span> → distributions, outliers, patterns</div>
-              <div class="hood-step"><span class="tool-name">query_cached</span> → follow-up SQL for time series or correlations</div>
-            </div>
-          </details>
-          <div class="example-sources" style="margin-top: 12px;">Usage: <code>data_investigation(dataset_id="licensed-child-care-facilities-in-ontario")</code></div>
-        </div>
-
-        <div class="example">
-          <div class="example-tag">compare_data</div>
-          <div class="example-q">Compare ambulance response times with ER wait times</div>
-          <div class="example-a">Downloads both datasets, profiles each independently, then runs cross-dataset analysis. <strong>Finds shared region columns, confirms joinability, and shows regions with slow ambulance response also have 22% longer ER waits.</strong></div>
-          <details>
-            <summary>What the prompt triggers</summary>
-            <div class="hood-content">
-              <div class="hood-step"><span class="tool-name">compare_datasets</span> → metadata comparison</div>
-              <div class="hood-step"><span class="tool-name">download_resource</span> × 2 → caches both datasets</div>
-              <div class="hood-step"><span class="tool-name">profile_data</span> × 2 → structure, size, quality for each</div>
-              <div class="hood-step"><span class="tool-name">query_cached</span> → DuckDB SQL to find shared columns and join</div>
-              <div class="hood-step">Summarizes complementarity and join potential</div>
-            </div>
-          </details>
-          <div class="example-sources" style="margin-top: 12px;">Usage: <code>compare_data(dataset_ids="ambulance-response-times, ontario-wait-times")</code></div>
-        </div>
-      </div>
-
-      <div class="tools-grid">
         <div class="tool-card" onclick="toggleCard(this)">
           <div class="tool-card-head">
             <span class="tool-card-name">Prompts</span>
@@ -795,163 +779,51 @@
     </div>
   </section>
 
-  <!-- Follow-ups carousel -->
-  <section class="carousel-section">
-    <div class="carousel-header">
-      <h2>Go deeper with follow-ups</h2>
-      <p>One question leads to another. The tool remembers context.</p>
-    </div>
-    <div class="carousel-track">
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Cross-dataset</div>
-        <div class="carousel-q">Do areas with more EVs have better air quality?</div>
-        <div class="carousel-a">Builds on cached EV data. Joins with air quality readings by postal area. <strong>GTA high-adoption zones show 12% lower NOx.</strong></div>
-        <div class="carousel-sources">Sources: <a href="https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area" target="_blank" rel="noopener">EV Registrations</a>, <a href="https://data.ontario.ca/dataset/air-quality-stations" target="_blank" rel="noopener">Air Quality</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step">Uses EV data already cached, then:</div>
-            <div class="hood-step"><span class="tool-name">search_datasets</span> → air quality</div>
-            <div class="hood-step"><span class="tool-name">download_resource</span></div>
-            <div class="hood-step"><span class="tool-name">query_cached</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> ev.FSA, ev.Total_EV,
-  <span class="fn">AVG</span>(aq.NO2) <span class="kw">AS</span> avg_no2
-<span class="kw">FROM</span> ev_registrations ev
-<span class="kw">JOIN</span> air_quality aq <span class="kw">ON</span>
-  <span class="fn">LEFT</span>(aq.postal, <span class="num">3</span>) = ev.FSA
-<span class="kw">GROUP BY</span> ev.FSA, ev.Total_EV</div>
+  <!-- How it works + Get started (side by side) -->
+  <section style="padding: 64px 0;">
+    <div class="container--wide">
+      <div class="duo-row">
+        <div class="duo-col">
+          <div class="section-header" style="text-align: left;">
+            <h2>How it works</h2>
+            <p>Each question triggers a pipeline of tool calls.</p>
           </div>
-        </details>
-      </div>
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Geospatial</div>
-        <div class="carousel-q">Map child care deserts in detail.</div>
-        <div class="carousel-a">Builds on cached child care data. Loads census boundaries, runs spatial join. <strong>6 wards have &lt;1 spot per 10 children.</strong></div>
-        <div class="carousel-sources">Source: <a href="https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario" target="_blank" rel="noopener">Licensed Child Care Facilities</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step">Uses child care data already cached, then:</div>
-            <div class="hood-step"><span class="tool-name">load_geodata</span> → census boundaries</div>
-            <div class="hood-step"><span class="tool-name">spatial_query</span></div>
-            <div class="hood-code"><span class="kw">SELECT</span> b.area,
-  <span class="fn">SUM</span>(c.capacity) / b.pop_u5
-    <span class="kw">AS</span> spots_per_child
-<span class="kw">FROM</span> census_boundaries b
-<span class="kw">LEFT JOIN</span> childcare c <span class="kw">ON</span>
-  <span class="fn">ST_Contains</span>(b.geom,
-    <span class="fn">ST_Point</span>(c.lng, c.lat))
-<span class="kw">GROUP BY</span> b.area</div>
+          <div class="steps" style="grid-template-columns: 1fr; max-width: none; gap: 24px;">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-title">Search</div>
+              <div class="step-desc">Finds relevant datasets across 25 ministries. Keyword, topic, location, or related-dataset lookup.</div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-title">Retrieve</div>
+              <div class="step-desc">Downloads CSVs, XLSX, shapefiles, GeoJSON. Parses and caches locally in DuckDB.</div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-title">Analyze</div>
+              <div class="step-desc">Runs SQL against cached data. Aggregations, joins, window functions — results come back as insight.</div>
+            </div>
           </div>
-        </details>
-      </div>
+        </div>
+        <div class="duo-col">
+          <div class="install-inner" style="max-width: none; margin: 0;">
+            <div class="section-header" style="text-align: left;">
+              <h2>Get started</h2>
+              <p>Works with any <a href="https://modelcontextprotocol.io/" style="color:#0B6E4F; text-decoration: underline; text-underline-offset: 3px;">MCP-compatible</a> client. No API key required.</p>
+            </div>
 
-      <div class="carousel-card">
-        <div class="carousel-tag">Guided</div>
-        <div class="carousel-q">I have data cached but don't know where to start.</div>
-        <div class="carousel-a">The data_investigation prompt auto-runs schema checks, quality analysis, and suggests queries. <strong>Surfaces nulls, outliers, and patterns.</strong></div>
-        <div class="carousel-sources">Resource: <code>ontario://cache/index</code></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">data_investigation</span> prompt triggers:</div>
-            <div class="hood-step"><span class="tool-name">ontario://cache/index</span></div>
-            <div class="hood-step"><span class="tool-name">get_resource_schema</span></div>
-            <div class="hood-step"><span class="tool-name">check_data_quality</span></div>
-            <div class="hood-step"><span class="tool-name">profile_data</span></div>
-            <div class="hood-step"><span class="tool-name">query_cached</span> → suggested queries</div>
-          </div>
-        </details>
-      </div>
+            <div class="tabs">
+              <button onclick="switchTab('json')" data-tab="json" class="tab-btn active">Claude Desktop</button>
+              <button onclick="switchTab('code')" data-tab="code" class="tab-btn">Claude Code</button>
+              <button onclick="switchTab('vscode')" data-tab="vscode" class="tab-btn">VS Code</button>
+              <button onclick="switchTab('cli')" data-tab="cli" class="tab-btn">CLI</button>
+            </div>
 
-      <div class="carousel-card">
-        <div class="carousel-tag">Freshness</div>
-        <div class="carousel-q">Are my cached datasets still current?</div>
-        <div class="carousel-a">Checks staleness across your cache. Refreshes only what's outdated. <strong>School data updates monthly; fire perimeters daily.</strong></div>
-        <div class="carousel-sources">Resource: <code>ontario://cache/index</code></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">ontario://cache/index</span></div>
-            <div class="hood-code"><span class="comment">// Returns:</span>
-ev_registrations    3d ago  <span class="str">fresh</span>
-school_data        38d ago  <span class="kw">stale</span>
-childcare          12d ago  <span class="str">fresh</span></div>
-            <div class="hood-step"><span class="tool-name">check_freshness</span></div>
-            <div class="hood-step"><span class="tool-name">refresh_cache</span> → stale only</div>
-          </div>
-        </details>
-      </div>
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Discovery</div>
-        <div class="carousel-q">What education data does Ontario publish?</div>
-        <div class="carousel-a">Searches 170+ datasets, finds related sources, compares schemas. <strong>Recommends best fit for your analysis.</strong></div>
-        <div class="carousel-sources">Browse: <a href="https://data.ontario.ca/dataset?q=education" target="_blank" rel="noopener">170+ education datasets</a></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">explore_topic</span> → "education"</div>
-            <div class="hood-step"><span class="tool-name">search_datasets</span> → 170 results</div>
-            <div class="hood-step"><span class="tool-name">find_related_datasets</span></div>
-            <div class="hood-step"><span class="tool-name">compare_datasets</span></div>
-            <div class="hood-code"><span class="comment">// Comparison:</span>
-School Demographics  14 res  XLSX
-Board Expenditures    8 res  CSV
-Public School List    4 res  TXT</div>
-          </div>
-        </details>
-      </div>
-
-      <div class="carousel-card">
-        <div class="carousel-tag">Warehouse</div>
-        <div class="carousel-q">Can I build a local data warehouse?</div>
-        <div class="carousel-a">Cache 10+ datasets into DuckDB. Run window functions, CTEs, pivots across domains. <strong>Impossible through the remote API.</strong></div>
-        <div class="carousel-sources">Guide: <code>ontario://guides/duckdb-sql</code></div>
-        <details>
-          <summary>Under the hood</summary>
-          <div class="hood-content">
-            <div class="hood-step"><span class="tool-name">download_resource</span> × 10+</div>
-            <div class="hood-step"><span class="tool-name">ontario://guides/duckdb-sql</span></div>
-            <div class="hood-step"><span class="tool-name">query_cached</span></div>
-            <div class="hood-code"><span class="kw">WITH</span> regional <span class="kw">AS</span> (
-  <span class="kw">SELECT</span> region,
-    <span class="fn">AVG</span>(amb.response),
-    <span class="fn">AVG</span>(aq.PM25),
-    <span class="fn">AVG</span>(sch.math_pct)
-  <span class="kw">FROM</span> ambulance amb
-  <span class="kw">JOIN</span> air_quality aq ...
-  <span class="kw">JOIN</span> schools sch ...
-)</div>
-          </div>
-        </details>
-      </div>
-
-    </div>
-    <div class="carousel-hint">← Scroll for more →</div>
-  </section>
-
-<!-- Install -->
-  <section style="background: #fafafa;">
-    <div class="install-inner">
-      <div class="section-header">
-        <h2>Get started</h2>
-        <p>Works with any <a href="https://modelcontextprotocol.io/" style="color:#0B6E4F; text-decoration: underline; text-underline-offset: 3px;">MCP-compatible</a> client. No API key required.</p>
-      </div>
-
-      <div class="tabs">
-        <button onclick="switchTab('json')" data-tab="json" class="tab-btn active">Claude Desktop</button>
-        <button onclick="switchTab('code')" data-tab="code" class="tab-btn">Claude Code</button>
-        <button onclick="switchTab('vscode')" data-tab="vscode" class="tab-btn">VS Code</button>
-        <button onclick="switchTab('cli')" data-tab="cli" class="tab-btn">CLI</button>
-      </div>
-
-      <div id="panel-json" class="tab-panel">
-        <div class="code-block">
-          <p>Add to claude_desktop_config.json</p>
-          <pre><code>{
+            <div id="panel-json" class="tab-panel">
+              <div class="code-block">
+                <p>Add to claude_desktop_config.json</p>
+                <pre><code>{
   "mcpServers": {
     "ontario-data": {
       "command": "uvx",
@@ -959,22 +831,22 @@ Public School List    4 res  TXT</div>
     }
   }
 }</code></pre>
-          <button class="copy-btn" onclick="copyText(this.closest('.code-block').querySelector('pre code').textContent, this)">Copy</button>
-        </div>
-      </div>
+                <button class="copy-btn" onclick="copyText(this.closest('.code-block').querySelector('pre code').textContent, this)">Copy</button>
+              </div>
+            </div>
 
-      <div id="panel-code" class="tab-panel" style="display:none">
-        <div class="code-block">
-          <p>Add via Claude Code CLI</p>
-          <pre><code>claude mcp add ontario-data -- uvx ontario-data-mcp</code></pre>
-          <button class="copy-btn" onclick="copyText('claude mcp add ontario-data -- uvx ontario-data-mcp', this)">Copy</button>
-        </div>
-      </div>
+            <div id="panel-code" class="tab-panel" style="display:none">
+              <div class="code-block">
+                <p>Add via Claude Code CLI</p>
+                <pre><code>claude mcp add ontario-data -- uvx ontario-data-mcp</code></pre>
+                <button class="copy-btn" onclick="copyText('claude mcp add ontario-data -- uvx ontario-data-mcp', this)">Copy</button>
+              </div>
+            </div>
 
-      <div id="panel-vscode" class="tab-panel" style="display:none">
-        <div class="code-block">
-          <p>Add to .vscode/mcp.json</p>
-          <pre><code>{
+            <div id="panel-vscode" class="tab-panel" style="display:none">
+              <div class="code-block">
+                <p>Add to .vscode/mcp.json</p>
+                <pre><code>{
   "mcpServers": {
     "ontario-data": {
       "command": "uvx",
@@ -982,20 +854,23 @@ Public School List    4 res  TXT</div>
     }
   }
 }</code></pre>
-          <button class="copy-btn" onclick="copyText(this.closest('.code-block').querySelector('pre code').textContent, this)">Copy</button>
-        </div>
-      </div>
+                <button class="copy-btn" onclick="copyText(this.closest('.code-block').querySelector('pre code').textContent, this)">Copy</button>
+              </div>
+            </div>
 
-      <div id="panel-cli" class="tab-panel" style="display:none">
-        <div class="code-block">
-          <p>Run directly with uvx</p>
-          <pre><code>uvx ontario-data-mcp</code></pre>
-          <button class="copy-btn" onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
-        </div>
-      </div>
+            <div id="panel-cli" class="tab-panel" style="display:none">
+              <div class="code-block">
+                <p>Run directly with uvx</p>
+                <pre><code>uvx ontario-data-mcp</code></pre>
+                <button class="copy-btn" onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
+              </div>
+            </div>
 
-      <div class="source-note">
-        Or clone from source: <code>git clone https://github.com/sprine/ontario-data-mcp && cd ontario-data-mcp && uv sync</code>
+            <div class="source-note">
+              Or clone from source: <code>git clone https://github.com/sprine/ontario-data-mcp && cd ontario-data-mcp && uv sync</code>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
