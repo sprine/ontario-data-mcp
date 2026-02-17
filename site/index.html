@@ -93,9 +93,15 @@
     /* Tool cards */
     .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
     .tool-card {
-      border: 1px solid #eee; border-radius: 12px; padding: 24px 24px 26px;
-      cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+      border: 1px solid #eee; border-radius: 12px; padding: 0;
+      transition: all 0.2s; position: relative; overflow: hidden;
     }
+    .tool-card > summary {
+      display: block; padding: 24px 24px 26px;
+      cursor: pointer; list-style: none;
+    }
+    .tool-card > summary::-webkit-details-marker { display: none; }
+    .tool-card > summary::marker { display: none; }
     .tool-card::before {
       content: ''; position: absolute; top: 0; left: 0;
       width: 3px; height: 100%; background: #0B6E4F; opacity: 0; transition: opacity 0.2s;
@@ -107,10 +113,9 @@
     .tool-card-count { font-size: 0.7rem; font-weight: 600; color: #0B6E4F; background: rgba(11,110,79,0.08); padding: 3px 8px; border-radius: 100px; }
     .tool-card-desc { font-size: 0.88rem; color: #555; line-height: 1.6; }
     .tool-card-detail {
-      display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0;
+      display: block; padding: 0 24px 24px; margin-top: 0; padding-top: 12px; border-top: 1px solid #f0f0f0;
       font-size: 0.78rem; color: #666; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1.8;
     }
-    .tool-card.open .tool-card-detail { display: block; }
 
     /* How it works */
     .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; max-width: 720px; margin: 0 auto; }
@@ -710,70 +715,86 @@
         <p>Expand any category to see the individual tools.</p>
       </div>
       <div class="tools-grid">
-        <div class="tool-card" onclick="toggleCard(this)">
-          <div class="tool-card-head">
-            <span class="tool-card-name">Discovery</span>
-            <span class="tool-card-count">6 tools</span>
-          </div>
-          <div class="tool-card-desc">Search by keyword, topic, ministry, or geographic area.</div>
+        <details class="tool-card">
+          <summary>
+            <div class="tool-card-head">
+              <span class="tool-card-name">Discovery</span>
+              <span class="tool-card-count">6 tools</span>
+            </div>
+            <div class="tool-card-desc">Search by keyword, topic, ministry, or geographic area.</div>
+          </summary>
           <div class="tool-card-detail">search_datasets, list_organizations, list_topics, get_popular_datasets, search_by_location, find_related_datasets</div>
-        </div>
-        <div class="tool-card" onclick="toggleCard(this)">
-          <div class="tool-card-head">
-            <span class="tool-card-name">Metadata</span>
-            <span class="tool-card-count">4 tools</span>
-          </div>
-          <div class="tool-card-desc">Inspect schemas, resources, and compare datasets side by side.</div>
+        </details>
+        <details class="tool-card">
+          <summary>
+            <div class="tool-card-head">
+              <span class="tool-card-name">Metadata</span>
+              <span class="tool-card-count">4 tools</span>
+            </div>
+            <div class="tool-card-desc">Inspect schemas, resources, and compare datasets side by side.</div>
+          </summary>
           <div class="tool-card-detail">get_dataset_info, list_resources, get_resource_schema, compare_datasets</div>
-        </div>
-        <div class="tool-card" onclick="toggleCard(this)">
-          <div class="tool-card-head">
-            <span class="tool-card-name">Retrieval</span>
-            <span class="tool-card-count">4 tools</span>
-          </div>
-          <div class="tool-card-desc">Download and cache datasets locally in DuckDB for fast, offline access.</div>
+        </details>
+        <details class="tool-card">
+          <summary>
+            <div class="tool-card-head">
+              <span class="tool-card-name">Retrieval</span>
+              <span class="tool-card-count">4 tools</span>
+            </div>
+            <div class="tool-card-desc">Download and cache datasets locally in DuckDB for fast, offline access.</div>
+          </summary>
           <div class="tool-card-detail">download_resource, cache_info, cache_manage, refresh_cache</div>
-        </div>
-        <div class="tool-card" onclick="toggleCard(this)">
-          <div class="tool-card-head">
-            <span class="tool-card-name">Querying</span>
-            <span class="tool-card-count">4 tools</span>
-          </div>
-          <div class="tool-card-desc">Run SQL against remote or cached data. Preview rows or run custom queries.</div>
+        </details>
+        <details class="tool-card">
+          <summary>
+            <div class="tool-card-head">
+              <span class="tool-card-name">Querying</span>
+              <span class="tool-card-count">4 tools</span>
+            </div>
+            <div class="tool-card-desc">Run SQL against remote or cached data. Preview rows or run custom queries.</div>
+          </summary>
           <div class="tool-card-detail">query_resource, sql_query, query_cached, preview_data</div>
-        </div>
-        <div class="tool-card" onclick="toggleCard(this)">
-          <div class="tool-card-head">
-            <span class="tool-card-name">Data Quality</span>
-            <span class="tool-card-count">3 tools</span>
-          </div>
-          <div class="tool-card-desc">Freshness checks, completeness analysis, and statistical profiles.</div>
+        </details>
+        <details class="tool-card">
+          <summary>
+            <div class="tool-card-head">
+              <span class="tool-card-name">Data Quality</span>
+              <span class="tool-card-count">3 tools</span>
+            </div>
+            <div class="tool-card-desc">Freshness checks, completeness analysis, and statistical profiles.</div>
+          </summary>
           <div class="tool-card-detail">check_data_quality, check_freshness, profile_data</div>
-        </div>
-        <div class="tool-card" onclick="toggleCard(this)">
-          <div class="tool-card-head">
-            <span class="tool-card-name">Geospatial</span>
-            <span class="tool-card-count">3 tools</span>
-          </div>
-          <div class="tool-card-desc">Load shapefiles, KML, and GeoJSON into DuckDB. Run spatial queries.</div>
+        </details>
+        <details class="tool-card">
+          <summary>
+            <div class="tool-card-head">
+              <span class="tool-card-name">Geospatial</span>
+              <span class="tool-card-count">3 tools</span>
+            </div>
+            <div class="tool-card-desc">Load shapefiles, KML, and GeoJSON into DuckDB. Run spatial queries.</div>
+          </summary>
           <div class="tool-card-detail">load_geodata, spatial_query, list_geo_datasets</div>
-        </div>
-        <div class="tool-card" onclick="toggleCard(this)">
-          <div class="tool-card-head">
-            <span class="tool-card-name">Prompts</span>
-            <span class="tool-card-count">3 prompts</span>
-          </div>
-          <div class="tool-card-desc">Context-aware guided workflows with live catalogue data.</div>
+        </details>
+        <details class="tool-card">
+          <summary>
+            <div class="tool-card-head">
+              <span class="tool-card-name">Prompts</span>
+              <span class="tool-card-count">3 prompts</span>
+            </div>
+            <div class="tool-card-desc">Context-aware guided workflows with live catalogue data.</div>
+          </summary>
           <div class="tool-card-detail">explore_topic — guided exploration of any topic<br>data_investigation — deep dive: schema, quality, stats<br>compare_data — side-by-side dataset analysis</div>
-        </div>
-        <div class="tool-card" onclick="toggleCard(this)">
-          <div class="tool-card-head">
-            <span class="tool-card-name">Resources</span>
-            <span class="tool-card-count">4 resources</span>
-          </div>
-          <div class="tool-card-desc">Read-only context for the LLM: cache status, metadata, SQL tips.</div>
+        </details>
+        <details class="tool-card">
+          <summary>
+            <div class="tool-card-head">
+              <span class="tool-card-name">Resources</span>
+              <span class="tool-card-count">4 resources</span>
+            </div>
+            <div class="tool-card-desc">Read-only context for the LLM: cache status, metadata, SQL tips.</div>
+          </summary>
           <div class="tool-card-detail">ontario://cache/index — cached datasets with freshness<br>ontario://dataset/{id} — full dataset metadata<br>ontario://portal/stats — catalogue overview<br>ontario://guides/duckdb-sql — SQL tips for Ontario data</div>
-        </div>
+        </details>
       </div>
     </div>
   </section>
@@ -963,10 +984,6 @@
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tab);
       });
-    }
-
-    function toggleCard(card) {
-      card.classList.toggle('open');
     }
 
     // Fetch recent updates and display as ticker
