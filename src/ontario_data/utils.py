@@ -25,14 +25,20 @@ class SpatialExtensionError(Exception):
     pass
 
 
+def _lifespan_state(ctx: Context) -> dict:
+    """Access the lifespan state dict from the MCP context."""
+    return ctx.fastmcp._lifespan_result
+
+
 def get_deps(ctx: Context) -> tuple[CKANClient, CacheManager]:
     """Extract CKAN client and cache manager from MCP context."""
-    return ctx.lifespan_context["ckan"], ctx.lifespan_context["cache"]
+    state = _lifespan_state(ctx)
+    return state["ckan"], state["cache"]
 
 
 def get_cache(ctx: Context) -> CacheManager:
     """Extract cache manager from MCP context."""
-    return ctx.lifespan_context["cache"]
+    return _lifespan_state(ctx)["cache"]
 
 
 def strip_internal_fields(records: list[dict]) -> list[dict]:

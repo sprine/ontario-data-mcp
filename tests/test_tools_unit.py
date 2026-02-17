@@ -14,7 +14,7 @@ from ontario_data.utils import ResourceNotCachedError
 def make_mock_context(cache: CacheManager, ckan=None):
     """Create a mock MCP context with cache and optional CKAN client."""
     ctx = MagicMock()
-    ctx.lifespan_context = {
+    ctx.fastmcp._lifespan_result = {
         "cache": cache,
         "ckan": ckan or AsyncMock(),
     }
