@@ -11,7 +11,7 @@ wheels/
 .venv
 
 # Local config and cache
-.claude/
+.claude/settings.local.json
 .mcp.json
 *.duckdb
 *.duckdb.wal
