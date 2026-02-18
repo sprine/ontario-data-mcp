@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2026-02-18
+
+### Added
+
+- Cache CLI for inspecting and managing local DuckDB data (`ontario-data-cache`).
+- MCP tool annotations for auto-approve support.
+- Claude skills and `/release` command.
+
+### Changed
+
+- Use short-lived DuckDB connections to avoid lock contention.
+- Improved tool prompts and fixed semicolon handling to prevent common LLM pitfalls.
+- Set `requires-python = ">=3.10"`.
+- Site redesign: semantic HTML, keyboard-accessible tool cards, carousel extracted to JSON with JS renderer.
+
 ## [0.1.5] - 2026-02-17
 
 ### Fixed
