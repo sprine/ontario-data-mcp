@@ -2,7 +2,7 @@
 
 # ontario-data-mcp
 
-MCP server for searching, downloading, and analyzing datasets from Ontario's [Open Data Catalogue](https://data.ontario.ca). Caches data locally in DuckDB for fast SQL queries, statistical analysis, and geospatial operations.
+MCP server for searching, downloading, and analyzing datasets from Ontario open data portals. Supports multiple portals (Ontario, Toronto, Ottawa) with a shared DuckDB cache for fast SQL queries, statistical analysis, and geospatial operations.
 
 ## Installation
 
@@ -41,7 +41,7 @@ To auto-approve all tool calls (no confirmation prompts), add to your Claude Cod
 }
 ```
 
-All 23 read-only tools are annotated as such. The only destructive tool is `cache_manage`, which removes local cached data (no remote mutations).
+All read-only tools are annotated as such. The only destructive tool is `cache_manage`, which removes local cached data (no remote mutations).
 
 ### With VS Code
 
@@ -67,14 +67,32 @@ uv sync
 uv run ontario-data-mcp
 ```
 
+## Supported Portals
+
+| Portal | Platform | Datasets |
+|--------|----------|----------|
+| `ontario` (default) | CKAN | ~5,700 |
+| `toronto` | CKAN | ~533 |
+| `ottawa` | ArcGIS Hub | ~665 |
+
+Use `set_portal("toronto")` to switch the active portal. Use `search_all_portals("transit")` to search across all portals at once. Most tools accept an optional `portal` parameter to override the active portal.
+
 ## Tools
+
+### Portal Management (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `set_portal` | Set the active data portal for subsequent queries |
+| `list_portals` | List all available portals with platform type and active marker |
+| `search_all_portals` | Search across all portals simultaneously |
 
 ### Discovery (6 tools)
 
 | Tool | Description |
 |------|-------------|
 | `search_datasets` | Search for datasets by keyword |
-| `list_organizations` | List Ontario government ministries with dataset counts |
+| `list_organizations` | List government ministries with dataset counts |
 | `list_topics` | List all tags/topics in the catalogue |
 | `get_popular_datasets` | Get popular or recently updated datasets |
 | `search_by_location` | Find datasets covering a specific geographic area |
@@ -149,12 +167,13 @@ Context-aware guided workflow prompts:
 
 ## How It Works
 
-1. **Search** the Ontario Data Catalogue using CKAN API tools
-2. **Download** resources into a local DuckDB database for fast access
-3. **Query** cached data with full DuckDB SQL (time series, correlations, pivots, window functions)
-4. **Analyze** with statistical profiling, data quality checks, and geospatial queries
+1. **Choose** a portal with `set_portal` or search all at once with `search_all_portals`
+2. **Search** datasets using CKAN API tools
+3. **Download** resources into a local DuckDB database for fast access
+4. **Query** cached data with full DuckDB SQL (time series, correlations, pivots, window functions)
+5. **Analyze** with statistical profiling, data quality checks, and geospatial queries
 
-Data is cached at `~/.cache/ontario-data/ontario_data.duckdb`. No API keys required — the Ontario Data Catalogue is fully public.
+Data from all portals is cached in a shared DuckDB database at `~/.cache/ontario-data/ontario_data.duckdb` with portal-prefixed table names. No API keys required — all portals are fully public.
 
 ## Development
 
