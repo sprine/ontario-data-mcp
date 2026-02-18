@@ -3,7 +3,7 @@ name = "ontario-data-mcp"
 version = "0.1.5"
 description = "MCP server for Ontario Open Data Catalogue"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "fastmcp>=2.14.5",
     "httpx>=0.27.0",
