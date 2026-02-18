@@ -25,5 +25,8 @@ wheels/
 CLAUDE.md
 docs/plans/
 
+# Worktrees
+.worktrees/
+
 # OS
 .DS_Store
