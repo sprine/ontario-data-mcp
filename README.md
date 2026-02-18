@@ -4,6 +4,8 @@
 
 MCP server for searching, downloading, and analyzing datasets from Ontario's [Open Data Catalogue](https://data.ontario.ca). Caches data locally in DuckDB for fast SQL queries, statistical analysis, and geospatial operations.
 
+> **Beta:** This project is under active development. The data structure and tool interfaces may change, and we're working on adding more data sources. LLM-generated analysis may contain hallucinations — always verify important findings against the source data. Contributions are welcome! Please report bugs and feature requests at [github.com/sprine/ontario-data-mcp/issues](https://github.com/sprine/ontario-data-mcp/issues).
+
 ## Installation
 
 ### With Claude Desktop
@@ -162,6 +164,12 @@ Data is cached at `~/.cache/ontario-data/ontario_data.duckdb`. No API keys requi
 uv sync
 uv run python -m pytest tests/ -v
 ```
+
+## Contributing
+
+Contributions are welcome! Please open an issue or pull request at [github.com/sprine/ontario-data-mcp](https://github.com/sprine/ontario-data-mcp).
+
+If you find a bug or have a feature request, please [open an issue](https://github.com/sprine/ontario-data-mcp/issues).
 
 ## License
 
