@@ -8,7 +8,6 @@ import httpx
 import pandas as pd
 from fastmcp import Context
 
-from ontario_data.cache import CacheManager
 from ontario_data.ckan_client import CKANClient
 from ontario_data.server import mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info

@@ -1,7 +1,5 @@
 import pytest
-import duckdb
 import pandas as pd
-from datetime import datetime, timedelta, timezone
 from ontario_data.cache import CacheManager, InvalidQueryError, _has_semicolons_outside_strings
 
 
