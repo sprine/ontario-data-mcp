@@ -78,6 +78,7 @@ async def check_data_quality(
 @mcp.tool(annotations=READONLY)
 async def check_freshness(
     dataset_id: str,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Check if a dataset is current by comparing its update frequency to its last modification date.
@@ -85,7 +86,7 @@ async def check_freshness(
     Args:
         dataset_id: Dataset ID or name
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     ds = await ckan.package_show(dataset_id)
 
     last_modified = ds.get("metadata_modified", "")

@@ -16,6 +16,7 @@ async def query_resource(
     sort: str | None = None,
     limit: int = 100,
     offset: int = 0,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Query a resource via the CKAN Datastore API (remote, no download needed).
@@ -30,7 +31,7 @@ async def query_resource(
         limit: Max rows (1-1000)
         offset: Row offset for pagination
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     result = await ckan.datastore_search(
         resource_id=resource_id,
         filters=filters,
@@ -53,6 +54,7 @@ async def query_resource(
 @mcp.tool(annotations=READONLY)
 async def sql_query(
     sql: str,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Run a SQL query against the CKAN Datastore (remote).
@@ -67,7 +69,7 @@ async def sql_query(
     Args:
         sql: SQL query string (read-only, SELECT only)
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     result = await ckan.datastore_sql(sql)
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
     clean_records = strip_internal_fields(result.get("records", []))
@@ -115,6 +117,7 @@ async def query_cached(
 async def preview_data(
     resource_id: str,
     rows: int = 10,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Quick preview of the first N rows of a resource (fetched remotely).
@@ -123,7 +126,7 @@ async def preview_data(
         resource_id: Resource ID (must have datastore_active=True)
         rows: Number of rows to preview (1-100)
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     result = await ckan.datastore_search(resource_id, limit=min(rows, 100))
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
     clean_records = strip_internal_fields(result.get("records", []))

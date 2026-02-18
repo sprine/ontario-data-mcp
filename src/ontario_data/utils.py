@@ -7,6 +7,7 @@ from fastmcp import Context
 
 from ontario_data.cache import CacheManager, InvalidQueryError  # noqa: F401
 from ontario_data.ckan_client import CKANClient
+from ontario_data.portals import PortalType
 
 
 class ResourceNotCachedError(Exception):
@@ -29,10 +30,39 @@ def _lifespan_state(ctx: Context) -> dict:
     return ctx.fastmcp._lifespan_result
 
 
-def get_deps(ctx: Context) -> tuple[CKANClient, CacheManager]:
-    """Extract CKAN client and cache manager from MCP context."""
+def get_deps(ctx: Context, portal: str | None = None) -> tuple[CKANClient, CacheManager]:
+    """Extract portal client and cache manager from MCP context.
+
+    Lazily creates the client for the requested portal on first use.
+    """
     state = _lifespan_state(ctx)
-    return state["ckan"], state["cache"]
+    portal = portal or state["active_portal"]
+    configs = state["portal_configs"]
+
+    if portal not in configs:
+        available = list(configs.keys())
+        raise ValueError(f"Unknown portal '{portal}'. Available: {available}")
+
+    clients = state["portal_clients"]
+    if portal not in clients:
+        config = configs[portal]
+        if config.portal_type == PortalType.CKAN:
+            clients[portal] = CKANClient(
+                base_url=config.base_url,
+                http_client=state["http_client"],
+            )
+        else:
+            raise ValueError(
+                f"Portal '{portal}' uses {config.portal_type} which is not yet supported. "
+                f"ArcGIS Hub support is coming in a future release."
+            )
+
+    return clients[portal], state["cache"]
+
+
+def get_active_portal(ctx: Context) -> str:
+    """Get the name of the currently active portal."""
+    return _lifespan_state(ctx)["active_portal"]
 
 
 def get_cache(ctx: Context) -> CacheManager:
@@ -45,12 +75,12 @@ def strip_internal_fields(records: list[dict]) -> list[dict]:
     return [{k: v for k, v in r.items() if not k.startswith("_")} for r in records]
 
 
-def make_table_name(dataset_name: str, resource_id: str) -> str:
-    """Generate a safe DuckDB table name from dataset name and resource ID."""
+def make_table_name(dataset_name: str, resource_id: str, portal: str = "ontario") -> str:
+    """Generate a safe DuckDB table name from dataset name, resource ID, and portal."""
     slug = re.sub(r"[^a-z0-9]", "_", (dataset_name or "unknown").lower())
     slug = re.sub(r"_+", "_", slug).strip("_")[:40]
     prefix = resource_id[:8]
-    return f"ds_{slug}_{prefix}"
+    return f"ds_{portal}_{slug}_{prefix}"
 
 
 def require_cached(cache: CacheManager, resource_id: str) -> str:

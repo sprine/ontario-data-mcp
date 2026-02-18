@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 
 from fastmcp import Context
 
+from ontario_data.portals import PORTALS, PortalType
 from ontario_data.server import READONLY, mcp
-from ontario_data.utils import get_deps, json_response
+from ontario_data.utils import _lifespan_state, get_deps, json_response
+
+logger = logging.getLogger("ontario_data.discovery")
 
 
 @mcp.tool(annotations=READONLY)
@@ -16,6 +21,7 @@ async def search_datasets(
     update_frequency: str | None = None,
     sort_by: str = "relevance asc, metadata_modified desc",
     limit: int = 10,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Search for datasets in Ontario's Open Data Catalogue.
@@ -27,8 +33,9 @@ async def search_datasets(
         update_frequency: Filter by frequency (e.g. "yearly", "monthly", "daily")
         sort_by: Sort order (default: relevance)
         limit: Max results to return (1-50)
+        portal: Portal to search (default: active portal). Use list_portals to see options.
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     filters = {}
     if organization:
         filters["organization"] = organization
@@ -67,13 +74,14 @@ async def search_datasets(
 @mcp.tool(annotations=READONLY)
 async def list_organizations(
     include_counts: bool = True,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """List all Ontario government ministries and organizations with dataset counts.
 
     Use this to discover which ministries publish data and how much.
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     orgs = await ckan.organization_list(all_fields=True, include_dataset_count=include_counts)
     result = []
     for org in orgs:
@@ -90,6 +98,7 @@ async def list_organizations(
 @mcp.tool(annotations=READONLY)
 async def list_topics(
     query: str | None = None,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """List all tags/topics used in the Ontario Data Catalogue.
@@ -97,7 +106,7 @@ async def list_topics(
     Args:
         query: Optional filter to match tag names
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     tags = await ckan.tag_list(query=query, all_fields=True)
     if isinstance(tags, list) and tags and isinstance(tags[0], dict):
         result = [{"name": t["name"], "count": t.get("count", 0)} for t in tags]
@@ -110,6 +119,7 @@ async def list_topics(
 async def get_popular_datasets(
     sort: str = "recent",
     limit: int = 10,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Get popular or recently updated datasets.
@@ -118,7 +128,7 @@ async def get_popular_datasets(
         sort: "recent" for recently modified, "name" for alphabetical
         limit: Number of results (1-50)
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     sort_map = {
         "recent": "metadata_modified desc",
         "name": "title asc",
@@ -143,6 +153,7 @@ async def get_popular_datasets(
 async def search_by_location(
     region: str,
     limit: int = 10,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Find datasets covering a specific geographic area in Ontario.
@@ -151,7 +162,7 @@ async def search_by_location(
         region: Geographic area (e.g. "Toronto", "Northern Ontario", "Ottawa", "province-wide")
         limit: Max results
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     result = await ckan.package_search(
         query=region,
         filters=None,
@@ -174,6 +185,7 @@ async def search_by_location(
 async def find_related_datasets(
     dataset_id: str,
     limit: int = 10,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Find datasets related to a given dataset by shared tags and organization.
@@ -182,7 +194,7 @@ async def find_related_datasets(
         dataset_id: The ID or name of the source dataset
         limit: Max related datasets to return
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     source = await ckan.package_show(dataset_id)
     tags = [t["name"] for t in source.get("tags", [])]
     org = source.get("organization", {}).get("name", "")
@@ -218,4 +230,134 @@ async def find_related_datasets(
     return json_response(
         source={"id": source["id"], "title": source.get("title"), "tags": tags},
         related=related[:limit],
+    )
+
+
+@mcp.tool(annotations=READONLY)
+async def set_portal(
+    portal: str,
+    ctx: Context = None,
+) -> str:
+    """Set the active data portal for subsequent queries.
+
+    Args:
+        portal: Portal name (e.g. "ontario", "toronto", "ottawa"). Use list_portals to see options.
+    """
+    state = _lifespan_state(ctx)
+    configs = state["portal_configs"]
+    if portal not in configs:
+        available = list(configs.keys())
+        return json_response(
+            error=f"Unknown portal '{portal}'",
+            available_portals=available,
+        )
+    state["active_portal"] = portal
+    config = configs[portal]
+    return json_response(
+        status="ok",
+        active_portal=portal,
+        name=config.name,
+        base_url=config.base_url,
+        portal_type=str(config.portal_type),
+        description=config.description,
+    )
+
+
+@mcp.tool(annotations=READONLY)
+async def list_portals(
+    ctx: Context = None,
+) -> str:
+    """List all available data portals with their platform type and dataset counts."""
+    state = _lifespan_state(ctx)
+    active = state["active_portal"]
+    configs = state["portal_configs"]
+
+    portals = []
+    for key, config in configs.items():
+        portals.append({
+            "key": key,
+            "name": config.name,
+            "base_url": config.base_url,
+            "portal_type": str(config.portal_type),
+            "description": config.description,
+            "active": key == active,
+        })
+
+    return json_response(
+        active_portal=active,
+        portals=portals,
+    )
+
+
+@mcp.tool(annotations=READONLY)
+async def search_all_portals(
+    query: str,
+    limit: int = 5,
+    ctx: Context = None,
+) -> str:
+    """Search for datasets across ALL configured portals simultaneously.
+
+    Returns results from each portal, labeled by source. This is the fastest way
+    to discover which portal has the data you need.
+
+    Args:
+        query: Search terms (e.g. "transit", "housing", "water quality")
+        limit: Max results per portal (1-20)
+    """
+    state = _lifespan_state(ctx)
+    configs = state["portal_configs"]
+    limit = min(limit, 20)
+
+    async def _search_portal(portal_key: str) -> dict:
+        try:
+            ckan, _ = get_deps(ctx, portal=portal_key)
+            result = await ckan.package_search(query=query, rows=limit)
+            datasets = []
+            for ds in result["results"]:
+                resources = ds.get("resources", [])
+                formats = sorted(set(
+                    r.get("format", "").upper() for r in resources if r.get("format")
+                ))
+                datasets.append({
+                    "id": ds["id"],
+                    "title": ds.get("title"),
+                    "organization": ds.get("organization", {}).get("title", "Unknown"),
+                    "formats": formats,
+                    "num_resources": len(resources),
+                })
+            return {
+                "portal": portal_key,
+                "name": configs[portal_key].name,
+                "total_count": result["count"],
+                "returned": len(datasets),
+                "datasets": datasets,
+            }
+        except Exception as e:
+            logger.warning("search_all_portals: %s failed: %s", portal_key, e)
+            return {
+                "portal": portal_key,
+                "name": configs[portal_key].name,
+                "error": str(e),
+            }
+
+    # Only search CKAN portals for now (ArcGIS coming in PR 2)
+    ckan_portals = [
+        key for key, config in configs.items()
+        if config.portal_type == PortalType.CKAN
+    ]
+    results = await asyncio.gather(*[_search_portal(key) for key in ckan_portals])
+
+    # Note any skipped portals
+    skipped = [
+        {"portal": key, "name": configs[key].name, "reason": "ArcGIS Hub support coming soon"}
+        for key, config in configs.items()
+        if config.portal_type != PortalType.CKAN
+    ]
+
+    return json_response(
+        query=query,
+        portals_searched=len(ckan_portals),
+        portals_skipped=len(skipped),
+        results=list(results),
+        skipped=skipped,
     )
