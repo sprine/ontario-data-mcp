@@ -67,7 +67,7 @@ Each example is an object in the array:
 | `punchline` | string | yes | Bold finding, verified by query (no HTML) |
 | `sources` | array | yes | At least one `{title, url, org}` |
 | `sources[].title` | string | yes | Exact title from `get_dataset_info` |
-| `sources[].url` | string | yes | `https://data.ontario.ca/dataset/{slug}` — real slug |
+| `sources[].url` | string | yes | Portal dataset URL — e.g. `https://data.ontario.ca/dataset/{slug}` or `https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/{slug}` |
 | `sources[].org` | string | yes | Exact organization from `get_dataset_info` |
 | `hood` | object | yes | Under-the-hood section |
 | `hood.steps` | array | yes | At least one `{tool, description}` |
@@ -96,16 +96,18 @@ Choose 6 topics. Aim for variety across tag types:
 
 ### Step 2: Search the catalogue via MCP
 
-For each topic, use the `ontario-data` MCP tools:
+For each topic, use the `ontario-data` MCP tools. You can search across portals:
 
-1. **`search_datasets`** — find candidates by keyword
-2. **`get_dataset_info`** — get the dataset ID, title, organization, update frequency
-3. **`list_resources`** — get resource IDs and formats
-4. **`get_resource_schema`** — get real column names (critical for realistic SQL)
+1. **`search_all_portals`** — discover which portal has the best data for a topic
+2. **`set_portal`** — switch to the portal you want (or pass `portal=` to individual tools)
+3. **`search_datasets`** — find candidates by keyword
+4. **`get_dataset_info`** — get the dataset ID, title, organization, update frequency
+5. **`list_resources`** — get resource IDs and formats
+6. **`get_resource_schema`** — get real column names (critical for realistic SQL)
 
 Collect for each dataset:
 - **Title** (exact, verbatim from `get_dataset_info`)
-- **Dataset URL**: `https://data.ontario.ca/dataset/{slug}` — use the slug, NOT the UUID
+- **Dataset URL**: `https://{portal-base-url}/dataset/{slug}` — use the slug, NOT the UUID. For Ontario: `https://data.ontario.ca/dataset/{slug}`. For Toronto: `https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/{slug}`.
 - **Dataset ID** (first 8 chars, for hood-step descriptions)
 - **Column names** (for realistic SQL)
 - **Organization** (verbatim from `get_dataset_info`)
@@ -149,7 +151,7 @@ For each example, create an object matching the schema above. Key rules:
 Before writing the JSON to the page, check every example:
 
 1. **Required fields present:** tag, question, answer, punchline, sources (≥1), hood.steps (≥1), hood.sql
-2. **URLs match pattern:** every `sources[].url` starts with `https://data.ontario.ca/dataset/`
+2. **URLs match pattern:** every `sources[].url` is a valid portal dataset URL (e.g. `https://data.ontario.ca/dataset/...` or `https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/...`)
 3. **No empty punchlines:** every punchline is a non-empty string
 4. **Tag variety:** not all examples use the same tag
 5. **SQL is plain text:** no `<span>`, `<strong>`, or other HTML in `hood.sql`
@@ -165,6 +167,7 @@ Use the Write tool to overwrite `site/examples.json` with the full array. Do NOT
 
 Tool names for `hood.steps[].tool`:
 
+**Portal:** set_portal, list_portals, search_all_portals
 **Discovery:** search_datasets, list_organizations, list_topics, get_popular_datasets, search_by_location, find_related_datasets
 **Metadata:** get_dataset_info, list_resources, get_resource_schema, compare_datasets
 **Retrieval:** download_resource, cache_info, cache_manage, refresh_cache
@@ -184,7 +187,7 @@ Before finishing, verify:
 - [ ] `COUNT(*)` vs `SUM(quantity_column)` — verified which is correct for each dataset
 
 ### JSON structure
-- [ ] Every source URL uses a real `data.ontario.ca/dataset/` slug (not a UUID)
+- [ ] Every source URL uses a real portal dataset slug (not a UUID)
 - [ ] Column names in SQL match what `get_resource_schema` returned
 - [ ] SQL is valid DuckDB syntax (not MySQL/Postgres-specific)
 - [ ] SQL is plain text — no HTML tags
