@@ -10,6 +10,7 @@ from fastmcp import Context
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     SpatialExtensionError,
+    get_active_portal,
     get_cache,
     get_deps,
     json_response,
@@ -87,8 +88,9 @@ async def load_geodata(
     else:
         bounds = None
 
+    active = portal or get_active_portal(ctx)
     slug = re.sub(r"[^a-z0-9]", "_", (dataset.get("name") or "geo").lower())[:40]
-    table_name = f"geo_{slug}_{resource_id[:8]}"
+    table_name = f"geo_{active}_{slug}_{resource_id[:8]}"
 
     cache.store_resource(
         resource_id=resource_id,
