@@ -28,7 +28,6 @@ def cache(tmp_path):
     c = CacheManager(db_path=str(tmp_path / "test.duckdb"))
     c.initialize()
     yield c
-    c.close()
 
 
 @pytest.fixture

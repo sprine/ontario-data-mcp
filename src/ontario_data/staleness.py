@@ -37,15 +37,12 @@ def get_staleness_info(cache: CacheManager, resource_id: str) -> dict | None:
 
     Returns None if the resource is not cached.
     """
-    result = cache.conn.execute(
-        "SELECT downloaded_at, expires_at FROM _cache_metadata WHERE resource_id = ?",
-        [resource_id],
-    ).fetchone()
-    if result is None:
+    meta = cache.get_resource_meta(resource_id)
+    if meta is None:
         return None
 
-    downloaded_at = result[0]
-    expires_at = result[1]
+    downloaded_at = meta["downloaded_at"]
+    expires_at = meta["expires_at"]
 
     if downloaded_at is None:
         return None

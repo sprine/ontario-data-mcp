@@ -25,7 +25,6 @@ async def lifespan(server):
     cache = CacheManager()
     cache.initialize()
     yield {"ckan": client, "cache": cache}
-    cache.close()
     await client.close()
     logger.info("Ontario Data MCP server stopped")
 
@@ -64,7 +63,12 @@ from ontario_data import resources  # noqa: E402, F401
 
 
 def main():
-    mcp.run()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "cache":
+        from ontario_data.cli import run
+        run(sys.argv[2:])
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":

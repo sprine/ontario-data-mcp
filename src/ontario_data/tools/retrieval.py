@@ -74,16 +74,13 @@ async def download_resource(
 
     if cache.is_cached(resource_id):
         table_name = cache.get_table_name(resource_id)
-        meta = cache.conn.execute(
-            "SELECT row_count, downloaded_at FROM _cache_metadata WHERE resource_id = ?",
-            [resource_id],
-        ).fetchone()
+        meta = cache.get_resource_meta(resource_id)
         staleness = get_staleness_info(cache, resource_id)
         return json_response(
             status="already_cached",
             table_name=table_name,
-            row_count=meta[0],
-            downloaded_at=str(meta[1]),
+            row_count=meta["row_count"],
+            downloaded_at=str(meta["downloaded_at"]),
             staleness=staleness,
             hint="Use query_cached tool with SQL to analyze this data. Use cache_manage(action='refresh', resource_id=...) to re-download.",
         )

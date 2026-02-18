@@ -188,11 +188,8 @@ async def spatial_query(
             f"Valid: contains_point (lat, lng), within_radius (lat, lng, radius_km), within_bbox (bbox)"
         )
 
-    # Execute directly on conn since spatial SQL contains functions not in allowed prefixes
-    result = cache.conn.execute(sql)
-    columns = [desc[0] for desc in result.description]
-    rows = result.fetchall()
-    records = [dict(zip(columns, row)) for row in rows]
+    # Execute directly since spatial SQL contains functions not in allowed prefixes
+    records = cache.execute_sql_dict(sql)
 
     return json_response(operation=operation, result_count=len(records), records=records)
 

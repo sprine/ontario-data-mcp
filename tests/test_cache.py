@@ -13,19 +13,19 @@ def cache(tmp_path):
 
 class TestInitialization:
     def test_creates_metadata_tables(self, cache):
-        tables = cache.conn.execute(
+        tables = cache.execute_sql(
             "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
-        ).fetchall()
+        )
         table_names = [t[0] for t in tables]
         assert "_cache_metadata" in table_names
         assert "_dataset_metadata" in table_names
 
     def test_idempotent_init(self, cache):
         cache.initialize()  # Should not raise
-        tables = cache.conn.execute(
+        tables = cache.execute_sql(
             "SELECT count(*) FROM information_schema.tables WHERE table_name='_cache_metadata'"
-        ).fetchone()
-        assert tables[0] == 1
+        )
+        assert tables[0][0] == 1
 
 
 class TestStoreDataFrame:
@@ -33,19 +33,17 @@ class TestStoreDataFrame:
         df = pd.DataFrame({"name": ["Alice", "Bob"], "age": [30, 25]})
         cache.store_resource("r1", "ds1", "test_table", df, "http://example.com/data.csv")
 
-        result = cache.conn.execute("SELECT * FROM test_table ORDER BY name").fetchdf()
+        result = cache.query("SELECT * FROM test_table ORDER BY name")
         assert len(result) == 2
-        assert list(result["name"]) == ["Alice", "Bob"]
+        assert [r["name"] for r in result] == ["Alice", "Bob"]
 
     def test_metadata_recorded(self, cache):
         df = pd.DataFrame({"x": [1, 2, 3]})
         cache.store_resource("r1", "ds1", "tbl", df, "http://example.com")
 
-        meta = cache.conn.execute(
-            "SELECT * FROM _cache_metadata WHERE resource_id='r1'"
-        ).fetchone()
+        meta = cache.get_resource_meta("r1")
         assert meta is not None
-        assert meta[4] == 3  # row_count
+        assert meta["row_count"] == 3
 
     def test_force_refresh_replaces(self, cache):
         df1 = pd.DataFrame({"x": [1]})
@@ -53,8 +51,8 @@ class TestStoreDataFrame:
         cache.store_resource("r1", "ds1", "tbl", df1, "http://example.com")
         cache.store_resource("r1", "ds1", "tbl", df2, "http://example.com")
 
-        result = cache.conn.execute("SELECT count(*) FROM tbl").fetchone()
-        assert result[0] == 3
+        result = cache.execute_sql("SELECT count(*) FROM tbl")
+        assert result[0][0] == 3
 
 
 class TestCacheQueries:

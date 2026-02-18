@@ -24,10 +24,10 @@ async def check_data_quality(
     table_name = require_cached(cache, resource_id)
 
     # Get total rows
-    total = cache.conn.execute(f'SELECT count(*) FROM "{table_name}"').fetchone()[0]
+    total = cache.execute_sql(f'SELECT count(*) FROM "{table_name}"')[0][0]
 
     # Get column info
-    columns = cache.conn.execute(f'DESCRIBE "{table_name}"').fetchall()
+    columns = cache.execute_sql(f'DESCRIBE "{table_name}"')
 
     quality_report = []
     for col in columns:
@@ -35,24 +35,24 @@ async def check_data_quality(
         stats = {"name": col_name, "type": col_type}
 
         # Null count
-        null_count = cache.conn.execute(
+        null_count = cache.execute_sql(
             f'SELECT count(*) FROM "{table_name}" WHERE "{col_name}" IS NULL'
-        ).fetchone()[0]
+        )[0][0]
         stats["null_count"] = null_count
         stats["null_pct"] = round(null_count / total * 100, 1) if total > 0 else 0
 
         # Distinct values
-        distinct = cache.conn.execute(
+        distinct = cache.execute_sql(
             f'SELECT count(DISTINCT "{col_name}") FROM "{table_name}"'
-        ).fetchone()[0]
+        )[0][0]
         stats["distinct_count"] = distinct
         stats["cardinality_pct"] = round(distinct / total * 100, 1) if total > 0 else 0
 
         # For numeric columns: min, max, mean, stddev
         if any(t in col_type.upper() for t in ("INT", "FLOAT", "DOUBLE", "DECIMAL", "NUMERIC")):
-            num_stats = cache.conn.execute(
+            num_stats = cache.execute_sql(
                 f'SELECT min("{col_name}"), max("{col_name}"), avg("{col_name}"), stddev("{col_name}") FROM "{table_name}"'
-            ).fetchone()
+            )[0]
             stats["min"] = num_stats[0]
             stats["max"] = num_stats[1]
             stats["mean"] = round(float(num_stats[2]), 4) if num_stats[2] is not None else None
@@ -62,9 +62,9 @@ async def check_data_quality(
 
     # Duplicate row check using COLUMNS(*)
     col_names = ", ".join(f'"{col[0]}"' for col in columns)
-    dup_count = cache.conn.execute(
+    dup_count = cache.execute_sql(
         f'SELECT count(*) FROM (SELECT {col_names}, count(*) OVER (PARTITION BY {col_names}) as _cnt FROM "{table_name}") WHERE _cnt > 1'
-    ).fetchone()
+    )[0]
 
     return json_response(
         resource_id=resource_id,
@@ -146,14 +146,10 @@ async def profile_data(
     table_name = require_cached(cache, resource_id)
 
     # Use DuckDB's SUMMARIZE command
-    result = cache.conn.execute(f'SUMMARIZE SELECT * FROM "{table_name}"')
-    columns = [desc[0] for desc in result.description]
-    rows = result.fetchall()
-    summary = [dict(zip(columns, row)) for row in rows]
+    summary = cache.execute_sql_dict(f'SUMMARIZE SELECT * FROM "{table_name}"')
 
     # Get row count
-    count_result = cache.conn.execute(f'SELECT COUNT(*) as cnt FROM "{table_name}"').fetchone()
-    row_count = count_result[0]
+    row_count = cache.execute_sql(f'SELECT COUNT(*) as cnt FROM "{table_name}"')[0][0]
 
     return json_response(
         resource_id=resource_id,

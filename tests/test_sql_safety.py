@@ -68,25 +68,21 @@ class TestCacheManagerQuerySafety:
         cache.initialize()
         result = cache.query("SELECT 1 AS n")
         assert result == [{"n": 1}]
-        cache.close()
 
     def test_drop_rejected(self, tmp_path):
         cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
         cache.initialize()
         with pytest.raises(InvalidQueryError):
             cache.query("DROP TABLE _cache_metadata")
-        cache.close()
 
     def test_semicolon_rejected(self, tmp_path):
         cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
         cache.initialize()
         with pytest.raises(InvalidQueryError):
             cache.query("SELECT 1; DROP TABLE _cache_metadata")
-        cache.close()
 
     def test_query_df_validates(self, tmp_path):
         cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
         cache.initialize()
         with pytest.raises(InvalidQueryError):
             cache.query_df("DELETE FROM _cache_metadata")
-        cache.close()

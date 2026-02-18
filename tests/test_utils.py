@@ -51,20 +51,18 @@ class TestRequireCached:
         cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
         cache.initialize()
         # Insert a fake cached entry
-        cache.conn.execute(
+        cache.execute_sql(
             "INSERT INTO _cache_metadata (resource_id, table_name) VALUES (?, ?)",
             ["r1", "ds_test_r1"],
         )
         result = require_cached(cache, "r1")
         assert result == "ds_test_r1"
-        cache.close()
 
     def test_not_found(self, tmp_path):
         cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
         cache.initialize()
         with pytest.raises(ResourceNotCachedError, match="not cached"):
             require_cached(cache, "nonexistent")
-        cache.close()
 
 
 class TestJsonResponse:
