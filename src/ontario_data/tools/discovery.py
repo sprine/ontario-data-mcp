@@ -4,11 +4,11 @@ import json
 
 from fastmcp import Context
 
-from ontario_data.server import mcp
+from ontario_data.server import READONLY, mcp
 from ontario_data.utils import get_deps, json_response
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def search_datasets(
     query: str,
     organization: str | None = None,
@@ -64,7 +64,7 @@ async def search_datasets(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def list_organizations(
     include_counts: bool = True,
     ctx: Context = None,
@@ -87,7 +87,7 @@ async def list_organizations(
     return json.dumps(result, indent=2)
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def list_topics(
     query: str | None = None,
     ctx: Context = None,
@@ -106,7 +106,7 @@ async def list_topics(
     return json.dumps(result, indent=2)
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def get_popular_datasets(
     sort: str = "recent",
     limit: int = 10,
@@ -139,7 +139,7 @@ async def get_popular_datasets(
     return json_response(total=result["count"], datasets=datasets)
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def search_by_location(
     region: str,
     limit: int = 10,
@@ -170,7 +170,7 @@ async def search_by_location(
     return json_response(total=result["count"], datasets=datasets)
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def find_related_datasets(
     dataset_id: str,
     limit: int = 10,

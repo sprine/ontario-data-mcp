@@ -9,7 +9,7 @@ import pandas as pd
 from fastmcp import Context
 
 from ontario_data.ckan_client import CKANClient
-from ontario_data.server import mcp
+from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
 from ontario_data.utils import get_cache, get_deps, json_response, make_table_name
 
@@ -57,7 +57,7 @@ async def _download_resource_data(
     return df, resource, dataset
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def download_resource(
     resource_id: str,
     ctx: Context = None,
@@ -120,7 +120,7 @@ async def download_resource(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def cache_info(ctx: Context = None) -> str:
     """Get cache statistics and list all cached datasets.
 
@@ -150,7 +150,7 @@ async def cache_info(ctx: Context = None) -> str:
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=DESTRUCTIVE)
 async def cache_manage(
     action: str,
     resource_id: str | None = None,
@@ -206,7 +206,7 @@ async def cache_manage(
         raise ValueError(f"Invalid action '{action}'. Use 'remove', 'clear', or 'refresh'.")
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def refresh_cache(
     resource_id: str | None = None,
     ctx: Context = None,

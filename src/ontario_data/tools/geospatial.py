@@ -7,7 +7,7 @@ import re
 import httpx
 from fastmcp import Context
 
-from ontario_data.server import mcp
+from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     SpatialExtensionError,
     get_cache,
@@ -19,7 +19,7 @@ from ontario_data.utils import (
 logger = logging.getLogger("ontario_data.geospatial")
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def load_geodata(
     resource_id: str,
     force_refresh: bool = False,
@@ -111,7 +111,7 @@ async def load_geodata(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def spatial_query(
     resource_id: str,
     operation: str,
@@ -197,7 +197,7 @@ async def spatial_query(
     return json_response(operation=operation, result_count=len(records), records=records)
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def list_geo_datasets(
     format_filter: str | None = None,
     limit: int = 50,

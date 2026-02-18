@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from fastmcp import Context
 
-from ontario_data.server import mcp
+from ontario_data.server import READONLY, mcp
 from ontario_data.utils import get_deps, json_response
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def get_dataset_info(
     dataset_id: str,
     ctx: Context = None,
@@ -50,7 +50,7 @@ async def get_dataset_info(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def list_resources(
     dataset_id: str,
     ctx: Context = None,
@@ -81,7 +81,7 @@ async def list_resources(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def get_resource_schema(
     resource_id: str,
     sample_size: int = 5,
@@ -130,7 +130,7 @@ async def get_resource_schema(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def compare_datasets(
     dataset_ids: list[str],
     ctx: Context = None,

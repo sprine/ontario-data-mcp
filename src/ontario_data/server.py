@@ -6,6 +6,7 @@ from importlib.metadata import version
 
 import httpx
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from ontario_data.cache import CacheManager
 from ontario_data.ckan_client import CKANClient
@@ -28,6 +29,9 @@ async def lifespan(server):
     await client.close()
     logger.info("Ontario Data MCP server stopped")
 
+
+READONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True)
 
 mcp = FastMCP(
     "Ontario Data Catalogue",

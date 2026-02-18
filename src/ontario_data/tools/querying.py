@@ -4,11 +4,11 @@ from typing import Any
 
 from fastmcp import Context
 
-from ontario_data.server import mcp
+from ontario_data.server import READONLY, mcp
 from ontario_data.utils import get_cache, get_deps, json_response, strip_internal_fields
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def query_resource(
     resource_id: str,
     filters: dict[str, Any] | None = None,
@@ -50,7 +50,7 @@ async def query_resource(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def sql_query(
     sql: str,
     ctx: Context = None,
@@ -79,7 +79,7 @@ async def sql_query(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def query_cached(
     sql: str,
     ctx: Context = None,
@@ -111,7 +111,7 @@ async def query_cached(
         ) from e
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def preview_data(
     resource_id: str,
     rows: int = 10,

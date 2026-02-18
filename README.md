@@ -31,6 +31,18 @@ Config file location:
 claude mcp add ontario-data -- uvx ontario-data-mcp
 ```
 
+To auto-approve all tool calls (no confirmation prompts), add to your Claude Code settings:
+
+```json
+{
+  "permissions": {
+    "allow": ["mcp:ontario-data:*"]
+  }
+}
+```
+
+All 23 read-only tools are annotated as such. The only destructive tool is `cache_manage`, which removes local cached data (no remote mutations).
+
 ### With VS Code
 
 Add to `.vscode/mcp.json`:

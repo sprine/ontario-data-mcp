@@ -4,11 +4,11 @@ from datetime import datetime, timezone
 
 from fastmcp import Context
 
-from ontario_data.server import mcp
+from ontario_data.server import READONLY, mcp
 from ontario_data.utils import get_cache, get_deps, json_response, require_cached
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def check_data_quality(
     resource_id: str,
     ctx: Context = None,
@@ -75,7 +75,7 @@ async def check_data_quality(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def check_freshness(
     dataset_id: str,
     ctx: Context = None,
@@ -130,7 +130,7 @@ async def check_freshness(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations=READONLY)
 async def profile_data(
     resource_id: str,
     ctx: Context = None,
