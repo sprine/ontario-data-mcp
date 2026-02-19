@@ -56,7 +56,13 @@ Verify the output contains "Starting MCP server". If it shows an error (other th
 
 Use the `/generating-smoke-tests` skill to generate, run, and clean up a live smoke test. Stop if any assertion fails.
 
-### 6. Bump version and update changelog
+### 6. Licence compliance check
+
+Read the `PORTALS` dict from `src/ontario_data/portals.py` and collect every portal's `licence_name`. For each licence name, verify that the exact string appears in both `README.md` and `site/index.html`.
+
+Stop if any attribution is missing. Each data portal's licence requires its own attribution statement — omitting one violates the licence terms.
+
+### 7. Bump version and update changelog
 
 Edit `pyproject.toml` to set the new version. Then run `uv lock` to update the lockfile.
 
@@ -71,7 +77,7 @@ Add a new entry to `CHANGELOG.md` at the top (below the header). Follow the exis
 
 Derive the changelog entry from the commit message and the actual changes being released.
 
-### 7. Commit, tag, and push
+### 8. Commit, tag, and push
 
 **Ask for confirmation before committing.**
 
@@ -95,7 +101,7 @@ Then push to origin with tags:
 git push origin main --tags
 ```
 
-### 8. Build and publish
+### 9. Build and publish
 
 **Ask for confirmation before publishing.**
 
@@ -106,7 +112,7 @@ uv build
 uv publish --token "$(grep -A2 '\[pypi\]' ~/.pypirc | grep password | sed 's/password = //')"
 ```
 
-### 9. Verify
+### 10. Verify
 
 Check the package is available on PyPI:
 
@@ -122,6 +128,7 @@ Report the published version and PyPI URL: https://pypi.org/project/ontario-data
 - [ ] All unit tests pass
 - [ ] Server starts without errors
 - [ ] Live multi-tool smoke test passes (search, metadata, download, query, cache)
+- [ ] All portal licence attributions present in README.md and site/index.html
 - [ ] Version bumped in pyproject.toml, uv.lock, and CHANGELOG.md
 - [ ] User confirmed commit → committed and tagged `v{new_version}`
 - [ ] User confirmed push → pushed to origin with tags
