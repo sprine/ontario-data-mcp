@@ -276,7 +276,13 @@ class CacheManager:
             }
 
     def query(self, sql: str) -> list[dict[str, Any]]:
-        """Run a validated read-only SQL query against the cache."""
+        """Run a validated read-only SQL query against the cache.
+
+        Validates that *sql* is a safe, read-only statement before executing.
+        Use this for user- or LLM-supplied SQL (e.g. the query_cached tool).
+        For programmatically-built SQL from trusted internal code, use
+        execute_sql() or execute_sql_dict() instead.
+        """
         _validate_sql(sql)
         with self._connect() as conn:
             result = conn.execute(sql)
@@ -323,13 +329,21 @@ class CacheManager:
             return None
 
     def execute_sql(self, sql: str, params=None) -> list[tuple]:
-        """Execute SQL and return raw tuples."""
+        """Execute SQL without validation and return raw tuples.
+
+        For internal/programmatic use only (e.g. quality checks, spatial
+        queries). Use query() for user-supplied SQL, which validates
+        read-only safety first.
+        """
         with self._connect() as conn:
             result = conn.execute(sql, params or [])
             return result.fetchall()
 
     def execute_sql_dict(self, sql: str, params=None) -> list[dict[str, Any]]:
-        """Execute SQL and return list of dicts with column names."""
+        """Execute SQL without validation and return dicts with column names.
+
+        For internal/programmatic use only. See execute_sql() for details.
+        """
         with self._connect() as conn:
             result = conn.execute(sql, params or [])
             columns = [desc[0] for desc in result.description]
