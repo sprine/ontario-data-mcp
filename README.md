@@ -2,30 +2,33 @@
 
 # ontario-data-mcp
 
-MCP server for searching, downloading, and analyzing datasets from Ontario open data portals. Supports multiple portals (Ontario, Toronto, Ottawa) with a shared DuckDB cache for fast SQL queries, statistical analysis, and geospatial operations.
+> [!IMPORTANT]  
+> **Beta:** This project is under active development. The data structure and tool interfaces may change, as may the data sources until v0.1.
+> LLM-generated analysis may contain errors. Always verify critical findings against the returned source data.
 
-> **Beta:** This project is under active development. The data structure and tool interfaces may change, and we're working on adding more data sources. LLM-generated analysis may contain hallucinations — always verify important findings against the source data. Contributions are welcome! Please report bugs and feature requests at [github.com/sprine/ontario-data-mcp/issues](https://github.com/sprine/ontario-data-mcp/issues).
+This is an [MCP server](https://gist.github.com/sprine/3a6f2c30c73cc0fe8a7a472a4af771d3) for discovering, downloading, querying, and analyzing datasets from Ontario's Open Data portals. It allows asking questions of the data in English (or Spanish, Chinese, French, etc).
 
-## Installation
+It currently supports the Ontario, Toronto, and Ottawa portals, and utilizes a shared [DuckDB](https://duckdb.org/) cache for fast SQL queries, statistical analysis, and geospatial operations.
 
-### With Claude Desktop
+## Contributing
 
-Add to your `claude_desktop_config.json`:
+Contributions welcome! To get started, see **Installation** below.
 
-```json
-{
-  "mcpServers": {
-    "ontario-data": {
-      "command": "uvx",
-      "args": ["ontario-data-mcp"]
-    }
-  }
-}
+Found a bug? Have an idea? Discovered something interesting?
+Open an issue here: https://github.com/sprine/ontario-data-mcp/issues
+
+## Features
+* `find` - search across supported Ontario open data portals
+* `download` - retrieve and cache datasets
+* `query` - run SQL, statistical, and geospatial analysis via DuckDB
+* **WIP** A `validate` step to verify query outputs against original source files and metadata.
+* A shared DuckDB cache for high-performance analytics
+
+```
+Portal APIs find → Dataset download → DuckDB cache → MCP tools (find, download, query)
 ```
 
-Config file location:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+## Installation
 
 ### With Claude Code
 
@@ -45,7 +48,8 @@ To auto-approve all tool calls (no confirmation prompts), add to your Claude Cod
 
 All read-only tools are annotated as such. The only destructive tool is `cache_manage`, which removes local cached data (no remote mutations).
 
-### With VS Code
+<details>
+  <summary>With VS Code</summary>
 
 Add to `.vscode/mcp.json`:
 
@@ -59,8 +63,10 @@ Add to `.vscode/mcp.json`:
   }
 }
 ```
+</details>
 
-### From Source
+<details>
+  <summary>From Source</summary>
 
 ```bash
 git clone https://github.com/sprine/ontario-data-mcp
@@ -68,6 +74,7 @@ cd ontario-data-mcp
 uv sync
 uv run ontario-data-mcp
 ```
+</details>
 
 ## Supported Portals
 
@@ -77,11 +84,10 @@ uv run ontario-data-mcp
 | `toronto` | CKAN | ~533 |
 | `ottawa` | ArcGIS Hub | ~665 |
 
-Use `set_portal("toronto")` to switch the active portal. Use `search_all_portals("transit")` to search across all portals at once. Most tools accept an optional `portal` parameter to override the active portal.
+## List of tools available to the AI agent
 
-## Tools
-
-### Portal Management (3 tools)
+<details>
+<summary><b>Portal Management</b> (3 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
@@ -89,7 +95,10 @@ Use `set_portal("toronto")` to switch the active portal. Use `search_all_portals
 | `list_portals` | List all available portals with platform type and active marker |
 | `search_all_portals` | Search across all portals simultaneously |
 
-### Discovery (6 tools)
+</details>
+
+<details>
+<summary><b>Discovery</b> (6 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
@@ -100,7 +109,10 @@ Use `set_portal("toronto")` to switch the active portal. Use `search_all_portals
 | `search_by_location` | Find datasets covering a specific geographic area |
 | `find_related_datasets` | Find datasets related by tags and organization |
 
-### Metadata (4 tools)
+</details>
+
+<details>
+<summary><b>Metadata</b> (4 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
@@ -109,7 +121,10 @@ Use `set_portal("toronto")` to switch the active portal. Use `search_all_portals
 | `get_resource_schema` | Get column schema and sample values for a datastore resource |
 | `compare_datasets` | Compare metadata side-by-side for multiple datasets |
 
-### Retrieval & Caching (4 tools)
+</details>
+
+<details>
+<summary><b>Retrieval & Caching</b> (4 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
@@ -118,7 +133,10 @@ Use `set_portal("toronto")` to switch the active portal. Use `search_all_portals
 | `cache_manage` | Remove single resource, clear all, or refresh (action enum) |
 | `refresh_cache` | Re-download cached resources with latest data |
 
-### Querying (4 tools)
+</details>
+
+<details>
+<summary><b>Querying</b> (4 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
@@ -127,7 +145,10 @@ Use `set_portal("toronto")` to switch the active portal. Use `search_all_portals
 | `query_cached` | Run SQL against locally cached data in DuckDB |
 | `preview_data` | Quick preview of first N rows of a resource |
 
-### Data Quality (3 tools)
+</details>
+
+<details>
+<summary><b>Data Quality</b> (3 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
@@ -135,13 +156,18 @@ Use `set_portal("toronto")` to switch the active portal. Use `search_all_portals
 | `check_freshness` | Check if a dataset is current vs. its update schedule |
 | `profile_data` | Statistical profile using DuckDB SUMMARIZE |
 
-### Geospatial (3 tools)
+</details>
+
+<details>
+<summary><b>Geospatial</b> (3 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
 | `load_geodata` | Cache a geospatial resource (SHP, KML, GeoJSON) into DuckDB |
 | `spatial_query` | Run spatial queries against cached geospatial data |
 | `list_geo_datasets` | Find datasets containing geospatial resources |
+
+</details>
 
 ## Prompts
 
@@ -151,31 +177,13 @@ Context-aware guided workflow prompts:
 - **`data_investigation`** — Deep dive into a specific dataset: schema, quality, statistics
 - **`compare_data`** — Side-by-side analysis of multiple datasets
 
-## Resources
-
-- `ontario://cache/index` — List all locally cached datasets with freshness info
-- `ontario://dataset/{dataset_id}` — Full metadata for a specific dataset
-- `ontario://portal/stats` — Overview statistics about the Ontario Data Catalogue
-- `ontario://guides/duckdb-sql` — DuckDB SQL reference with tips for Ontario data analysis
-
 ## Environment Variables
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `LOG_LEVEL` | `WARNING` | Python logging level |
 | `ONTARIO_DATA_CACHE_DIR` | `~/.cache/ontario-data` | DuckDB storage + log file location |
 | `ONTARIO_DATA_TIMEOUT` | `30` | HTTP timeout in seconds |
 | `ONTARIO_DATA_RATE_LIMIT` | `10` | Max CKAN requests per second |
-
-## How It Works
-
-1. **Choose** a portal with `set_portal` or search all at once with `search_all_portals`
-2. **Search** datasets using CKAN API tools
-3. **Download** resources into a local DuckDB database for fast access
-4. **Query** cached data with full DuckDB SQL (time series, correlations, pivots, window functions)
-5. **Analyze** with statistical profiling, data quality checks, and geospatial queries
-
-Data from all portals is cached in a shared DuckDB database at `~/.cache/ontario-data/ontario_data.duckdb` with portal-prefixed table names. No API keys required — all portals are fully public.
 
 ## Development
 
@@ -183,12 +191,6 @@ Data from all portals is cached in a shared DuckDB database at `~/.cache/ontario
 uv sync
 uv run python -m pytest tests/ -v
 ```
-
-## Contributing
-
-Contributions are welcome! Please open an issue or pull request at [github.com/sprine/ontario-data-mcp](https://github.com/sprine/ontario-data-mcp).
-
-If you find a bug or have a feature request, please [open an issue](https://github.com/sprine/ontario-data-mcp/issues).
 
 ## License
 
