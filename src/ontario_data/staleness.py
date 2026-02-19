@@ -24,14 +24,6 @@ def compute_expires_at(downloaded_at: datetime, update_frequency: str | None) ->
     return downloaded_at + timedelta(days=days)
 
 
-def is_stale(cache: CacheManager, resource_id: str) -> bool:
-    """Check if a cached resource is stale based on its expires_at."""
-    info = get_staleness_info(cache, resource_id)
-    if info is None:
-        return False
-    return info["is_stale"]
-
-
 def get_staleness_info(cache: CacheManager, resource_id: str) -> dict | None:
     """Get staleness information for a cached resource.
 

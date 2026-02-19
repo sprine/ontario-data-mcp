@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastmcp import Context
 
 from ontario_data.server import READONLY, mcp
+from ontario_data.staleness import FREQUENCY_DAYS
 from ontario_data.utils import get_cache, get_deps, json_response, require_cached
 
 
@@ -100,15 +101,7 @@ async def check_freshness(
     except (ValueError, AttributeError):
         days_since_update = None
 
-    freq_days = {
-        "daily": 2,
-        "weekly": 10,
-        "monthly": 45,
-        "quarterly": 120,
-        "biannually": 200,
-        "yearly": 400,
-    }
-    expected = freq_days.get(frequency)
+    expected = FREQUENCY_DAYS.get(frequency)
     is_stale = days_since_update > expected if (days_since_update is not None and expected) else None
 
     resource_freshness = []

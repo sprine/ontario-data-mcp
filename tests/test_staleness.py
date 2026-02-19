@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 
 from ontario_data.cache import CacheManager
-from ontario_data.staleness import compute_expires_at, get_staleness_info, is_stale
+from ontario_data.staleness import compute_expires_at, get_staleness_info
 
 
 class TestComputeExpiresAt:
@@ -57,7 +57,9 @@ class TestIsStale:
             "INSERT INTO _cache_metadata (resource_id, table_name, downloaded_at) VALUES (?, ?, ?)",
             ["r1", "ds_test", old_time],
         )
-        assert is_stale(cache, "r1") is True
+        info = get_staleness_info(cache, "r1")
+        assert info is not None
+        assert info["is_stale"] is True
 
     def test_fresh_resource(self, tmp_path):
         cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
@@ -69,12 +71,14 @@ class TestIsStale:
             "INSERT INTO _cache_metadata (resource_id, table_name, downloaded_at, expires_at) VALUES (?, ?, ?, ?)",
             ["r1", "ds_test", now, future],
         )
-        assert is_stale(cache, "r1") is False
+        info = get_staleness_info(cache, "r1")
+        assert info is not None
+        assert info["is_stale"] is False
 
     def test_uncached_resource(self, tmp_path):
         cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
         cache.initialize()
-        assert is_stale(cache, "nonexistent") is False
+        assert get_staleness_info(cache, "nonexistent") is None
 
 
 class TestGetStalenessInfo:
