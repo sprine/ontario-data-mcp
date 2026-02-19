@@ -24,7 +24,7 @@ class InvalidQueryError(Exception):
 
 
 def _has_semicolons_outside_strings(sql: str) -> bool:
-    """Check for semicolons outside of single-quoted string literals."""
+    """Defense against statement-stacking injection (e.g. 'SELECT 1; DROP TABLE')."""
     in_string = False
     for i, char in enumerate(sql):
         if char == "'" and (i == 0 or sql[i - 1] != "\\"):
@@ -78,7 +78,6 @@ class CacheManager:
 
     @contextmanager
     def _connect_raw(self):
-        """Open a raw DuckDB connection without loading extensions."""
         conn = duckdb.connect(self.db_path)
         try:
             yield conn
@@ -87,7 +86,6 @@ class CacheManager:
 
     @contextmanager
     def _connect(self):
-        """Open a DuckDB connection with extensions loaded."""
         conn = duckdb.connect(self.db_path)
         try:
             for ext in self._extensions:
@@ -97,7 +95,8 @@ class CacheManager:
             conn.close()
 
     def _with_retry(self, fn, max_attempts=3):
-        """Retry fn(conn) on DuckDB IO errors (lock contention)."""
+        """Retry with linear backoff (100ms, 200ms, 300ms) when another
+        process holds the DuckDB file lock."""
         for attempt in range(max_attempts):
             try:
                 with self._connect() as conn:
@@ -108,7 +107,8 @@ class CacheManager:
                 time.sleep(0.1 * (attempt + 1))
 
     def initialize(self):
-        """Create metadata tables and install extensions."""
+        """Set up schema and extensions. Must be called once before any
+        other operations — typically during server lifespan startup."""
         with self._connect_raw() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS _cache_metadata (
@@ -159,7 +159,6 @@ class CacheManager:
 
     @property
     def has_spatial_extension(self) -> bool:
-        """Whether the DuckDB spatial extension is loaded."""
         return self._has_spatial
 
     def store_resource(
@@ -170,7 +169,8 @@ class CacheManager:
         df: pd.DataFrame,
         source_url: str,
     ):
-        """Store a pandas DataFrame as a DuckDB table."""
+        """Upsert: drops the previous table for this resource_id (if any)
+        before creating the new one, so re-downloads are safe."""
         def _do(conn):
             # Drop existing table if re-caching
             old = conn.execute(
@@ -199,7 +199,6 @@ class CacheManager:
         self._with_retry(_do)
 
     def is_cached(self, resource_id: str) -> bool:
-        """Check if a resource is in the cache."""
         with self._connect() as conn:
             result = conn.execute(
                 "SELECT 1 FROM _cache_metadata WHERE resource_id = ?", [resource_id]
@@ -207,7 +206,6 @@ class CacheManager:
             return result is not None
 
     def get_table_name(self, resource_id: str) -> str | None:
-        """Get the DuckDB table name for a cached resource."""
         with self._connect() as conn:
             result = conn.execute(
                 "SELECT table_name FROM _cache_metadata WHERE resource_id = ?", [resource_id]
@@ -215,7 +213,6 @@ class CacheManager:
             return result[0] if result else None
 
     def list_cached(self) -> list[dict[str, Any]]:
-        """List all cached resources."""
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT resource_id, dataset_id, table_name, downloaded_at, row_count, size_bytes, source_url "
@@ -235,7 +232,6 @@ class CacheManager:
             ]
 
     def remove_resource(self, resource_id: str):
-        """Remove a resource from the cache."""
         def _do(conn):
             result = conn.execute(
                 "SELECT table_name FROM _cache_metadata WHERE resource_id = ?",
@@ -250,7 +246,6 @@ class CacheManager:
         self._with_retry(_do)
 
     def remove_all(self):
-        """Remove all cached resources."""
         def _do(conn):
             rows = conn.execute(
                 "SELECT table_name FROM _cache_metadata"
@@ -262,7 +257,6 @@ class CacheManager:
         self._with_retry(_do)
 
     def get_stats(self) -> dict[str, Any]:
-        """Get cache statistics."""
         with self._connect() as conn:
             result = conn.execute(
                 "SELECT count(*), coalesce(sum(row_count), 0), coalesce(sum(size_bytes), 0) "
@@ -291,13 +285,12 @@ class CacheManager:
             return [dict(zip(columns, row)) for row in rows]
 
     def query_df(self, sql: str) -> pd.DataFrame:
-        """Run a validated read-only SQL query and return a DataFrame."""
+        """Like query() but returns a DataFrame. Also validates SQL."""
         _validate_sql(sql)
         with self._connect() as conn:
             return conn.execute(sql).fetchdf()
 
     def update_expires_at(self, resource_id: str, expires_at):
-        """Set the expires_at timestamp for a cached resource."""
         def _do(conn):
             conn.execute(
                 "UPDATE _cache_metadata SET expires_at = ? WHERE resource_id = ?",
@@ -307,7 +300,6 @@ class CacheManager:
         self._with_retry(_do)
 
     def store_dataset_metadata(self, dataset_id: str, metadata: dict[str, Any]):
-        """Cache dataset metadata."""
         def _do(conn):
             now = datetime.now(timezone.utc)
             conn.execute(
@@ -319,7 +311,6 @@ class CacheManager:
         self._with_retry(_do)
 
     def get_dataset_metadata(self, dataset_id: str) -> dict[str, Any] | None:
-        """Get cached dataset metadata."""
         with self._connect() as conn:
             result = conn.execute(
                 "SELECT metadata FROM _dataset_metadata WHERE dataset_id = ?", [dataset_id]
@@ -351,7 +342,6 @@ class CacheManager:
             return [dict(zip(columns, row)) for row in rows]
 
     def get_resource_meta(self, resource_id: str) -> dict[str, Any] | None:
-        """Get full cache metadata for a resource."""
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT resource_id, dataset_id, table_name, downloaded_at, "

@@ -18,7 +18,8 @@ FREQUENCY_DAYS = {
 
 
 def compute_expires_at(downloaded_at: datetime, update_frequency: str | None) -> datetime:
-    """Compute when a cached resource should be considered stale."""
+    """Map CKAN update_frequency (e.g. 'daily', 'monthly') to an expiry
+    timestamp. Falls back to 30 days for unknown or missing frequencies."""
     freq = (update_frequency or "").lower().strip()
     days = FREQUENCY_DAYS.get(freq, 30)  # default 30 days
     return downloaded_at + timedelta(days=days)

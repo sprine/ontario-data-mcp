@@ -26,7 +26,7 @@ class SpatialExtensionError(Exception):
 
 
 def _lifespan_state(ctx: Context) -> dict:
-    """Access the lifespan state dict from the MCP context."""
+    # fastmcp stores lifespan yield value here (not part of public API)
     return ctx.fastmcp._lifespan_result
 
 
@@ -61,40 +61,45 @@ def get_deps(ctx: Context, portal: str | None = None) -> tuple[CKANClient, Cache
 
 
 def get_active_portal(ctx: Context) -> str:
-    """Get the name of the currently active portal."""
+    """Return the portal key (e.g. 'ontario') used when no explicit
+    portal parameter is provided to a tool."""
     return _lifespan_state(ctx)["active_portal"]
 
 
 def get_cache(ctx: Context) -> CacheManager:
-    """Extract cache manager from MCP context."""
     return _lifespan_state(ctx)["cache"]
 
 
 def strip_internal_fields(records: list[dict]) -> list[dict]:
-    """Remove CKAN internal fields (prefixed with _) from records."""
+    """Strip CKAN bookkeeping columns (_id, _full_text, etc.) that clutter
+    results returned to the LLM."""
     return [{k: v for k, v in r.items() if not k.startswith("_")} for r in records]
 
 
 def _slugify(name: str, fallback: str = "unknown", max_len: int = 40) -> str:
-    """Sanitize a name into a safe slug for DuckDB table names."""
+    """Lowercase, collapse non-alphanumerics to underscores, truncate.
+    e.g. 'Ontario COVID-19 Cases' → 'ontario_covid_19_cases'."""
     slug = re.sub(r"[^a-z0-9]", "_", (name or fallback).lower())
     return re.sub(r"_+", "_", slug).strip("_")[:max_len]
 
 
 def make_table_name(dataset_name: str, resource_id: str, portal: str = "ontario") -> str:
-    """Generate a safe DuckDB table name from dataset name, resource ID, and portal."""
+    """Build a deterministic table name like 'ds_ontario_covid_cases_a1b2c3d4'
+    so the same resource always lands in the same table."""
     slug = _slugify(dataset_name)
     return f"ds_{portal}_{slug}_{resource_id[:8]}"
 
 
 def make_geo_table_name(dataset_name: str, resource_id: str, portal: str = "ontario") -> str:
-    """Generate a safe DuckDB table name for geospatial data."""
+    """Like make_table_name but prefixed 'geo_' so spatial tables are
+    distinguishable in cache listings."""
     slug = _slugify(dataset_name, fallback="geo")
     return f"geo_{portal}_{slug}_{resource_id[:8]}"
 
 
 def require_cached(cache: CacheManager, resource_id: str) -> str:
-    """Get table name for a cached resource, or raise ResourceNotCachedError."""
+    """Return table name, or raise with a user-friendly message that includes
+    the download_resource command to run."""
     table_name = cache.get_table_name(resource_id)
     if not table_name:
         raise ResourceNotCachedError(
@@ -105,5 +110,6 @@ def require_cached(cache: CacheManager, resource_id: str) -> str:
 
 
 def json_response(**kwargs) -> str:
-    """Serialize a response dict to JSON with consistent formatting."""
+    """Serialize to JSON with default=str so datetimes and other
+    non-native types don't blow up."""
     return json.dumps(kwargs, indent=2, default=str)

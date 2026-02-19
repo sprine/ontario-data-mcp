@@ -6,7 +6,8 @@ from logging.handlers import RotatingFileHandler
 
 
 def setup_logging() -> logging.Logger:
-    """Configure structured logging to a rotating file."""
+    """JSON-line format to ~/.cache/ontario-data/server.log, 5 MB rotation.
+    Level controlled by LOG_LEVEL env var (default: WARNING)."""
     level_name = os.environ.get("LOG_LEVEL", "WARNING").upper()
     level = getattr(logging, level_name, logging.WARNING)
 

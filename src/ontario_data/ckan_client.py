@@ -53,7 +53,6 @@ class CKANClient:
         return self._http_client
 
     async def _rate_limit(self):
-        """Enforce per-session rate limiting."""
         if self._min_interval <= 0:
             return
         now = time.monotonic()
@@ -63,7 +62,8 @@ class CKANClient:
         self._last_request_time = time.monotonic()
 
     async def _request(self, action: str, params: dict[str, Any] | None = None) -> Any:
-        """Make a GET request with retry and rate limiting."""
+        """Call a CKAN action API endpoint. Retries with exponential backoff
+        + jitter on 429/5xx and connection errors."""
         client = await self._get_client()
         url = f"{self.api_url}/{action}"
 
@@ -101,7 +101,7 @@ class CKANClient:
                 raise
 
     async def close(self):
-        """Close the HTTP client if we own it."""
+        """Only closes the httpx client if we created it (not shared)."""
         if self._owns_client and self._http_client is not None:
             await self._http_client.aclose()
             self._http_client = None
@@ -115,7 +115,6 @@ class CKANClient:
         start: int = 0,
         facet_fields: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Search for datasets."""
         params: dict[str, Any] = {"q": query, "rows": rows, "start": start}
         if filters:
             fq_parts = [f"{k}:{v}" for k, v in filters.items()]
@@ -134,7 +133,7 @@ class CKANClient:
         sort: str | None = None,
         page_size: int = 100,
     ) -> list[dict[str, Any]]:
-        """Paginate through all search results."""
+        """Auto-paginate package_search until all results are collected."""
         all_results = []
         start = 0
         while True:
@@ -148,11 +147,9 @@ class CKANClient:
         return all_results
 
     async def package_show(self, id: str) -> dict[str, Any]:
-        """Get full metadata for a dataset."""
         return await self._request("package_show", {"id": id})
 
     async def resource_show(self, id: str) -> dict[str, Any]:
-        """Get metadata for a single resource."""
         return await self._request("resource_show", {"id": id})
 
     async def resource_search(
@@ -162,7 +159,6 @@ class CKANClient:
         limit: int | None = None,
         offset: int | None = None,
     ) -> dict[str, Any]:
-        """Search resources by field values."""
         params: dict[str, Any] = {"query": query}
         if order_by:
             params["order_by"] = order_by
@@ -181,7 +177,6 @@ class CKANClient:
         limit: int = 100,
         offset: int = 0,
     ) -> dict[str, Any]:
-        """Query data from the CKAN Datastore."""
         import json
         params: dict[str, Any] = {
             "resource_id": resource_id,
@@ -204,7 +199,7 @@ class CKANClient:
         sort: str | None = None,
         page_size: int = 1000,
     ) -> dict[str, Any]:
-        """Paginate through all datastore records for a resource."""
+        """Auto-paginate datastore_search until all records are collected."""
         all_records = []
         result_fields = None
         offset = 0
@@ -229,11 +224,9 @@ class CKANClient:
         return {"records": all_records, "fields": result_fields, "total": total}
 
     async def datastore_sql(self, sql: str) -> dict[str, Any]:
-        """Execute a SQL query against the CKAN Datastore."""
         return await self._request("datastore_search_sql", {"sql": sql})
 
     async def tag_list(self, query: str | None = None, all_fields: bool = False) -> list:
-        """List tags."""
         params: dict[str, Any] = {"all_fields": all_fields}
         if query:
             params["query"] = query
@@ -245,7 +238,6 @@ class CKANClient:
         all_fields: bool = False,
         include_dataset_count: bool = True,
     ) -> list:
-        """List organizations."""
         return await self._request("organization_list", {
             "sort": sort,
             "all_fields": all_fields,
@@ -258,7 +250,6 @@ class CKANClient:
         all_fields: bool = False,
         include_dataset_count: bool = True,
     ) -> list:
-        """List groups."""
         return await self._request("group_list", {
             "sort": sort,
             "all_fields": all_fields,
@@ -266,7 +257,6 @@ class CKANClient:
         })
 
     async def package_list(self, limit: int | None = None, offset: int | None = None) -> list[str]:
-        """List all dataset names."""
         params: dict[str, Any] = {}
         if limit is not None:
             params["limit"] = limit

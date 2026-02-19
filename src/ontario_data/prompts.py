@@ -12,7 +12,6 @@ logger = logging.getLogger("ontario_data.prompts")
 
 
 def _format_cached_context(cache) -> str:
-    """Build context string from cached datasets."""
     cached = cache.list_cached()
     if not cached:
         return ""
@@ -23,7 +22,8 @@ def _format_cached_context(cache) -> str:
 
 
 async def _get_topic_context(ckan, topic: str) -> str:
-    """Fetch live context for a topic, with fallback on error."""
+    """Pre-fetch a few search results so the prompt has concrete dataset
+    names to reference. Returns empty string on any API error."""
     try:
         result = await ckan.package_search(query=topic, rows=5)
         count = result["count"]

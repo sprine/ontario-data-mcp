@@ -20,7 +20,8 @@ async def _download_resource_data(
     ckan: CKANClient,
     resource_id: str,
 ) -> tuple[pd.DataFrame, dict[str, Any], dict[str, Any]]:
-    """Download a resource and return (dataframe, resource_meta, dataset_meta)."""
+    """Fetch resource data, preferring the CKAN datastore (structured API)
+    and falling back to direct file download for CSV/XLSX/JSON/GeoJSON."""
     resource = await ckan.resource_show(resource_id)
     dataset_id = resource.get("package_id")
     dataset = await ckan.package_show(dataset_id) if dataset_id else {}

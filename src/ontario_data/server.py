@@ -15,7 +15,6 @@ from ontario_data.portals import PORTALS
 
 @asynccontextmanager
 async def lifespan(server):
-    """Initialize shared resources for the server."""
     logger = setup_logging()
     logger.info("Ontario Data MCP server starting")
     http_client = httpx.AsyncClient(
