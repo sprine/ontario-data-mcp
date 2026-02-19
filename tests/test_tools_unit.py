@@ -8,15 +8,20 @@ import pandas as pd
 import pytest
 
 from ontario_data.cache import CacheManager, InvalidQueryError
+from ontario_data.portals import PORTALS
 from ontario_data.utils import ResourceNotCachedError
 
 
 def make_mock_context(cache: CacheManager, ckan=None):
     """Create a mock MCP context with cache and optional CKAN client."""
+    mock_ckan = ckan or AsyncMock()
     ctx = MagicMock()
     ctx.fastmcp._lifespan_result = {
         "cache": cache,
-        "ckan": ckan or AsyncMock(),
+        "http_client": MagicMock(),
+        "portal_configs": PORTALS,
+        "portal_clients": {"ontario": mock_ckan},
+        "active_portal": "ontario",
     }
     ctx.report_progress = AsyncMock()
     return ctx

@@ -9,6 +9,7 @@ from ontario_data.utils import get_deps, json_response
 @mcp.tool(annotations=READONLY)
 async def get_dataset_info(
     dataset_id: str,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Get full metadata for a dataset including all resources.
@@ -16,7 +17,7 @@ async def get_dataset_info(
     Args:
         dataset_id: Dataset ID or URL-friendly name (e.g. "ontario-covid-19-cases")
     """
-    ckan, cache = get_deps(ctx)
+    ckan, cache = get_deps(ctx, portal=portal)
     ds = await ckan.package_show(dataset_id)
     cache.store_dataset_metadata(ds["id"], ds)
 
@@ -53,6 +54,7 @@ async def get_dataset_info(
 @mcp.tool(annotations=READONLY)
 async def list_resources(
     dataset_id: str,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """List all resources (files) in a dataset with their formats and sizes.
@@ -60,7 +62,7 @@ async def list_resources(
     Args:
         dataset_id: Dataset ID or name
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     ds = await ckan.package_show(dataset_id)
     resources = []
     for r in ds.get("resources", []):
@@ -85,6 +87,7 @@ async def list_resources(
 async def get_resource_schema(
     resource_id: str,
     sample_size: int = 5,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Get the column schema and sample values for a datastore resource.
@@ -93,7 +96,7 @@ async def get_resource_schema(
         resource_id: Resource ID (the resource must have datastore_active=True)
         sample_size: Number of sample rows to include
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
 
     # Check if resource has an active datastore before querying
     try:
@@ -133,6 +136,7 @@ async def get_resource_schema(
 @mcp.tool(annotations=READONLY)
 async def compare_datasets(
     dataset_ids: list[str],
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Compare metadata side-by-side for multiple datasets.
@@ -140,7 +144,7 @@ async def compare_datasets(
     Args:
         dataset_ids: List of dataset IDs or names to compare (2-5)
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     comparisons = []
     for ds_id in dataset_ids[:5]:
         ds = await ckan.package_show(ds_id)

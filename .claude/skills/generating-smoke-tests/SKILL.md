@@ -24,9 +24,16 @@ Write a file called `smoke_test.py` in the project root. The script must:
 3. **Mock only the FastMCP context** — use the pattern from `tests/test_tools_unit.py`:
    ```python
    from unittest.mock import AsyncMock, MagicMock
+   from ontario_data.portals import PORTALS
    ctx = MagicMock()
    ctx.report_progress = AsyncMock()
-   ctx.fastmcp._lifespan_result = {"ckan": ckan, "cache": cache}
+   ctx.fastmcp._lifespan_result = {
+       "http_client": http_client,
+       "portal_configs": PORTALS,
+       "portal_clients": {"ontario": ckan},
+       "cache": cache,
+       "active_portal": "ontario",
+   }
    ```
 4. **Access tools via the tool manager**: `tools = mcp._tool_manager._tools`
 5. **Exercise this tool chain** (each step asserts success before continuing):
@@ -80,6 +87,7 @@ import httpx
 from unittest.mock import AsyncMock, MagicMock
 from ontario_data.ckan_client import CKANClient
 from ontario_data.cache import CacheManager
+from ontario_data.portals import PORTALS
 from ontario_data.server import mcp
 
 ATOM_FEED_URL = "https://data.ontario.ca/feeds/dataset.atom"
@@ -110,7 +118,13 @@ async def smoke_test():
 
     ctx = MagicMock()
     ctx.report_progress = AsyncMock()
-    ctx.fastmcp._lifespan_result = {"ckan": ckan, "cache": cache}
+    ctx.fastmcp._lifespan_result = {
+        "http_client": http_client,
+        "portal_configs": PORTALS,
+        "portal_clients": {"ontario": ckan},
+        "cache": cache,
+        "active_portal": "ontario",
+    }
     tools = mcp._tool_manager._tools
 
     # 0. Discover latest datasets from Atom feed

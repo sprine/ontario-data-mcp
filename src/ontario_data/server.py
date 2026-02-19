@@ -9,8 +9,8 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ontario_data.cache import CacheManager
-from ontario_data.ckan_client import CKANClient
 from ontario_data.logging_config import setup_logging
+from ontario_data.portals import PORTALS
 
 
 @asynccontextmanager
@@ -21,11 +21,19 @@ async def lifespan(server):
     http_client = httpx.AsyncClient(
         timeout=float(os.environ.get("ONTARIO_DATA_TIMEOUT", "30"))
     )
-    client = CKANClient(http_client=http_client)
     cache = CacheManager()
     cache.initialize()
-    yield {"ckan": client, "cache": cache}
-    await client.close()
+    portal_clients: dict = {}
+    yield {
+        "http_client": http_client,
+        "portal_configs": PORTALS,
+        "portal_clients": portal_clients,
+        "cache": cache,
+        "active_portal": "ontario",
+    }
+    for client in portal_clients.values():
+        await client.close()
+    await http_client.aclose()
     logger.info("Ontario Data MCP server stopped")
 
 
@@ -35,9 +43,14 @@ DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True)
 mcp = FastMCP(
     "Ontario Data Catalogue",
     instructions=(
-        "Search, download, cache, and analyze datasets from Ontario's Open Data Catalogue "
-        "(data.ontario.ca). Use discovery tools to find datasets, retrieval tools to cache them "
-        "locally in DuckDB, and querying tools to analyze the data.\n\n"
+        "Search, download, cache, and analyze datasets from Ontario open data portals. "
+        "Supports multiple portals: Ontario (data.ontario.ca), Toronto, and Ottawa.\n\n"
+        "Multi-portal usage:\n"
+        "- Use list_portals to see available portals and which is active\n"
+        "- Use set_portal to switch the active portal (default: ontario)\n"
+        "- Use search_all_portals to search across all portals at once\n"
+        "- Most tools accept an optional 'portal' parameter to override the active portal\n"
+        "- Valid portal names: ontario, toronto, ottawa\n\n"
         "Key guidelines:\n"
         "- Prefer download_resource + query_cached over sql_query (avoids remote API rate limits)\n"
         "- Many numeric columns are stored as text — use TRY_CAST(col AS DOUBLE) in DuckDB queries\n"

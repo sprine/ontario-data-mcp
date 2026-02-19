@@ -11,7 +11,7 @@ from fastmcp import Context
 from ontario_data.ckan_client import CKANClient
 from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
-from ontario_data.utils import get_cache, get_deps, json_response, make_table_name
+from ontario_data.utils import get_active_portal, get_cache, get_deps, json_response, make_table_name
 
 logger = logging.getLogger("ontario_data.retrieval")
 
@@ -60,6 +60,7 @@ async def _download_resource_data(
 @mcp.tool(annotations=READONLY)
 async def download_resource(
     resource_id: str,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Download a dataset resource and cache it locally in DuckDB for fast querying.
@@ -70,7 +71,8 @@ async def download_resource(
     Args:
         resource_id: The resource ID to download
     """
-    ckan, cache = get_deps(ctx)
+    ckan, cache = get_deps(ctx, portal=portal)
+    active = portal or get_active_portal(ctx)
 
     if cache.is_cached(resource_id):
         table_name = cache.get_table_name(resource_id)
@@ -89,7 +91,7 @@ async def download_resource(
     df, resource, dataset = await _download_resource_data(ckan, resource_id)
     await ctx.report_progress(70, 100, "Storing in DuckDB...")
 
-    table_name = make_table_name(dataset.get("name", ""), resource_id)
+    table_name = make_table_name(dataset.get("name", ""), resource_id, portal=active)
     cache.store_resource(
         resource_id=resource_id,
         dataset_id=dataset.get("id", ""),
@@ -151,6 +153,7 @@ async def cache_info(ctx: Context = None) -> str:
 async def cache_manage(
     action: str,
     resource_id: str | None = None,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Manage the local DuckDB cache: remove, clear, or refresh cached data.
@@ -159,7 +162,7 @@ async def cache_manage(
         action: One of "remove" (single resource), "clear" (all), or "refresh" (re-download)
         resource_id: Required for "remove" and "refresh" actions
     """
-    ckan, cache = get_deps(ctx)
+    ckan, cache = get_deps(ctx, portal=portal)
 
     if action == "remove":
         if not resource_id:
@@ -206,6 +209,7 @@ async def cache_manage(
 @mcp.tool(annotations=READONLY)
 async def refresh_cache(
     resource_id: str | None = None,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Re-download cached resources to get the latest data.
@@ -213,7 +217,7 @@ async def refresh_cache(
     Args:
         resource_id: Specific resource to refresh, or omit to refresh all
     """
-    ckan, cache = get_deps(ctx)
+    ckan, cache = get_deps(ctx, portal=portal)
     cached = cache.list_cached()
 
     if resource_id:

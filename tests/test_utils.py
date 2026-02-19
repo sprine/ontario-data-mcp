@@ -29,21 +29,25 @@ class TestStripInternalFields:
 class TestMakeTableName:
     def test_basic(self):
         result = make_table_name("My Dataset", "abcd1234-ef56")
-        assert result == "ds_my_dataset_abcd1234"
+        assert result == "ds_ontario_my_dataset_abcd1234"
 
     def test_special_characters(self):
         result = make_table_name("Health & Safety (2024)", "12345678-abcd")
-        assert result == "ds_health_safety_2024_12345678"
+        assert result == "ds_ontario_health_safety_2024_12345678"
 
     def test_none_dataset_name(self):
         result = make_table_name(None, "abcd1234")
-        assert result.startswith("ds_unknown_")
+        assert result.startswith("ds_ontario_unknown_")
+
+    def test_portal_prefix(self):
+        result = make_table_name("TTC Routes", "abcd1234", portal="toronto")
+        assert result == "ds_toronto_ttc_routes_abcd1234"
 
     def test_long_name_truncated(self):
         long_name = "a" * 100
         result = make_table_name(long_name, "abcd1234")
-        # slug truncated to 40 chars + prefix
-        assert len(result) <= 40 + 3 + 1 + 8 + 1  # ds_ + slug + _ + prefix
+        # ds_ + portal_ + slug(40) + _ + prefix(8)
+        assert len(result) <= 3 + 8 + 1 + 40 + 1 + 8
 
 
 class TestRequireCached:

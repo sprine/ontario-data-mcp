@@ -10,6 +10,7 @@ from fastmcp import Context
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     SpatialExtensionError,
+    get_active_portal,
     get_cache,
     get_deps,
     json_response,
@@ -23,6 +24,7 @@ logger = logging.getLogger("ontario_data.geospatial")
 async def load_geodata(
     resource_id: str,
     force_refresh: bool = False,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Download and cache a geospatial resource (SHP, KML, GeoJSON) into DuckDB with spatial support.
@@ -34,7 +36,7 @@ async def load_geodata(
     import geopandas as gpd
     import pandas as pd
 
-    ckan, cache = get_deps(ctx)
+    ckan, cache = get_deps(ctx, portal=portal)
 
     if cache.is_cached(resource_id) and not force_refresh:
         table_name = cache.get_table_name(resource_id)
@@ -86,8 +88,9 @@ async def load_geodata(
     else:
         bounds = None
 
+    active = portal or get_active_portal(ctx)
     slug = re.sub(r"[^a-z0-9]", "_", (dataset.get("name") or "geo").lower())[:40]
-    table_name = f"geo_{slug}_{resource_id[:8]}"
+    table_name = f"geo_{active}_{slug}_{resource_id[:8]}"
 
     cache.store_resource(
         resource_id=resource_id,
@@ -198,6 +201,7 @@ async def spatial_query(
 async def list_geo_datasets(
     format_filter: str | None = None,
     limit: int = 50,
+    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Find all datasets that contain geospatial resources (SHP, KML, GeoJSON).
@@ -206,7 +210,7 @@ async def list_geo_datasets(
         format_filter: Filter to specific format: "SHP", "KML", "GEOJSON", or None for all
         limit: Max results
     """
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal=portal)
     geo_formats = [format_filter.upper()] if format_filter else ["SHP", "KML", "GEOJSON"]
 
     all_datasets = []
