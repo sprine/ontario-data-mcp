@@ -23,17 +23,18 @@ async def test_all_tools_have_annotations():
 
 @pytest.mark.asyncio
 async def test_annotation_values_are_correct():
-    """All tools are READONLY except cache_manage which is DESTRUCTIVE."""
+    """All tools are READONLY except cache_manage and refresh_cache which are DESTRUCTIVE."""
+    destructive_tools = {"cache_manage", "refresh_cache"}
     async with Client(mcp) as client:
         tools = await client.list_tools()
         for tool in tools:
             assert tool.annotations is not None, f"{tool.name} has no annotations"
-            if tool.name == "cache_manage":
+            if tool.name in destructive_tools:
                 assert tool.annotations.readOnlyHint is False, (
-                    "cache_manage should not be readOnlyHint"
+                    f"{tool.name} should not be readOnlyHint"
                 )
                 assert tool.annotations.destructiveHint is True, (
-                    "cache_manage should be destructiveHint"
+                    f"{tool.name} should be destructiveHint"
                 )
             else:
                 assert tool.annotations.readOnlyHint is True, (

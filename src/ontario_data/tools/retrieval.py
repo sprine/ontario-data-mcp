@@ -84,7 +84,7 @@ async def download_resource(
             row_count=meta["row_count"],
             downloaded_at=str(meta["downloaded_at"]),
             staleness=staleness,
-            hint="Use query_cached tool with SQL to analyze this data. Use cache_manage(action='refresh', resource_id=...) to re-download.",
+            hint="Use query_cached tool with SQL to analyze this data. Use refresh_cache(resource_id=...) to re-download.",
         )
 
     await ctx.report_progress(0, 100, "Downloading resource...")
@@ -156,11 +156,11 @@ async def cache_manage(
     portal: str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Manage the local DuckDB cache: remove, clear, or refresh cached data.
+    """Manage the local DuckDB cache: remove or clear cached data.
 
     Args:
-        action: One of "remove" (single resource), "clear" (all), or "refresh" (re-download)
-        resource_id: Required for "remove" and "refresh" actions
+        action: One of "remove" (single resource) or "clear" (all)
+        resource_id: Required for "remove" action
     """
     ckan, cache = get_deps(ctx, portal=portal)
 
@@ -175,38 +175,11 @@ async def cache_manage(
         cache.remove_all()
         return json_response(status="cleared", removed_count=count)
 
-    elif action == "refresh":
-        if not resource_id:
-            raise ValueError("resource_id is required for 'refresh' action")
-        cached = cache.list_cached()
-        item = next((c for c in cached if c["resource_id"] == resource_id), None)
-        if not item:
-            raise ValueError(f"Resource {resource_id} not found in cache")
-
-        df, resource, dataset = await _download_resource_data(ckan, resource_id)
-        cache.store_resource(
-            resource_id=resource_id,
-            dataset_id=item["dataset_id"],
-            table_name=item["table_name"],
-            df=df,
-            source_url=item["source_url"],
-        )
-        update_freq = dataset.get("update_frequency")
-        from datetime import datetime, timezone
-        expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
-        cache.update_expires_at(resource_id, expires_at)
-
-        return json_response(
-            status="refreshed",
-            resource_id=resource_id,
-            new_row_count=len(df),
-        )
-
     else:
-        raise ValueError(f"Invalid action '{action}'. Use 'remove', 'clear', or 'refresh'.")
+        raise ValueError(f"Invalid action '{action}'. Use 'remove' or 'clear'.")
 
 
-@mcp.tool(annotations=READONLY)
+@mcp.tool(annotations=DESTRUCTIVE)
 async def refresh_cache(
     resource_id: str | None = None,
     portal: str | None = None,
@@ -237,6 +210,10 @@ async def refresh_cache(
                 df=df,
                 source_url=item["source_url"],
             )
+            update_freq = dataset.get("update_frequency")
+            from datetime import datetime, timezone
+            expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
+            cache.update_expires_at(item["resource_id"], expires_at)
             results.append({"resource_id": item["resource_id"], "status": "refreshed", "new_row_count": len(df)})
         except Exception as e:
             results.append({"resource_id": item["resource_id"], "status": "error", "error": str(e)})

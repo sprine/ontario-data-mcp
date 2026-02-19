@@ -124,6 +124,14 @@ class TestCacheManage:
             await cache_manage.fn(action="invalid", ctx=ctx)
 
     @pytest.mark.asyncio
+    async def test_refresh_action_rejected(self, cache):
+        from ontario_data.tools.retrieval import cache_manage
+
+        ctx = make_mock_context(cache)
+        with pytest.raises(ValueError, match="Invalid action"):
+            await cache_manage.fn(action="refresh", ctx=ctx)
+
+    @pytest.mark.asyncio
     async def test_remove_requires_resource_id(self, cache):
         from ontario_data.tools.retrieval import cache_manage
 
