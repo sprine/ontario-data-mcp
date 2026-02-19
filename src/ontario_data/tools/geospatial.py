@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import io
 import logging
-import re
-
 import httpx
 from fastmcp import Context
 
@@ -14,6 +12,7 @@ from ontario_data.utils import (
     get_cache,
     get_deps,
     json_response,
+    make_geo_table_name,
     require_cached,
 )
 
@@ -89,8 +88,7 @@ async def load_geodata(
         bounds = None
 
     active = portal or get_active_portal(ctx)
-    slug = re.sub(r"[^a-z0-9]", "_", (dataset.get("name") or "geo").lower())[:40]
-    table_name = f"geo_{active}_{slug}_{resource_id[:8]}"
+    table_name = make_geo_table_name(dataset.get("name", ""), resource_id, portal=active)
 
     cache.store_resource(
         resource_id=resource_id,

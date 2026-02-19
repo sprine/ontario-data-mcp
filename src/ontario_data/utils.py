@@ -75,12 +75,22 @@ def strip_internal_fields(records: list[dict]) -> list[dict]:
     return [{k: v for k, v in r.items() if not k.startswith("_")} for r in records]
 
 
+def _slugify(name: str, fallback: str = "unknown", max_len: int = 40) -> str:
+    """Sanitize a name into a safe slug for DuckDB table names."""
+    slug = re.sub(r"[^a-z0-9]", "_", (name or fallback).lower())
+    return re.sub(r"_+", "_", slug).strip("_")[:max_len]
+
+
 def make_table_name(dataset_name: str, resource_id: str, portal: str = "ontario") -> str:
     """Generate a safe DuckDB table name from dataset name, resource ID, and portal."""
-    slug = re.sub(r"[^a-z0-9]", "_", (dataset_name or "unknown").lower())
-    slug = re.sub(r"_+", "_", slug).strip("_")[:40]
-    prefix = resource_id[:8]
-    return f"ds_{portal}_{slug}_{prefix}"
+    slug = _slugify(dataset_name)
+    return f"ds_{portal}_{slug}_{resource_id[:8]}"
+
+
+def make_geo_table_name(dataset_name: str, resource_id: str, portal: str = "ontario") -> str:
+    """Generate a safe DuckDB table name for geospatial data."""
+    slug = _slugify(dataset_name, fallback="geo")
+    return f"geo_{portal}_{slug}_{resource_id[:8]}"
 
 
 def require_cached(cache: CacheManager, resource_id: str) -> str:
