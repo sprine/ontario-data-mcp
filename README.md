@@ -192,4 +192,10 @@ If you find a bug or have a feature request, please [open an issue](https://gith
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for the software.
+
+Data accessed through this tool is provided under the following open government licences:
+
+- Contains information licensed under the [Open Government Licence – Ontario](https://www.ontario.ca/page/open-government-licence-ontario).
+- Contains information licensed under the [Open Government Licence – Toronto](https://open.toronto.ca/open-data-licence/).
+- Contains information licensed under the [Open Government Licence – City of Ottawa](https://open.ottawa.ca/pages/open-data-licence).
