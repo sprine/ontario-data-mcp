@@ -60,7 +60,11 @@ async def _download_resource_data(
         df = pd.read_json(io.BytesIO(content))
     elif fmt == "GEOJSON":
         import geopandas as gpd
-        df = gpd.read_file(io.BytesIO(content))
+        gdf = gpd.read_file(io.BytesIO(content))
+        df = pd.DataFrame(gdf)
+        if "geometry" in df.columns:
+            df["geometry_wkt"] = gdf["geometry"].apply(lambda g: g.wkt if g else None)
+            df = df.drop(columns=["geometry"])
     else:
         raise ValueError(f"Unsupported format for tabular import: {fmt}. URL: {url}")
 

@@ -217,7 +217,10 @@ class CKANClient:
                 result_fields = result["fields"]
             if total is None:
                 total = result["total"]
-            all_records.extend(result["records"])
+            records = result["records"]
+            if not records:
+                break
+            all_records.extend(records)
             if len(all_records) >= total:
                 break
             offset += page_size
