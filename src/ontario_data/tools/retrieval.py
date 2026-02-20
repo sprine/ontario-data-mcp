@@ -188,11 +188,14 @@ async def cache_info(ctx: Context = None) -> str:
     items = []
     for c in cached:
         staleness = get_staleness_info(cache, c["resource_id"])
+        size_bytes = c.get("size_bytes", 0) or 0
         items.append({
             "table_name": c["table_name"],
             "resource_id": c["resource_id"],
             "dataset_id": c["dataset_id"],
             "row_count": c["row_count"],
+            "size_bytes": size_bytes,
+            "size_mb": round(size_bytes / (1024 * 1024), 2),
             "downloaded_at": c["downloaded_at"],
             "is_stale": staleness["is_stale"] if staleness else None,
         })
