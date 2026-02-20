@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7] - 2026-02-20
+
+### Added
+
+- **Multi-portal support**: federated search across Ontario, Toronto, and Ottawa portals by default. All discovery and data tools fan out across portals unless narrowed with `portal=`.
+- **Ottawa ArcGIS Hub**: full portal support via new `ArcGISHubClient` with search, metadata, and download capabilities.
+- **`__main__.py`**: run the server with `python -m ontario_data`.
+- Per-resource `size_bytes` and `size_mb` in `cache_info` output.
+- Licence attribution for all three portals in README and site.
+
+### Changed
+
+- Upgrade to `fastmcp>=3.0.0` (breaking change from 2.x — tools accessed via `get_tool()` API).
+- Migrate from private `_lifespan_result` to `ctx.lifespan_context` (FastMCP 3.0 pattern).
+- Remove `active_portal` session state — portals are now selected per-call or fan out to all.
+- Extract portal resolution helpers to `utils.py`, eliminating ~10x duplicated resolve blocks across tools.
+- Centralize geo table naming in `utils.make_geo_table_name`.
+- Consolidate cache refresh into single `refresh_cache` method.
+- Rewrite tool docstrings to explain "why" rather than restating signatures.
+- Rewrite README for multi-portal support.
+- Enrich `pyproject.toml`: add `license`, `authors`, `keywords`, `project.urls`, full classifiers.
+- Updated project description to reflect multi-portal support.
+
+### Fixed
+
+- Fix `pyproject.toml` structure: move `dependencies` out of `[project.urls]` where it was misplaced, breaking builds.
+- Fix zero tools visible to MCP hosts via `fastmcp run`.
+- Fix GeoJSON download storing raw geometry and pagination infinite loop.
+- Fix prompts and resources that were hardcoded to Ontario portal.
+- Fix stale tool references, counts, and patterns across docs, skills, and site.
+- Remove stray `coverage` from runtime dependencies.
+
+### Removed
+
+- Remove redundant `search_by_location` and `get_popular_datasets` tools.
+- Remove duplicate `FREQUENCY_DAYS` refs and unused `is_stale`.
+
 ## [0.1.6] - 2026-02-18
 
 ### Added
