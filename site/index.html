@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ontario-data-mcp — An MCP server for Ontario's open data</title>
-  <meta name="description" content="An MCP server for Ontario's open data catalogue. Search, cache, and query 2,900+ government datasets from any MCP client.">
+  <meta name="description" content="An MCP server for Ontario's open data catalogue. Search, cache, and query 6,900+ government datasets from any MCP client.">
   <meta property="og:title" content="ontario-data-mcp — An MCP server for Ontario's open data">
-  <meta property="og:description" content="An MCP server for Ontario's open data catalogue. Search, cache, and query 2,900+ government datasets from any MCP client.">
+  <meta property="og:description" content="An MCP server for Ontario's open data catalogue. Search, cache, and query 6,900+ government datasets from any MCP client.">
   <meta property="og:type" content="website">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍁</text></svg>">
   <style>
@@ -409,7 +409,7 @@
   <header class="hero">
     <div class="hero-inner">
       <h1>An MCP server for <span>Ontario's open data.</span></h1>
-      <p class="subtitle">Search, cache, and query 2,900+ government datasets. Cross-dataset joins, iterative analysis, DuckDB-backed local storage. No API key required.</p>
+      <p class="subtitle">Search, cache, and query 6,900+ government datasets. Cross-dataset joins, iterative analysis, DuckDB-backed local storage. No API key required.</p>
       <div class="install-box">
         <code>uvx ontario-data-mcp</code>
         <button onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
@@ -425,11 +425,11 @@
   <!-- Stats - LED Counters -->
   <div class="stats">
     <div class="stat">
-      <div class="stat-num" data-target="2900" data-suffix="+">0</div>
+      <div class="stat-num" data-target="6900" data-suffix="+">0</div>
       <div class="stat-label">datasets</div>
     </div>
     <div class="stat">
-      <div class="stat-num" data-target="24">0</div>
+      <div class="stat-num" data-target="25">0</div>
       <div class="stat-label">tools</div>
     </div>
     <div class="stat">
@@ -570,7 +570,7 @@
   <section aria-labelledby="tools-heading">
     <div class="container--wide">
       <div class="section-header">
-        <h2 id="tools-heading">24 tools under the hood</h2>
+        <h2 id="tools-heading">25 tools under the hood</h2>
         <p>Expand any category to see the individual tools.</p>
       </div>
       <div class="tools-grid">
@@ -578,11 +578,11 @@
           <summary>
             <div class="tool-card-head">
               <span class="tool-card-name">Discovery</span>
-              <span class="tool-card-count">6 tools</span>
+              <span class="tool-card-count">7 tools</span>
             </div>
             <div class="tool-card-desc">Search by keyword, topic, ministry, or geographic area.</div>
           </summary>
-          <div class="tool-card-detail">search_datasets, list_organizations, list_topics, get_popular_datasets, search_by_location, find_related_datasets</div>
+          <div class="tool-card-detail">search_datasets, list_portals, list_organizations, list_topics, get_popular_datasets, search_by_location, find_related_datasets</div>
         </details>
         <details class="tool-card">
           <summary>

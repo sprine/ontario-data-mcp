@@ -5,13 +5,13 @@ from ontario_data.server import mcp
 
 @pytest.mark.asyncio
 async def test_all_tools_registered():
-    """Verify all ~22 tools are registered after consolidation."""
+    """Verify all 25 tools are registered."""
     async with Client(mcp) as client:
         tools = await client.list_tools()
         tool_names = [t.name for t in tools]
         expected = [
-            # Discovery (6)
-            "search_datasets", "list_organizations", "list_topics",
+            # Discovery (7)
+            "search_datasets", "list_portals", "list_organizations", "list_topics",
             "get_popular_datasets", "search_by_location", "find_related_datasets",
             # Metadata (4)
             "get_dataset_info", "list_resources", "get_resource_schema",
