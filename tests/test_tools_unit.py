@@ -16,7 +16,7 @@ def make_mock_context(cache: CacheManager, ckan=None):
     """Create a mock MCP context with cache and optional CKAN client."""
     mock_ckan = ckan or AsyncMock()
     ctx = MagicMock()
-    ctx.fastmcp._lifespan_result = {
+    ctx.lifespan_context = {
         "cache": cache,
         "http_client": MagicMock(),
         "portal_configs": PORTALS,

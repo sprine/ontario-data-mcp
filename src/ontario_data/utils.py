@@ -31,8 +31,7 @@ class SpatialExtensionError(Exception):
 
 
 def _lifespan_state(ctx: Context) -> dict:
-    # fastmcp stores lifespan yield value here (not part of public API)
-    return ctx.fastmcp._lifespan_result
+    return ctx.lifespan_context
 
 
 def get_deps(ctx: Context, portal: str) -> tuple[CKANClient, CacheManager]:

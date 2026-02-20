@@ -9,22 +9,6 @@ import pytest
 from ontario_data.portals import PORTALS
 
 
-@pytest.fixture
-def make_portal_context():
-    """Factory fixture: create a mock MCP context with full portal state."""
-    def _make(portal_clients=None):
-        ctx = MagicMock()
-        ctx.fastmcp._lifespan_result = {
-            "cache": MagicMock(),
-            "http_client": MagicMock(),
-            "portal_configs": PORTALS,
-            "portal_clients": portal_clients or {},
-        }
-        ctx.report_progress = AsyncMock()
-        return ctx
-    return _make
-
-
 class TestSqlQueryArcGIS:
     @pytest.mark.asyncio
     async def test_returns_not_available(self, make_portal_context):

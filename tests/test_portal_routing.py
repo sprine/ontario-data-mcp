@@ -54,7 +54,7 @@ class TestGetDeps:
 
         ctx = make_portal_context(portal_clients={})
         client, cache = get_deps(ctx, portal="ontario")
-        state = ctx.fastmcp._lifespan_result
+        state = ctx.lifespan_context
         assert "ontario" in state["portal_clients"]
 
     def test_arcgis_portal_creates_client(self, make_portal_context):
