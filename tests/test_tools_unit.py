@@ -58,7 +58,7 @@ class TestQueryCached:
         from ontario_data.tools.querying import query_cached
 
         ctx = make_mock_context(populated_cache)
-        result = json.loads(await query_cached.fn(
+        result = json.loads(await query_cached(
             sql='SELECT * FROM "ds_test_data_test_r1" LIMIT 2',
             ctx=ctx,
         ))
@@ -71,7 +71,7 @@ class TestQueryCached:
 
         ctx = make_mock_context(populated_cache)
         with pytest.raises(InvalidQueryError):
-            await query_cached.fn(sql='DROP TABLE "ds_test_data_test_r1"', ctx=ctx)
+            await query_cached(sql='DROP TABLE "ds_test_data_test_r1"', ctx=ctx)
 
     @pytest.mark.asyncio
     async def test_error_includes_available_tables(self, populated_cache):
@@ -79,7 +79,7 @@ class TestQueryCached:
 
         ctx = make_mock_context(populated_cache)
         with pytest.raises(Exception, match="Available tables"):
-            await query_cached.fn(sql='SELECT * FROM "nonexistent_table"', ctx=ctx)
+            await query_cached(sql='SELECT * FROM "nonexistent_table"', ctx=ctx)
 
 
 class TestCacheInfo:
@@ -88,7 +88,7 @@ class TestCacheInfo:
         from ontario_data.tools.retrieval import cache_info
 
         ctx = make_mock_context(populated_cache)
-        result = json.loads(await cache_info.fn(ctx=ctx))
+        result = json.loads(await cache_info(ctx=ctx))
         assert result["table_count"] == 1
         assert result["total_rows"] == 4
         assert len(result["datasets"]) == 1
@@ -101,7 +101,7 @@ class TestCacheManage:
         from ontario_data.tools.retrieval import cache_manage
 
         ctx = make_mock_context(populated_cache)
-        result = json.loads(await cache_manage.fn(action="remove", resource_id="test-r1", ctx=ctx))
+        result = json.loads(await cache_manage(action="remove", resource_id="test-r1", ctx=ctx))
         assert result["status"] == "removed"
         assert not populated_cache.is_cached("test-r1")
 
@@ -110,7 +110,7 @@ class TestCacheManage:
         from ontario_data.tools.retrieval import cache_manage
 
         ctx = make_mock_context(populated_cache)
-        result = json.loads(await cache_manage.fn(action="clear", ctx=ctx))
+        result = json.loads(await cache_manage(action="clear", ctx=ctx))
         assert result["status"] == "cleared"
         assert result["removed_count"] == 1
 
@@ -120,7 +120,7 @@ class TestCacheManage:
 
         ctx = make_mock_context(cache)
         with pytest.raises(ValueError, match="Invalid action"):
-            await cache_manage.fn(action="invalid", ctx=ctx)
+            await cache_manage(action="invalid", ctx=ctx)
 
     @pytest.mark.asyncio
     async def test_refresh_action_rejected(self, cache):
@@ -128,7 +128,7 @@ class TestCacheManage:
 
         ctx = make_mock_context(cache)
         with pytest.raises(ValueError, match="Invalid action"):
-            await cache_manage.fn(action="refresh", ctx=ctx)
+            await cache_manage(action="refresh", ctx=ctx)
 
     @pytest.mark.asyncio
     async def test_remove_requires_resource_id(self, cache):
@@ -136,7 +136,7 @@ class TestCacheManage:
 
         ctx = make_mock_context(cache)
         with pytest.raises(ValueError, match="resource_id is required"):
-            await cache_manage.fn(action="remove", ctx=ctx)
+            await cache_manage(action="remove", ctx=ctx)
 
 
 class TestProfileData:
@@ -145,7 +145,7 @@ class TestProfileData:
         from ontario_data.tools.quality import profile_data
 
         ctx = make_mock_context(populated_cache)
-        result = json.loads(await profile_data.fn(resource_id="test-r1", ctx=ctx))
+        result = json.loads(await profile_data(resource_id="test-r1", ctx=ctx))
         assert result["row_count"] == 4
         assert result["table_name"] == "ds_test_data_test_r1"
         assert len(result["columns"]) > 0
@@ -156,7 +156,7 @@ class TestProfileData:
 
         ctx = make_mock_context(cache)
         with pytest.raises(ResourceNotCachedError):
-            await profile_data.fn(resource_id="nonexistent", ctx=ctx)
+            await profile_data(resource_id="nonexistent", ctx=ctx)
 
 
 class TestCheckDataQuality:
@@ -165,7 +165,7 @@ class TestCheckDataQuality:
         from ontario_data.tools.quality import check_data_quality
 
         ctx = make_mock_context(populated_cache)
-        result = json.loads(await check_data_quality.fn(resource_id="test-r1", ctx=ctx))
+        result = json.loads(await check_data_quality(resource_id="test-r1", ctx=ctx))
         assert result["total_rows"] == 4
         assert len(result["columns"]) == 3  # name, age, salary
 
@@ -175,7 +175,7 @@ class TestCheckDataQuality:
 
         ctx = make_mock_context(cache)
         with pytest.raises(ResourceNotCachedError):
-            await check_data_quality.fn(resource_id="nonexistent", ctx=ctx)
+            await check_data_quality(resource_id="nonexistent", ctx=ctx)
 
 
 class TestDownloadResourceAlreadyCached:
@@ -184,7 +184,7 @@ class TestDownloadResourceAlreadyCached:
         from ontario_data.tools.retrieval import download_resource
 
         ctx = make_mock_context(populated_cache)
-        result = json.loads(await download_resource.fn(resource_id="test-r1", ctx=ctx))
+        result = json.loads(await download_resource(resource_id="test-r1", ctx=ctx))
         assert result["status"] == "already_cached"
         assert result["table_name"] == "ds_test_data_test_r1"
         assert "staleness" in result

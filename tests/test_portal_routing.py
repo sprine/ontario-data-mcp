@@ -2,24 +2,11 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
-from ontario_data.portals import PORTALS, PortalConfig, PortalType
-
-
-def make_portal_context(portal_clients=None):
-    """Create a mock MCP context with full portal state (no active_portal)."""
-    ctx = MagicMock()
-    ctx.fastmcp._lifespan_result = {
-        "cache": MagicMock(),
-        "http_client": MagicMock(),
-        "portal_configs": PORTALS,
-        "portal_clients": portal_clients or {},
-    }
-    ctx.report_progress = AsyncMock()
-    return ctx
+from ontario_data.portals import PORTALS, PortalType
 
 
 class TestPortalRegistry:
@@ -45,7 +32,7 @@ class TestPortalRegistry:
 
 
 class TestGetDeps:
-    def test_explicit_portal(self):
+    def test_explicit_portal(self, make_portal_context):
         from ontario_data.utils import get_deps
 
         toronto_ckan = AsyncMock()
@@ -55,14 +42,14 @@ class TestGetDeps:
         client, cache = get_deps(ctx, portal="toronto")
         assert client is toronto_ckan
 
-    def test_unknown_portal_raises(self):
+    def test_unknown_portal_raises(self, make_portal_context):
         from ontario_data.utils import get_deps
 
         ctx = make_portal_context()
         with pytest.raises(ValueError, match="Unknown portal 'nonexistent'"):
             get_deps(ctx, portal="nonexistent")
 
-    def test_lazy_client_creation(self):
+    def test_lazy_client_creation(self, make_portal_context):
         from ontario_data.utils import get_deps
 
         ctx = make_portal_context(portal_clients={})
@@ -70,12 +57,13 @@ class TestGetDeps:
         state = ctx.fastmcp._lifespan_result
         assert "ontario" in state["portal_clients"]
 
-    def test_arcgis_portal_raises_not_yet_supported(self):
+    def test_arcgis_portal_creates_client(self, make_portal_context):
+        from ontario_data.arcgis_client import ArcGISHubClient
         from ontario_data.utils import get_deps
 
         ctx = make_portal_context(portal_clients={})
-        with pytest.raises(ValueError, match="not yet supported"):
-            get_deps(ctx, portal="ottawa")
+        client, cache = get_deps(ctx, portal="ottawa")
+        assert isinstance(client, ArcGISHubClient)
 
 
 class TestParsePortalId:
@@ -110,7 +98,7 @@ class TestParsePortalId:
 
 class TestFanOut:
     @pytest.mark.asyncio
-    async def test_first_match_stops_early(self):
+    async def test_first_match_stops_early(self, make_portal_context):
         from ontario_data.utils import fan_out
 
         ontario_ckan = AsyncMock()
@@ -131,7 +119,7 @@ class TestFanOut:
         assert call_log == ["ontario"]
 
     @pytest.mark.asyncio
-    async def test_first_match_all_fail_returns_errors(self):
+    async def test_first_match_all_fail_returns_errors(self, make_portal_context):
         from ontario_data.utils import fan_out
 
         ctx = make_portal_context(portal_clients={})
@@ -140,15 +128,16 @@ class TestFanOut:
             raise ValueError(f"not found on {pk}")
 
         results = await fan_out(ctx, None, _fn, first_match=True)
-        # Should have errors for both CKAN portals (ontario + toronto), not ottawa (ArcGIS)
-        assert len(results) == 2
+        # Should have errors for all 3 portals
+        assert len(results) == 3
         portals = [r[0] for r in results]
         assert "ontario" in portals
         assert "toronto" in portals
+        assert "ottawa" in portals
         assert all(r[2] is not None for r in results)
 
     @pytest.mark.asyncio
-    async def test_parallel_fan_out_collects_all(self):
+    async def test_parallel_fan_out_collects_all(self, make_portal_context):
         from ontario_data.utils import fan_out
 
         ctx = make_portal_context(portal_clients={})
@@ -157,14 +146,14 @@ class TestFanOut:
             return f"result_{pk}"
 
         results = await fan_out(ctx, None, _fn)
-        # Both CKAN portals (ontario + toronto), not ottawa
-        assert len(results) == 2
+        # All 3 portals
+        assert len(results) == 3
         portals = {r[0] for r in results}
-        assert portals == {"ontario", "toronto"}
+        assert portals == {"ontario", "toronto", "ottawa"}
         assert all(r[2] is None for r in results)
 
     @pytest.mark.asyncio
-    async def test_portal_param_narrows_to_one(self):
+    async def test_portal_param_narrows_to_one(self, make_portal_context):
         from ontario_data.utils import fan_out
 
         ctx = make_portal_context(portal_clients={})
@@ -179,7 +168,7 @@ class TestFanOut:
 
 class TestSearchDatasetsFanOut:
     @pytest.mark.asyncio
-    async def test_fans_out_to_all_ckan_portals(self):
+    async def test_fans_out_to_all_portals(self, make_portal_context):
         from ontario_data.tools.discovery import search_datasets
 
         ontario_ckan = AsyncMock()
@@ -192,24 +181,26 @@ class TestSearchDatasetsFanOut:
             "count": 2,
             "results": [{"id": "ds2", "title": "TTC Routes", "resources": [], "organization": {"title": "TTC"}, "tags": []}],
         }
+        ottawa_arcgis = AsyncMock()
+        ottawa_arcgis.package_search.return_value = {
+            "count": 1,
+            "results": [{"id": "ds3_0", "title": "OC Transpo", "resources": [], "organization": {"title": "City of Ottawa"}, "tags": []}],
+        }
 
         ctx = make_portal_context(
-            portal_clients={"ontario": ontario_ckan, "toronto": toronto_ckan},
+            portal_clients={"ontario": ontario_ckan, "toronto": toronto_ckan, "ottawa": ottawa_arcgis},
         )
-        result = json.loads(await search_datasets.fn(query="transit", ctx=ctx))
-        assert result["portals_searched"] == 2
-        assert len(result["results"]) == 2
+        result = json.loads(await search_datasets(query="transit", ctx=ctx))
+        assert result["portals_searched"] == 3
+        assert len(result["results"]) == 3
 
         portal_names = [r["portal"] for r in result["results"]]
         assert "ontario" in portal_names
         assert "toronto" in portal_names
-
-        # Ottawa should be in skipped (ArcGIS)
-        skipped_portals = [s["portal"] for s in result["skipped"]]
-        assert "ottawa" in skipped_portals
+        assert "ottawa" in portal_names
 
     @pytest.mark.asyncio
-    async def test_portal_param_narrows(self):
+    async def test_portal_param_narrows(self, make_portal_context):
         from ontario_data.tools.discovery import search_datasets
 
         toronto_ckan = AsyncMock()
@@ -219,13 +210,13 @@ class TestSearchDatasetsFanOut:
         }
 
         ctx = make_portal_context(portal_clients={"toronto": toronto_ckan})
-        result = json.loads(await search_datasets.fn(query="transit", portal="toronto", ctx=ctx))
+        result = json.loads(await search_datasets(query="transit", portal="toronto", ctx=ctx))
         assert result["portals_searched"] == 1
         assert len(result["results"]) == 1
         assert result["results"][0]["portal"] == "toronto"
 
     @pytest.mark.asyncio
-    async def test_error_graceful(self):
+    async def test_error_graceful(self, make_portal_context):
         from ontario_data.tools.discovery import search_datasets
 
         ontario_ckan = AsyncMock()
@@ -236,7 +227,7 @@ class TestSearchDatasetsFanOut:
         ctx = make_portal_context(
             portal_clients={"ontario": ontario_ckan, "toronto": toronto_ckan},
         )
-        result = json.loads(await search_datasets.fn(query="transit", ctx=ctx))
+        result = json.loads(await search_datasets(query="transit", ctx=ctx))
         # Ontario results should still be returned
         assert result["portals_searched"] == 1
         # Toronto should be in skipped with error
@@ -244,7 +235,7 @@ class TestSearchDatasetsFanOut:
         assert "toronto" in skipped_portals
 
     @pytest.mark.asyncio
-    async def test_prefixed_ids(self):
+    async def test_prefixed_ids(self, make_portal_context):
         from ontario_data.tools.discovery import search_datasets
 
         ontario_ckan = AsyncMock()
@@ -254,18 +245,18 @@ class TestSearchDatasetsFanOut:
         }
 
         ctx = make_portal_context(portal_clients={"ontario": ontario_ckan})
-        result = json.loads(await search_datasets.fn(query="test", portal="ontario", ctx=ctx))
+        result = json.loads(await search_datasets(query="test", portal="ontario", ctx=ctx))
         ds = result["results"][0]["datasets"][0]
         assert ds["id"] == "ontario:ds1"
 
 
 class TestListPortals:
     @pytest.mark.asyncio
-    async def test_lists_all_portals(self):
+    async def test_lists_all_portals(self, make_portal_context):
         from ontario_data.tools.discovery import list_portals
 
         ctx = make_portal_context()
-        result = json.loads(await list_portals.fn(ctx=ctx))
+        result = json.loads(await list_portals(ctx=ctx))
         assert len(result["portals"]) == 3
         keys = [p["key"] for p in result["portals"]]
         assert "ontario" in keys
@@ -273,11 +264,11 @@ class TestListPortals:
         assert "ottawa" in keys
 
     @pytest.mark.asyncio
-    async def test_no_active_marker(self):
+    async def test_no_active_marker(self, make_portal_context):
         from ontario_data.tools.discovery import list_portals
 
         ctx = make_portal_context()
-        result = json.loads(await list_portals.fn(ctx=ctx))
+        result = json.loads(await list_portals(ctx=ctx))
         assert "active_portal" not in result
         for p in result["portals"]:
             assert "active" not in p
