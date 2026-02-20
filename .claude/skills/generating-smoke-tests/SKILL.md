@@ -5,7 +5,7 @@ description: Generate and run a live smoke test that exercises the MCP server's 
 
 # Generating Smoke Tests
 
-Generate a temporary Python smoke-test script that exercises multiple MCP tools against the live Ontario CKAN API, run it, verify all assertions pass, then clean up.
+Generate a temporary Python smoke-test script that exercises multiple MCP tools against the live Ontario, Toronto, and Ottawa data APIs, run it, verify all assertions pass, then clean up.
 
 ## When to Use
 
@@ -21,27 +21,28 @@ Write a file called `smoke_test.py` in the project root. The script must:
 
 1. **Discover the latest dataset dynamically** — fetch `https://data.ontario.ca/feeds/dataset.atom`, parse the first `<entry>` to extract the dataset UUID from its `<id>` tag (format: `https://data.ontario.ca/dataset/{uuid}`)
 2. **Set up real dependencies** — `httpx.AsyncClient`, `CKANClient`, `CacheManager` with a temp DuckDB path
-3. **Mock only the FastMCP context** — use the pattern from `tests/test_tools_unit.py`:
+3. **Mock only the FastMCP context** — use the pattern from `tests/conftest.py`:
    ```python
    from unittest.mock import AsyncMock, MagicMock
    from ontario_data.portals import PORTALS
    ctx = MagicMock()
    ctx.report_progress = AsyncMock()
-   ctx.fastmcp._lifespan_result = {
+   ctx.lifespan_context = {
        "http_client": http_client,
        "portal_configs": PORTALS,
-       "portal_clients": {"ontario": ckan},
+       "portal_clients": {},
        "cache": cache,
-       "active_portal": "ontario",
    }
    ```
-4. **Access tools via the tool manager**: `tools = mcp._tool_manager._tools`
+4. **Access tools via the FastMCP API**: `tool = await mcp.get_tool("tool_name")` then `await tool.fn(...)`
 5. **Exercise this tool chain** (each step asserts success before continuing):
-   - `search_datasets(query="ontario")` — assert `total_count > 0`
-   - `get_dataset_info(dataset_id=<uuid from feed>)` — assert returns id or name
-   - `download_resource(resource_id=...)` — pick first datastore-active resource; if none found, try the next feed entry (up to 5) until one with a datastore-active resource is found
-   - `query_cached(sql=...)` — `SELECT COUNT(*) as cnt` from the cached table
-   - `cache_info()` — assert `table_count > 0`
+   - Ontario: `search_datasets(query="ontario", portal="ontario")` — assert `total_count > 0`
+   - Ontario: `get_dataset_info(dataset_id=<uuid from feed>)` — assert returns id or name
+   - Ontario: `download_resource(resource_id=...)` — pick first datastore-active resource; if none found, try the next feed entry (up to 5) until one with a datastore-active resource is found
+   - Ontario: `query_cached(sql=...)` — `SELECT COUNT(*) as cnt` from the cached table
+   - Ontario: `cache_info()` — assert `table_count > 0`
+   - Toronto: `search_datasets(query="toronto", portal="toronto")` — assert `total_count > 0`
+   - Ottawa: `search_datasets(query="ottawa", portal="ottawa")` — assert `total_count > 0`
 6. **Clean up** — close the `httpx.AsyncClient`; `CacheManager` uses short-lived connections and needs no close
 7. **Print progress** — each step prints a summary line prefixed with two spaces
 8. **Print "All smoke tests passed!"** on success
@@ -71,7 +72,7 @@ Delete `smoke_test.py` after the test completes (pass or fail).
 - Use `tempfile.mkdtemp` for the DuckDB path to avoid conflicts with any running server
 - The Atom feed at `https://data.ontario.ca/feeds/dataset.atom` returns the 20 most recently updated datasets; the `<id>` tag contains `https://data.ontario.ca/dataset/{uuid}`
 - Not all datasets have datastore-active resources — iterate feed entries until one is found (up to 5 attempts)
-- Tool functions are accessed via `mcp._tool_manager._tools["tool_name"].fn(...)`
+- Tool functions are accessed via `(await mcp.get_tool("tool_name")).fn(...)` (FastMCP 3.0 API)
 
 ## Template
 
@@ -85,7 +86,6 @@ import xml.etree.ElementTree as ET
 import httpx
 
 from unittest.mock import AsyncMock, MagicMock
-from ontario_data.ckan_client import CKANClient
 from ontario_data.cache import CacheManager
 from ontario_data.portals import PORTALS
 from ontario_data.server import mcp
@@ -109,7 +109,6 @@ def get_latest_dataset_ids(xml_text: str, max_entries: int = 5) -> list[str]:
 
 async def smoke_test():
     http_client = httpx.AsyncClient(timeout=30)
-    ckan = CKANClient(http_client=http_client)
 
     tmp_dir = tempfile.mkdtemp(prefix="ontario_smoke_")
     db_path = os.path.join(tmp_dir, "smoke.duckdb")
@@ -118,14 +117,16 @@ async def smoke_test():
 
     ctx = MagicMock()
     ctx.report_progress = AsyncMock()
-    ctx.fastmcp._lifespan_result = {
+    ctx.lifespan_context = {
         "http_client": http_client,
         "portal_configs": PORTALS,
-        "portal_clients": {"ontario": ckan},
+        "portal_clients": {},
         "cache": cache,
-        "active_portal": "ontario",
     }
-    tools = mcp._tool_manager._tools
+
+    async def call_tool(name, **kwargs):
+        tool = await mcp.get_tool(name)
+        return await tool.fn(ctx=ctx, **kwargs)
 
     # 0. Discover latest datasets from Atom feed
     resp = await http_client.get(ATOM_FEED_URL)
@@ -134,17 +135,17 @@ async def smoke_test():
     assert dataset_ids, "Atom feed returned no entries"
     print(f"  atom feed: {len(dataset_ids)} recent datasets discovered")
 
-    # 1. search_datasets
-    result = await tools["search_datasets"].fn(query="ontario", ctx=ctx)
+    # 1. search_datasets (Ontario)
+    result = await call_tool("search_datasets", query="ontario", portal="ontario")
     data = json.loads(result)
     assert data["total_count"] > 0, "search_datasets returned no results"
-    print(f"  search_datasets: {data['total_count']} datasets found")
+    print(f"  search_datasets (ontario): {data['total_count']} datasets found")
 
     # 2. get_dataset_info + find a datastore-active resource
     ds_resource = None
     dataset_title = None
     for dataset_id in dataset_ids:
-        result = await tools["get_dataset_info"].fn(dataset_id=dataset_id, ctx=ctx)
+        result = await call_tool("get_dataset_info", dataset_id=dataset_id)
         data = json.loads(result)
         assert data.get("id") or data.get("name"), "get_dataset_info returned no dataset"
         dataset_title = data.get("title", data.get("name"))
@@ -158,25 +159,37 @@ async def smoke_test():
     # 3. download_resource + query_cached + cache_info
     if ds_resource:
         rid = ds_resource["id"]
-        result = await tools["download_resource"].fn(resource_id=rid, ctx=ctx)
+        result = await call_tool("download_resource", resource_id=rid)
         dl_data = json.loads(result)
         table_name = dl_data.get("table_name")
         assert table_name, "download_resource returned no table_name"
         print(f"  download_resource: cached as {table_name}")
 
-        result = await tools["query_cached"].fn(
-            sql=f'SELECT COUNT(*) as cnt FROM "{table_name}"', ctx=ctx
+        result = await call_tool("query_cached",
+            sql=f'SELECT COUNT(*) as cnt FROM "{table_name}"'
         )
         q_data = json.loads(result)
         rows = q_data.get("results", [{}])
         print(f"  query_cached: {rows[0].get('cnt', '?')} rows")
 
-        result = await tools["cache_info"].fn(ctx=ctx)
+        result = await call_tool("cache_info")
         c_data = json.loads(result)
         assert c_data.get("table_count", 0) > 0, "cache_info shows no tables"
         print(f"  cache_info: {c_data['table_count']} cached table(s)")
     else:
         print("  skipped download/query/cache (no datastore resource in recent datasets)")
+
+    # 4. Toronto: search_datasets
+    result = await call_tool("search_datasets", query="toronto", portal="toronto")
+    data = json.loads(result)
+    assert data["total_count"] > 0, "Toronto search returned no results"
+    print(f"  search_datasets (toronto): {data['total_count']} datasets found")
+
+    # 5. Ottawa: search_datasets
+    result = await call_tool("search_datasets", query="ottawa", portal="ottawa")
+    data = json.loads(result)
+    assert data["total_count"] > 0, "Ottawa search returned no results"
+    print(f"  search_datasets (ottawa): {data['total_count']} datasets found")
 
     await http_client.aclose()
     print("  All smoke tests passed!")
@@ -192,3 +205,4 @@ If new tools are added to the server, extend the smoke test chain:
 - **Read-only tools** (discovery, metadata, quality): Add after `get_dataset_info`, assert the response parses as JSON with expected keys
 - **Cache-dependent tools** (querying, retrieval): Add after `download_resource`, use the cached `table_name`
 - **Geospatial tools**: Only test if a geo-capable dataset is available; skip gracefully otherwise
+- **New portals**: Add a `search_datasets(portal="new_portal")` step. The client is lazily created by `get_deps`.

@@ -78,7 +78,7 @@ Each example is an object in the array:
 
 ### How the renderer works
 
-- `carousel.js` reads the JSON from `<script id="examples-data">`, builds carousel cards, and injects into `.carousel-track`
+- `carousel.js` fetches `examples.json` at runtime, builds carousel cards, and injects into `.carousel-track`
 - `sql-highlight.js` auto-highlights SQL keywords (bold), functions, strings (italic), numbers, and comments (italic) using Dracula color scheme
 - The section starts hidden (`display:none`) and is shown after rendering
 - No manual `<span>` tags needed — write plain SQL in the `hood.sql` field
@@ -98,16 +98,14 @@ Choose 6 topics. Aim for variety across tag types:
 
 For each topic, use the `ontario-data` MCP tools. You can search across portals:
 
-1. **`search_all_portals`** — discover which portal has the best data for a topic
-2. **`set_portal`** — switch to the portal you want (or pass `portal=` to individual tools)
-3. **`search_datasets`** — find candidates by keyword
-4. **`get_dataset_info`** — get the dataset ID, title, organization, update frequency
-5. **`list_resources`** — get resource IDs and formats
-6. **`get_resource_schema`** — get real column names (critical for realistic SQL)
+1. **`search_datasets`** — search across all portals by default, or pass `portal=` to narrow (e.g. `portal="toronto"`)
+2. **`get_dataset_info`** — get the dataset ID, title, organization, update frequency
+3. **`list_resources`** — get resource IDs and formats
+4. **`get_resource_schema`** — get real column names (critical for realistic SQL)
 
 Collect for each dataset:
 - **Title** (exact, verbatim from `get_dataset_info`)
-- **Dataset URL**: `https://{portal-base-url}/dataset/{slug}` — use the slug, NOT the UUID. For Ontario: `https://data.ontario.ca/dataset/{slug}`. For Toronto: `https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/{slug}`.
+- **Dataset URL**: `https://{portal-base-url}/dataset/{slug}` — use the slug, NOT the UUID. For Ontario: `https://data.ontario.ca/dataset/{slug}`. For Toronto: `https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/{slug}`. For Ottawa: `https://open.ottawa.ca/datasets/{slug}`.
 - **Dataset ID** (first 8 chars, for hood-step descriptions)
 - **Column names** (for realistic SQL)
 - **Organization** (verbatim from `get_dataset_info`)
@@ -151,7 +149,7 @@ For each example, create an object matching the schema above. Key rules:
 Before writing the JSON to the page, check every example:
 
 1. **Required fields present:** tag, question, answer, punchline, sources (≥1), hood.steps (≥1), hood.sql
-2. **URLs match pattern:** every `sources[].url` is a valid portal dataset URL (e.g. `https://data.ontario.ca/dataset/...` or `https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/...`)
+2. **URLs match pattern:** every `sources[].url` is a valid portal dataset URL (e.g. `https://data.ontario.ca/dataset/...`, `https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/...`, or `https://open.ottawa.ca/datasets/...`)
 3. **No empty punchlines:** every punchline is a non-empty string
 4. **Tag variety:** not all examples use the same tag
 5. **SQL is plain text:** no `<span>`, `<strong>`, or other HTML in `hood.sql`
@@ -167,8 +165,7 @@ Use the Write tool to overwrite `site/examples.json` with the full array. Do NOT
 
 Tool names for `hood.steps[].tool`:
 
-**Portal:** set_portal, list_portals, search_all_portals
-**Discovery:** search_datasets, list_organizations, list_topics, find_related_datasets
+**Discovery:** search_datasets, list_portals, list_organizations, list_topics, find_related_datasets
 **Metadata:** get_dataset_info, list_resources, get_resource_schema, compare_datasets
 **Retrieval:** download_resource, cache_info, cache_manage, refresh_cache
 **Querying:** query_resource, sql_query, query_cached, preview_data
