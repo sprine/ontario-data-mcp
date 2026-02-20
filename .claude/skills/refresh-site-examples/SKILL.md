@@ -168,7 +168,7 @@ Use the Write tool to overwrite `site/examples.json` with the full array. Do NOT
 Tool names for `hood.steps[].tool`:
 
 **Portal:** set_portal, list_portals, search_all_portals
-**Discovery:** search_datasets, list_organizations, list_topics, get_popular_datasets, search_by_location, find_related_datasets
+**Discovery:** search_datasets, list_organizations, list_topics, find_related_datasets
 **Metadata:** get_dataset_info, list_resources, get_resource_schema, compare_datasets
 **Retrieval:** download_resource, cache_info, cache_manage, refresh_cache
 **Querying:** query_resource, sql_query, query_cached, preview_data

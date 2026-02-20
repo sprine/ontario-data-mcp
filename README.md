@@ -89,7 +89,7 @@ All searches fan out to every portal by default — no need to select a portal. 
 ## List of tools available to the AI agent
 
 <details>
-<summary><b>Discovery</b> (7 tools)</summary>
+<summary><b>Discovery</b> (5 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
@@ -97,8 +97,6 @@ All searches fan out to every portal by default — no need to select a portal. 
 | `list_portals` | List all available portals with platform type |
 | `list_organizations` | List government ministries with dataset counts |
 | `list_topics` | List all tags/topics in the catalogue |
-| `get_popular_datasets` | Get popular or recently updated datasets |
-| `search_by_location` | Find datasets covering a specific geographic area |
 | `find_related_datasets` | Find datasets related by tags and organization |
 
 </details>
