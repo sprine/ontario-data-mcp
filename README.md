@@ -84,7 +84,7 @@ All searches fan out to every portal by default — no need to select a portal. 
 |--------|----------|----------|
 | `ontario` | CKAN | ~5,700 |
 | `toronto` | CKAN | ~533 |
-| `ottawa` | ArcGIS Hub (coming soon) | ~665 |
+| `ottawa` | ArcGIS Hub | ~665 |
 
 ## List of tools available to the AI agent
 

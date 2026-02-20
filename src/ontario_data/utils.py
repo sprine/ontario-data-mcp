@@ -56,11 +56,16 @@ def get_deps(ctx: Context, portal: str) -> tuple[CKANClient, CacheManager]:
                 base_url=config.base_url,
                 http_client=state["http_client"],
             )
-        else:
-            raise ValueError(
-                f"Portal '{portal}' uses {config.portal_type} which is not yet supported. "
-                f"ArcGIS Hub support is coming in a future release."
+        elif config.portal_type == PortalType.ARCGIS_HUB:
+            from ontario_data.arcgis_client import ArcGISHubClient
+            clients[portal] = ArcGISHubClient(
+                base_url=config.base_url,
+                http_client=state["http_client"],
+                org_name=portal,
+                org_title=config.name.replace(" Open Data", ""),
             )
+        else:
+            raise ValueError(f"Portal '{portal}' uses unknown type {config.portal_type}.")
 
     return clients[portal], state["cache"]
 
@@ -90,15 +95,14 @@ async def fan_out(
       On all-fail, return all errors so caller can build a diagnostic message.
 
     If portal is specified, only run against that one portal.
-    Only runs against CKAN portals; silently skips non-CKAN.
-    No timeout — relies on each CKANClient's own 30s timeout + retry.
+    No timeout — relies on each client's own 30s timeout + retry.
     """
     configs = _lifespan_state(ctx)["portal_configs"]
 
     if portal:
         keys = [portal]
     else:
-        keys = [k for k, c in configs.items() if c.portal_type == PortalType.CKAN]
+        keys = list(configs.keys())
 
     if first_match:
         errors: list[tuple[str, None, str]] = []

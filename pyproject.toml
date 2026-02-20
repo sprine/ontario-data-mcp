@@ -31,6 +31,9 @@ packages = ["src/ontario_data"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "live: hits real APIs (deselected by default, run with --live)",
+]
 
 [dependency-groups]
 dev = [

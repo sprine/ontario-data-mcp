@@ -5,7 +5,7 @@ import logging
 
 from fastmcp import Context
 
-from ontario_data.portals import PORTALS, PortalType
+from ontario_data.portals import PORTALS
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     _lifespan_state,
@@ -86,11 +86,6 @@ async def search_datasets(
             skipped.append({"portal": portal_key, "portal_name": configs[portal_key].name, "reason": error})
         else:
             results.append(result)
-
-    # Add non-CKAN portals to skipped
-    for key, config in configs.items():
-        if config.portal_type != PortalType.CKAN and (portal is None or portal == key):
-            skipped.append({"portal": key, "portal_name": config.name, "reason": "ArcGIS Hub support coming soon"})
 
     return json_response(
         query=query,

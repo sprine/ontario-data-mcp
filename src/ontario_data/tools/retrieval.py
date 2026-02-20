@@ -9,6 +9,7 @@ import pandas as pd
 from fastmcp import Context
 
 from ontario_data.ckan_client import CKANClient
+from ontario_data.portals import PortalType
 from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
 from ontario_data.utils import (
@@ -66,6 +67,34 @@ async def _download_resource_data(
     return df, resource, dataset
 
 
+async def _download_arcgis_resource_data(
+    client,
+    resource_id: str,
+    http_client: httpx.AsyncClient,
+) -> tuple[pd.DataFrame, dict[str, Any], dict[str, Any]]:
+    """Fetch ArcGIS Hub resource data via Downloads API (bulk CSV)."""
+    dataset = await client.package_show(resource_id)
+
+    csv_url = await client.get_download_url(resource_id, fmt="csv")
+    if csv_url:
+        resp = await http_client.get(csv_url, follow_redirects=True)
+        resp.raise_for_status()
+        df = pd.read_csv(io.BytesIO(resp.content))
+        resource_meta = {
+            "id": resource_id,
+            "package_id": resource_id,
+            "format": "CSV",
+            "url": csv_url,
+            "datastore_active": False,
+        }
+        return df, resource_meta, dataset
+
+    raise ValueError(
+        f"No CSV download available for dataset '{resource_id}'. "
+        f"Try a different dataset or check the portal directly at {client.base_url}."
+    )
+
+
 @mcp.tool(annotations=READONLY)
 async def download_resource(
     resource_id: str,
@@ -116,7 +145,14 @@ async def download_resource(
     ckan, _ = get_deps(ctx, portal)
 
     await ctx.report_progress(0, 100, "Downloading resource...")
-    df, resource, dataset = await _download_resource_data(ckan, bare_id)
+
+    config = configs[portal]
+    if config.portal_type == PortalType.ARCGIS_HUB:
+        http_client = _lifespan_state(ctx)["http_client"]
+        df, resource, dataset = await _download_arcgis_resource_data(ckan, bare_id, http_client)
+    else:
+        df, resource, dataset = await _download_resource_data(ckan, bare_id)
+
     await ctx.report_progress(70, 100, "Storing in DuckDB...")
 
     table_name = make_table_name(dataset.get("name", ""), bare_id, portal=portal)
@@ -239,7 +275,13 @@ async def refresh_cache(
             portal = parts[1] if len(parts) >= 3 else "ontario"
 
             ckan, _ = get_deps(ctx, portal)
-            df, resource, dataset = await _download_resource_data(ckan, item["resource_id"])
+            configs = _lifespan_state(ctx)["portal_configs"]
+            config = configs.get(portal)
+            if config and config.portal_type == PortalType.ARCGIS_HUB:
+                http_client = _lifespan_state(ctx)["http_client"]
+                df, resource, dataset = await _download_arcgis_resource_data(ckan, item["resource_id"], http_client)
+            else:
+                df, resource, dataset = await _download_resource_data(ckan, item["resource_id"])
             cache.store_resource(
                 resource_id=item["resource_id"],
                 dataset_id=item["dataset_id"],

@@ -4,6 +4,7 @@ from typing import Any
 
 from fastmcp import Context
 
+from ontario_data.portals import PortalType
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     _lifespan_state,
@@ -40,6 +41,13 @@ async def query_resource(
     """
     configs = _lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
+
+    if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
+        return json_response(
+            status="not_available",
+            reason="ArcGIS Hub has no remote datastore API.",
+            suggestion=f"Use download_resource(resource_id='{resource_id}') + query_cached(sql='...') instead.",
+        )
 
     async def _query(pk: str):
         ckan, _ = get_deps(ctx, pk)
@@ -94,6 +102,14 @@ async def sql_query(
         sql: SQL query string (read-only, SELECT only)
         portal: Portal to query (default: "ontario"). Required because SQL embeds resource IDs directly.
     """
+    configs = _lifespan_state(ctx)["portal_configs"]
+    if configs[portal].portal_type == PortalType.ARCGIS_HUB:
+        return json_response(
+            status="not_available",
+            reason="ArcGIS Hub has no remote SQL API.",
+            suggestion="Use download_resource(resource_id='...') + query_cached(sql='...') instead.",
+        )
+
     ckan, _ = get_deps(ctx, portal)
     result = await ckan.datastore_sql(sql)
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
@@ -152,6 +168,13 @@ async def preview_data(
     """
     configs = _lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
+
+    if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
+        return json_response(
+            status="not_available",
+            reason="ArcGIS Hub has no remote datastore API.",
+            suggestion=f"Use download_resource(resource_id='{resource_id}') + query_cached(sql='...') instead.",
+        )
 
     async def _preview(pk: str):
         ckan, _ = get_deps(ctx, pk)

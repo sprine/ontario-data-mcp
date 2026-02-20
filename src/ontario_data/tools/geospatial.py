@@ -5,6 +5,7 @@ import logging
 import httpx
 from fastmcp import Context
 
+from ontario_data.portals import PortalType
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     SpatialExtensionError,
@@ -38,6 +39,14 @@ async def load_geodata(
 
     configs = _lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
+
+    if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
+        return json_response(
+            status="not_available",
+            reason="ArcGIS Feature Service URLs cannot be downloaded as geospatial files.",
+            suggestion=f"Use download_resource(resource_id='{resource_id}') for CSV data, or access the portal directly.",
+        )
+
     cache = get_cache(ctx)
 
     if cache.is_cached(bare_id) and not force_refresh:
