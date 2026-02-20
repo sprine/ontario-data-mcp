@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from contextlib import asynccontextmanager
 from importlib.metadata import version
 
@@ -11,6 +12,14 @@ from mcp.types import ToolAnnotations
 from ontario_data.cache import CacheManager
 from ontario_data.logging_config import setup_logging
 from ontario_data.portals import PORTALS
+
+# When loaded via `fastmcp run server.py`, this module is registered as
+# "server_module" instead of "ontario_data.server".  The tool modules do
+# `from ontario_data.server import mcp`, which would create a *second*
+# FastMCP instance and register all tools there — leaving the instance
+# that fastmcp actually serves with zero tools.
+# Fix: ensure this module is always reachable as "ontario_data.server".
+sys.modules.setdefault("ontario_data.server", sys.modules[__name__])
 
 
 @asynccontextmanager
