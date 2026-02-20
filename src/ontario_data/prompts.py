@@ -43,7 +43,7 @@ async def explore_topic(topic: str, ctx: Context = None) -> list[Message]:
 
     Searches for datasets, summarizes what's available, and suggests deep dives.
     """
-    ckan, cache = get_deps(ctx)
+    ckan, cache = get_deps(ctx, portal="ontario")
     topic_ctx = await _get_topic_context(ckan, topic)
     cache_ctx = _format_cached_context(cache)
 
@@ -68,7 +68,7 @@ async def explore_topic(topic: str, ctx: Context = None) -> list[Message]:
 @mcp.prompt
 async def data_investigation(dataset_id: str, ctx: Context = None) -> list[Message]:
     """Deep investigation of a specific dataset: schema, quality, statistics, insights."""
-    ckan, cache = get_deps(ctx)
+    ckan, cache = get_deps(ctx, portal="ontario")
 
     # Try to get dataset title for context
     ds_title = dataset_id
@@ -106,7 +106,7 @@ async def data_investigation(dataset_id: str, ctx: Context = None) -> list[Messa
 @mcp.prompt
 async def compare_data(dataset_ids: str, ctx: Context = None) -> list[Message]:
     """Side-by-side analysis of multiple datasets (comma-separated IDs)."""
-    _, cache = get_deps(ctx)
+    _, cache = get_deps(ctx, portal="ontario")
     ids = [d.strip() for d in dataset_ids.split(",")]
     cache_ctx = _format_cached_context(cache)
 

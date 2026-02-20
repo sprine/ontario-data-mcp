@@ -8,11 +8,13 @@ from fastmcp import Context
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     SpatialExtensionError,
-    get_active_portal,
+    _lifespan_state,
+    fan_out,
     get_cache,
     get_deps,
     json_response,
     make_geo_table_name,
+    parse_portal_id,
     require_cached,
 )
 
@@ -23,25 +25,42 @@ logger = logging.getLogger("ontario_data.geospatial")
 async def load_geodata(
     resource_id: str,
     force_refresh: bool = False,
-    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Download and cache a geospatial resource (SHP, KML, GeoJSON) into DuckDB with spatial support.
 
     Args:
-        resource_id: Resource ID for a geospatial file
+        resource_id: Prefixed resource ID (e.g. "toronto:abc123") or bare ID
         force_refresh: Re-download even if cached
     """
     import geopandas as gpd
     import pandas as pd
 
-    ckan, cache = get_deps(ctx, portal=portal)
+    configs = _lifespan_state(ctx)["portal_configs"]
+    portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
+    cache = get_cache(ctx)
 
-    if cache.is_cached(resource_id) and not force_refresh:
-        table_name = cache.get_table_name(resource_id)
+    if cache.is_cached(bare_id) and not force_refresh:
+        table_name = cache.get_table_name(bare_id)
         return json_response(status="already_cached", table_name=table_name)
 
-    resource = await ckan.resource_show(resource_id)
+    async def _try_show(pk: str):
+        ckan, _ = get_deps(ctx, pk)
+        await ckan.resource_show(bare_id)
+        return pk
+
+    if not portal:
+        results = await fan_out(ctx, None, _try_show, first_match=True)
+        if not results or results[0][2] is not None:
+            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
+            raise ValueError(
+                f"Resource '{bare_id}' not found. Tried: {errors}. "
+                f"Use search_datasets to find the correct prefixed ID."
+            )
+        portal = results[0][1]
+
+    ckan, _ = get_deps(ctx, portal)
+    resource = await ckan.resource_show(bare_id)
     dataset_id = resource.get("package_id", "")
     dataset = await ckan.package_show(dataset_id) if dataset_id else {}
     fmt = (resource.get("format") or "").upper()
@@ -87,11 +106,10 @@ async def load_geodata(
     else:
         bounds = None
 
-    active = portal or get_active_portal(ctx)
-    table_name = make_geo_table_name(dataset.get("name", ""), resource_id, portal=active)
+    table_name = make_geo_table_name(dataset.get("name", ""), bare_id, portal=portal)
 
     cache.store_resource(
-        resource_id=resource_id,
+        resource_id=bare_id,
         dataset_id=dataset_id,
         table_name=table_name,
         df=pd.DataFrame(df),
@@ -206,28 +224,37 @@ async def list_geo_datasets(
 
     Args:
         format_filter: Filter to specific format: "SHP", "KML", "GEOJSON", or None for all
-        limit: Max results
+        limit: Max results per portal
+        portal: Narrow to one portal. Default: all portals.
     """
-    ckan, _ = get_deps(ctx, portal=portal)
     geo_formats = [format_filter.upper()] if format_filter else ["SHP", "KML", "GEOJSON"]
 
+    async def _list_geo(portal_key: str) -> list[dict]:
+        ckan, _ = get_deps(ctx, portal_key)
+        datasets = []
+        seen_ids = set()
+        for fmt in geo_formats:
+            result = await ckan.package_search(filters={"res_format": fmt}, rows=min(limit, 50))
+            for ds in result["results"]:
+                if ds["id"] not in seen_ids:
+                    seen_ids.add(ds["id"])
+                    geo_resources = [
+                        {"id": r["id"], "name": r.get("name"), "format": r.get("format"), "size": r.get("size")}
+                        for r in ds.get("resources", [])
+                        if (r.get("format") or "").upper() in ("SHP", "KML", "GEOJSON", "ZIP")
+                    ]
+                    datasets.append({
+                        "id": f"{portal_key}:{ds['id']}",
+                        "title": ds.get("title"),
+                        "organization": ds.get("organization", {}).get("title"),
+                        "geo_resources": geo_resources,
+                    })
+        return datasets
+
+    raw = await fan_out(ctx, portal, _list_geo)
     all_datasets = []
-    seen_ids = set()
-    for fmt in geo_formats:
-        result = await ckan.package_search(filters={"res_format": fmt}, rows=min(limit, 50))
-        for ds in result["results"]:
-            if ds["id"] not in seen_ids:
-                seen_ids.add(ds["id"])
-                geo_resources = [
-                    {"id": r["id"], "name": r.get("name"), "format": r.get("format"), "size": r.get("size")}
-                    for r in ds.get("resources", [])
-                    if (r.get("format") or "").upper() in ("SHP", "KML", "GEOJSON", "ZIP")
-                ]
-                all_datasets.append({
-                    "id": ds["id"],
-                    "title": ds.get("title"),
-                    "organization": ds.get("organization", {}).get("title"),
-                    "geo_resources": geo_resources,
-                })
+    for _, result, error in raw:
+        if result and not error:
+            all_datasets.extend(result)
 
     return json_response(total=len(all_datasets), datasets=all_datasets[:limit])

@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
 from fastmcp import Context
 
 from ontario_data.cache import CacheManager, InvalidQueryError  # noqa: F401
 from ontario_data.ckan_client import CKANClient
-from ontario_data.portals import PortalType
+from ontario_data.portals import PORTALS, PortalType
+
+T = TypeVar("T")
 
 
 class ResourceNotCachedError(Exception):
@@ -30,13 +35,13 @@ def _lifespan_state(ctx: Context) -> dict:
     return ctx.fastmcp._lifespan_result
 
 
-def get_deps(ctx: Context, portal: str | None = None) -> tuple[CKANClient, CacheManager]:
+def get_deps(ctx: Context, portal: str) -> tuple[CKANClient, CacheManager]:
     """Extract portal client and cache manager from MCP context.
 
     Lazily creates the client for the requested portal on first use.
+    portal is required — there is no default.
     """
     state = _lifespan_state(ctx)
-    portal = portal or state["active_portal"]
     configs = state["portal_configs"]
 
     if portal not in configs:
@@ -60,10 +65,60 @@ def get_deps(ctx: Context, portal: str | None = None) -> tuple[CKANClient, Cache
     return clients[portal], state["cache"]
 
 
-def get_active_portal(ctx: Context) -> str:
-    """Return the portal key (e.g. 'ontario') used when no explicit
-    portal parameter is provided to a tool."""
-    return _lifespan_state(ctx)["active_portal"]
+def parse_portal_id(id_str: str, known_portals: set[str]) -> tuple[str | None, str]:
+    """Split 'portal:bare_id'. Returns (None, id_str) if no valid prefix."""
+    if ":" in id_str:
+        prefix, rest = id_str.split(":", 1)
+        if prefix in known_portals:
+            return prefix, rest
+    return None, id_str
+
+
+async def fan_out(
+    ctx: Context,
+    portal: str | None,
+    fn: Callable[[str], Awaitable[T]],
+    *,
+    first_match: bool = False,
+) -> list[tuple[str, T | None, str | None]]:
+    """Run fn(portal_key) across portals.
+
+    first_match=False (default): asyncio.gather all portals, collect all results.
+      Returns [(portal_key, result_or_None, error_or_None), ...].
+    first_match=True: try portals sequentially in PORTALS dict order.
+      Return on first success. Swallow errors and continue.
+      On all-fail, return all errors so caller can build a diagnostic message.
+
+    If portal is specified, only run against that one portal.
+    Only runs against CKAN portals; silently skips non-CKAN.
+    No timeout — relies on each CKANClient's own 30s timeout + retry.
+    """
+    configs = _lifespan_state(ctx)["portal_configs"]
+
+    if portal:
+        keys = [portal]
+    else:
+        keys = [k for k, c in configs.items() if c.portal_type == PortalType.CKAN]
+
+    if first_match:
+        errors: list[tuple[str, None, str]] = []
+        for key in keys:
+            try:
+                result = await fn(key)
+                return [(key, result, None)]
+            except Exception as exc:
+                errors.append((key, None, str(exc)))
+        return errors
+
+    # Parallel fan-out
+    async def _safe(key: str) -> tuple[str, T | None, str | None]:
+        try:
+            result = await fn(key)
+            return (key, result, None)
+        except Exception as exc:
+            return (key, None, str(exc))
+
+    return list(await asyncio.gather(*[_safe(k) for k in keys]))
 
 
 def get_cache(ctx: Context) -> CacheManager:

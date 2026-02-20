@@ -6,7 +6,15 @@ from fastmcp import Context
 
 from ontario_data.server import READONLY, mcp
 from ontario_data.staleness import FREQUENCY_DAYS
-from ontario_data.utils import get_cache, get_deps, json_response, require_cached
+from ontario_data.utils import (
+    _lifespan_state,
+    fan_out,
+    get_cache,
+    get_deps,
+    json_response,
+    parse_portal_id,
+    require_cached,
+)
 
 
 @mcp.tool(annotations=READONLY)
@@ -79,16 +87,32 @@ async def check_data_quality(
 @mcp.tool(annotations=READONLY)
 async def check_freshness(
     dataset_id: str,
-    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Check if a dataset is current by comparing its update frequency to its last modification date.
 
     Args:
-        dataset_id: Dataset ID or name
+        dataset_id: Prefixed dataset ID (e.g. "toronto:ttc-ridership") or bare ID
     """
-    ckan, _ = get_deps(ctx, portal=portal)
-    ds = await ckan.package_show(dataset_id)
+    configs = _lifespan_state(ctx)["portal_configs"]
+    portal, bare_id = parse_portal_id(dataset_id, set(configs.keys()))
+
+    async def _show(pk: str):
+        ckan, _ = get_deps(ctx, pk)
+        return await ckan.package_show(bare_id)
+
+    if portal:
+        ckan, _ = get_deps(ctx, portal)
+        ds = await ckan.package_show(bare_id)
+    else:
+        results = await fan_out(ctx, None, _show, first_match=True)
+        if not results or results[0][2] is not None:
+            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
+            raise ValueError(
+                f"Dataset '{bare_id}' not found. Tried: {errors}. "
+                f"Use search_datasets(query='{bare_id}') to find the correct prefixed ID."
+            )
+        ds = results[0][1]
 
     last_modified = ds.get("metadata_modified", "")
     frequency = ds.get("update_frequency", "unknown")

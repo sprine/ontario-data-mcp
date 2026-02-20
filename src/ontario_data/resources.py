@@ -11,7 +11,7 @@ from ontario_data.utils import get_deps
 @mcp.resource("ontario://cache/index")
 async def cache_index(ctx: Context) -> str:
     """List of all locally cached datasets with freshness info."""
-    _, cache = get_deps(ctx)
+    _, cache = get_deps(ctx, portal="ontario")
     cached = cache.list_cached()
     stats = cache.get_stats()
     return json.dumps({
@@ -25,7 +25,7 @@ async def cache_index(ctx: Context) -> str:
 @mcp.resource("ontario://dataset/{dataset_id}")
 async def dataset_metadata(dataset_id: str, ctx: Context) -> str:
     """Full metadata for a specific dataset."""
-    ckan, cache = get_deps(ctx)
+    ckan, cache = get_deps(ctx, portal="ontario")
     meta = cache.get_dataset_metadata(dataset_id)
     if not meta:
         meta = await ckan.package_show(dataset_id)
@@ -36,7 +36,7 @@ async def dataset_metadata(dataset_id: str, ctx: Context) -> str:
 @mcp.resource("ontario://portal/stats")
 async def portal_stats(ctx: Context) -> str:
     """Overview statistics about the Ontario Data Catalogue."""
-    ckan, _ = get_deps(ctx)
+    ckan, _ = get_deps(ctx, portal="ontario")
     result = await ckan.package_search(rows=0)
     total = result["count"]
     orgs = await ckan.organization_list(all_fields=True, include_dataset_count=True)

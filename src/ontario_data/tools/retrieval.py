@@ -11,7 +11,15 @@ from fastmcp import Context
 from ontario_data.ckan_client import CKANClient
 from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
-from ontario_data.utils import get_active_portal, get_cache, get_deps, json_response, make_table_name
+from ontario_data.utils import (
+    _lifespan_state,
+    fan_out,
+    get_cache,
+    get_deps,
+    json_response,
+    make_table_name,
+    parse_portal_id,
+)
 
 logger = logging.getLogger("ontario_data.retrieval")
 
@@ -61,7 +69,6 @@ async def _download_resource_data(
 @mcp.tool(annotations=READONLY)
 async def download_resource(
     resource_id: str,
-    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Download a dataset resource and cache it locally in DuckDB for fast querying.
@@ -70,15 +77,23 @@ async def download_resource(
     If already cached, returns staleness info so you can decide whether to refresh.
 
     Args:
-        resource_id: The resource ID to download
+        resource_id: Prefixed resource ID (e.g. "toronto:abc123") or bare ID
     """
-    ckan, cache = get_deps(ctx, portal=portal)
-    active = portal or get_active_portal(ctx)
+    configs = _lifespan_state(ctx)["portal_configs"]
+    portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
-    if cache.is_cached(resource_id):
-        table_name = cache.get_table_name(resource_id)
-        meta = cache.get_resource_meta(resource_id)
-        staleness = get_staleness_info(cache, resource_id)
+    async def _try_download(pk: str):
+        ckan, _ = get_deps(ctx, pk)
+        # Verify the resource exists on this portal
+        await ckan.resource_show(bare_id)
+        return pk
+
+    cache = get_cache(ctx)
+
+    if cache.is_cached(bare_id):
+        table_name = cache.get_table_name(bare_id)
+        meta = cache.get_resource_meta(bare_id)
+        staleness = get_staleness_info(cache, bare_id)
         return json_response(
             status="already_cached",
             table_name=table_name,
@@ -88,13 +103,25 @@ async def download_resource(
             hint="Use query_cached tool with SQL to analyze this data. Use refresh_cache(resource_id=...) to re-download.",
         )
 
+    if not portal:
+        results = await fan_out(ctx, None, _try_download, first_match=True)
+        if not results or results[0][2] is not None:
+            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
+            raise ValueError(
+                f"Resource '{bare_id}' not found. Tried: {errors}. "
+                f"Use search_datasets to find the correct prefixed ID."
+            )
+        portal = results[0][1]
+
+    ckan, _ = get_deps(ctx, portal)
+
     await ctx.report_progress(0, 100, "Downloading resource...")
-    df, resource, dataset = await _download_resource_data(ckan, resource_id)
+    df, resource, dataset = await _download_resource_data(ckan, bare_id)
     await ctx.report_progress(70, 100, "Storing in DuckDB...")
 
-    table_name = make_table_name(dataset.get("name", ""), resource_id, portal=active)
+    table_name = make_table_name(dataset.get("name", ""), bare_id, portal=portal)
     cache.store_resource(
-        resource_id=resource_id,
+        resource_id=bare_id,
         dataset_id=dataset.get("id", ""),
         table_name=table_name,
         df=df,
@@ -106,7 +133,7 @@ async def download_resource(
     update_freq = dataset.get("update_frequency")
     from datetime import datetime, timezone
     expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
-    cache.update_expires_at(resource_id, expires_at)
+    cache.update_expires_at(bare_id, expires_at)
 
     await ctx.report_progress(100, 100, "Done")
 
@@ -154,22 +181,23 @@ async def cache_info(ctx: Context = None) -> str:
 async def cache_manage(
     action: str,
     resource_id: str | None = None,
-    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Manage the local DuckDB cache: remove or clear cached data.
 
     Args:
         action: One of "remove" (single resource) or "clear" (all)
-        resource_id: Required for "remove" action
+        resource_id: Required for "remove" action. Prefixed or bare ID accepted.
     """
-    ckan, cache = get_deps(ctx, portal=portal)
+    cache = get_cache(ctx)
 
     if action == "remove":
         if not resource_id:
             raise ValueError("resource_id is required for 'remove' action")
-        cache.remove_resource(resource_id)
-        return json_response(status="removed", resource_id=resource_id)
+        configs = _lifespan_state(ctx)["portal_configs"]
+        _, bare_id = parse_portal_id(resource_id, set(configs.keys()))
+        cache.remove_resource(bare_id)
+        return json_response(status="removed", resource_id=bare_id)
 
     elif action == "clear":
         count = len(cache.list_cached())
@@ -183,26 +211,34 @@ async def cache_manage(
 @mcp.tool(annotations=DESTRUCTIVE)
 async def refresh_cache(
     resource_id: str | None = None,
-    portal: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Re-download cached resources to get the latest data.
 
     Args:
-        resource_id: Specific resource to refresh, or omit to refresh all
+        resource_id: Specific resource to refresh (prefixed or bare ID), or omit to refresh all
     """
-    ckan, cache = get_deps(ctx, portal=portal)
+    cache = get_cache(ctx)
     cached = cache.list_cached()
 
+    bare_id = None
     if resource_id:
-        cached = [c for c in cached if c["resource_id"] == resource_id]
+        configs = _lifespan_state(ctx)["portal_configs"]
+        _, bare_id = parse_portal_id(resource_id, set(configs.keys()))
+        cached = [c for c in cached if c["resource_id"] == bare_id]
         if not cached:
-            raise ValueError(f"Resource {resource_id} not found in cache")
+            raise ValueError(f"Resource {bare_id} not found in cache")
 
     results = []
     for i, item in enumerate(cached):
         await ctx.report_progress(i, len(cached), f"Refreshing {item['table_name']}...")
         try:
+            # Infer portal from table name prefix (ds_<portal>_...)
+            table_name = item["table_name"]
+            parts = table_name.split("_", 2)
+            portal = parts[1] if len(parts) >= 3 else "ontario"
+
+            ckan, _ = get_deps(ctx, portal)
             df, resource, dataset = await _download_resource_data(ckan, item["resource_id"])
             cache.store_resource(
                 resource_id=item["resource_id"],

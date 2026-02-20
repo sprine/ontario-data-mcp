@@ -28,7 +28,6 @@ async def lifespan(server):
         "portal_configs": PORTALS,
         "portal_clients": portal_clients,
         "cache": cache,
-        "active_portal": "ontario",
     }
     for client in portal_clients.values():
         await client.close()
@@ -42,22 +41,21 @@ DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True)
 mcp = FastMCP(
     "Ontario Data Catalogue",
     instructions=(
-        "Search, download, cache, and analyze datasets from Ontario open data portals. "
-        "Supports multiple portals: Ontario (data.ontario.ca), Toronto, and Ottawa.\n\n"
-        "Multi-portal usage:\n"
-        "- Use list_portals to see available portals and which is active\n"
-        "- Use set_portal to switch the active portal (default: ontario)\n"
-        "- Use search_all_portals to search across all portals at once\n"
-        "- Most tools accept an optional 'portal' parameter to override the active portal\n"
-        "- Valid portal names: ontario, toronto, ottawa\n\n"
+        "Search, download, cache, and analyze datasets from Ontario-region open data portals "
+        "(Ontario, Toronto, Ottawa).\n\n"
+        "All searches fan out to every portal by default — no need to select a portal.\n"
+        "Dataset and resource IDs are prefixed with their portal (e.g. toronto:abc123).\n"
+        "To narrow a search to one portal, use the optional portal parameter.\n\n"
+        "Cross-portal analysis: download datasets from multiple portals, "
+        "then JOIN them in DuckDB via query_cached.\n\n"
         "Key guidelines:\n"
         "- Prefer download_resource + query_cached over sql_query (avoids remote API rate limits)\n"
-        "- Many numeric columns are stored as text — use TRY_CAST(col AS DOUBLE) in DuckDB queries\n"
+        "- Many numeric columns are stored as text — use TRY_CAST(col AS DOUBLE)\n"
         "- Use SUM(quantity_col) not COUNT(*) when rows have a count/quantity column\n"
         "- Check unit columns before comparing datasets (e.g. mg/L vs µg/L)\n"
         "- Values may contain semicolons — use LIKE patterns instead of exact string matches\n"
-        "- Column names may vary across resources in the same dataset — always check with get_resource_schema\n"
-        "- Some resources are XLSX-only: downloadable via download_resource but not queryable via remote datastore API"
+        "- Column names may vary across resources — always check with get_resource_schema\n"
+        "- Some resources are XLSX-only: downloadable but not queryable via remote datastore API"
     ),
     version=version("ontario-data-mcp"),
     lifespan=lifespan,
