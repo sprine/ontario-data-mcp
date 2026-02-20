@@ -17,6 +17,7 @@ from ontario_data.utils import (
     make_geo_table_name,
     parse_portal_id,
     require_cached,
+    resolve_resource_portal,
 )
 
 logger = logging.getLogger("ontario_data.geospatial")
@@ -53,20 +54,8 @@ async def load_geodata(
         table_name = cache.get_table_name(bare_id)
         return json_response(status="already_cached", table_name=table_name)
 
-    async def _try_show(pk: str):
-        ckan, _ = get_deps(ctx, pk)
-        await ckan.resource_show(bare_id)
-        return pk
-
     if not portal:
-        results = await fan_out(ctx, None, _try_show, first_match=True)
-        if not results or results[0][2] is not None:
-            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-            raise ValueError(
-                f"Resource '{bare_id}' not found. Tried: {errors}. "
-                f"Use search_datasets to find the correct prefixed ID."
-            )
-        portal = results[0][1]
+        portal, bare_id = await resolve_resource_portal(ctx, resource_id)
 
     ckan, _ = get_deps(ctx, portal)
     resource = await ckan.resource_show(bare_id)

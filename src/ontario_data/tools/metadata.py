@@ -10,6 +10,8 @@ from ontario_data.utils import (
     get_deps,
     json_response,
     parse_portal_id,
+    resolve_dataset,
+    unwrap_first_match,
 )
 
 
@@ -23,28 +25,8 @@ async def get_dataset_info(
     Args:
         dataset_id: Prefixed dataset ID (e.g. "toronto:ttc-ridership") or bare ID
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
-    portal, bare_id = parse_portal_id(dataset_id, set(configs.keys()))
-
-    async def _show(pk: str):
-        ckan, _ = get_deps(ctx, pk)
-        return await ckan.package_show(bare_id)
-
-    if portal:
-        ckan, cache = get_deps(ctx, portal)
-        ds = await ckan.package_show(bare_id)
-    else:
-        results = await fan_out(ctx, None, _show, first_match=True)
-        if not results or results[0][2] is not None:
-            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-            raise ValueError(
-                f"Dataset '{bare_id}' not found. Tried: {errors}. "
-                f"Use search_datasets(query='{bare_id}') to find the correct prefixed ID."
-            )
-        portal = results[0][0]
-        ds = results[0][1]
-        _, cache = get_deps(ctx, portal)
-
+    portal, bare_id, ds = await resolve_dataset(ctx, dataset_id)
+    _, cache = get_deps(ctx, portal)
     cache.store_dataset_metadata(ds["id"], ds)
 
     resources = []
@@ -87,26 +69,7 @@ async def list_resources(
     Args:
         dataset_id: Prefixed dataset ID (e.g. "toronto:ttc-ridership") or bare ID
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
-    portal, bare_id = parse_portal_id(dataset_id, set(configs.keys()))
-
-    async def _show(pk: str):
-        ckan, _ = get_deps(ctx, pk)
-        return await ckan.package_show(bare_id)
-
-    if portal:
-        ckan, _ = get_deps(ctx, portal)
-        ds = await ckan.package_show(bare_id)
-    else:
-        results = await fan_out(ctx, None, _show, first_match=True)
-        if not results or results[0][2] is not None:
-            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-            raise ValueError(
-                f"Dataset '{bare_id}' not found. Tried: {errors}. "
-                f"Use search_datasets(query='{bare_id}') to find the correct prefixed ID."
-            )
-        portal = results[0][0]
-        ds = results[0][1]
+    portal, bare_id, ds = await resolve_dataset(ctx, dataset_id)
 
     resources = []
     for r in ds.get("resources", []):
@@ -183,13 +146,7 @@ async def get_resource_schema(
         data = await _schema(portal)
     else:
         results = await fan_out(ctx, None, _schema, first_match=True)
-        if not results or results[0][2] is not None:
-            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-            raise ValueError(
-                f"Resource '{bare_id}' not found. Tried: {errors}. "
-                f"Use search_datasets to find the correct prefixed ID."
-            )
-        data = results[0][1]
+        _, data = unwrap_first_match(results, bare_id, "Resource")
 
     return json_response(**data)
 
@@ -204,30 +161,9 @@ async def compare_datasets(
     Args:
         dataset_ids: List of prefixed dataset IDs (e.g. ["toronto:abc", "ontario:def"]) to compare (2-5)
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
-    known = set(configs.keys())
-
     comparisons = []
     for ds_id in dataset_ids[:5]:
-        portal, bare_id = parse_portal_id(ds_id, known)
-
-        async def _show(pk: str, bid=bare_id):
-            ckan, _ = get_deps(ctx, pk)
-            return await ckan.package_show(bid)
-
-        if portal:
-            ckan, _ = get_deps(ctx, portal)
-            ds = await ckan.package_show(bare_id)
-        else:
-            results = await fan_out(ctx, None, _show, first_match=True)
-            if not results or results[0][2] is not None:
-                errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-                raise ValueError(
-                    f"Dataset '{bare_id}' not found. Tried: {errors}. "
-                    f"Use search_datasets(query='{bare_id}') to find the correct prefixed ID."
-                )
-            portal = results[0][0]
-            ds = results[0][1]
+        portal, bare_id, ds = await resolve_dataset(ctx, ds_id)
 
         resources = ds.get("resources", [])
         formats = sorted(set(r.get("format", "").upper() for r in resources if r.get("format")))

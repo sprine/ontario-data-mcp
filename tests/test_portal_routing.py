@@ -2,27 +2,11 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
 from ontario_data.portals import PORTALS, PortalType
-
-
-@pytest.fixture
-def make_portal_context():
-    """Factory fixture: create a mock MCP context with full portal state."""
-    def _make(portal_clients=None):
-        ctx = MagicMock()
-        ctx.fastmcp._lifespan_result = {
-            "cache": MagicMock(),
-            "http_client": MagicMock(),
-            "portal_configs": PORTALS,
-            "portal_clients": portal_clients or {},
-        }
-        ctx.report_progress = AsyncMock()
-        return ctx
-    return _make
 
 
 class TestPortalRegistry:

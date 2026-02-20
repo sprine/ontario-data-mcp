@@ -12,7 +12,7 @@ from ontario_data.utils import (
     fan_out,
     get_deps,
     json_response,
-    parse_portal_id,
+    resolve_dataset,
 )
 
 logger = logging.getLogger("ontario_data.discovery")
@@ -173,27 +173,7 @@ async def find_related_datasets(
         dataset_id: Prefixed dataset ID (e.g. "toronto:ttc-ridership") or bare ID
         limit: Max related datasets to return
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
-    portal, bare_id = parse_portal_id(dataset_id, set(configs.keys()))
-
-    async def _show(pk: str):
-        ckan, _ = get_deps(ctx, pk)
-        return await ckan.package_show(bare_id)
-
-    if portal:
-        ckan, _ = get_deps(ctx, portal)
-        source = await ckan.package_show(bare_id)
-    else:
-        results = await fan_out(ctx, None, _show, first_match=True)
-        if not results or results[0][2] is not None:
-            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-            raise ValueError(
-                f"Dataset '{bare_id}' not found. Tried: {errors}. "
-                f"Use search_datasets(query='{bare_id}') to find the correct prefixed ID."
-            )
-        portal = results[0][0]
-        source = results[0][1]
-
+    portal, bare_id, source = await resolve_dataset(ctx, dataset_id)
     ckan, _ = get_deps(ctx, portal)
     tags = [t["name"] for t in source.get("tags", [])]
     org = source.get("organization", {}).get("name", "")

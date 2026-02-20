@@ -14,6 +14,7 @@ from ontario_data.utils import (
     json_response,
     parse_portal_id,
     strip_internal_fields,
+    unwrap_first_match,
 )
 
 
@@ -64,13 +65,7 @@ async def query_resource(
         result = await _query(portal)
     else:
         results = await fan_out(ctx, None, _query, first_match=True)
-        if not results or results[0][2] is not None:
-            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-            raise ValueError(
-                f"Resource '{bare_id}' not found. Tried: {errors}. "
-                f"Use search_datasets to find the correct prefixed ID."
-            )
-        result = results[0][1]
+        _, result = unwrap_first_match(results, bare_id, "Resource")
 
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
     clean_records = strip_internal_fields(result.get("records", []))
@@ -184,13 +179,7 @@ async def preview_data(
         result = await _preview(portal)
     else:
         results = await fan_out(ctx, None, _preview, first_match=True)
-        if not results or results[0][2] is not None:
-            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-            raise ValueError(
-                f"Resource '{bare_id}' not found. Tried: {errors}. "
-                f"Use search_datasets to find the correct prefixed ID."
-            )
-        result = results[0][1]
+        _, result = unwrap_first_match(results, bare_id, "Resource")
 
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
     clean_records = strip_internal_fields(result.get("records", []))

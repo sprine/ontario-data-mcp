@@ -1,4 +1,5 @@
 import json
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -8,7 +9,10 @@ from ontario_data.utils import (
     json_response,
     make_table_name,
     require_cached,
+    resolve_dataset,
+    resolve_resource_portal,
     strip_internal_fields,
+    unwrap_first_match,
 )
 
 
@@ -81,3 +85,111 @@ class TestJsonResponse:
         result = json_response(timestamp=datetime(2024, 1, 1, tzinfo=timezone.utc))
         parsed = json.loads(result)
         assert "2024" in parsed["timestamp"]
+
+
+class TestUnwrapFirstMatch:
+    def test_success_extraction(self):
+        results = [("toronto", {"id": "ds1", "title": "Test"}, None)]
+        portal, data = unwrap_first_match(results, "ds1")
+        assert portal == "toronto"
+        assert data["id"] == "ds1"
+
+    def test_all_errors_raises(self):
+        results = [
+            ("ontario", None, "not found"),
+            ("toronto", None, "timeout"),
+        ]
+        with pytest.raises(ValueError, match="not found"):
+            unwrap_first_match(results, "abc123")
+
+    def test_empty_results(self):
+        with pytest.raises(ValueError, match="no portals available"):
+            unwrap_first_match([], "abc123")
+
+    def test_entity_type_in_message(self):
+        results = [("ontario", None, "404")]
+        with pytest.raises(ValueError, match="Resource 'r1' not found"):
+            unwrap_first_match(results, "r1", "Resource")
+
+    def test_default_entity_type_is_dataset(self):
+        results = [("ontario", None, "404")]
+        with pytest.raises(ValueError, match="Dataset 'ds1' not found"):
+            unwrap_first_match(results, "ds1")
+
+
+class TestResolveDataset:
+    @pytest.mark.asyncio
+    async def test_prefixed_id_direct_call(self, make_portal_context):
+        ckan = AsyncMock()
+        ckan.package_show.return_value = {"id": "ds1", "title": "Test"}
+        ctx = make_portal_context(portal_clients={"toronto": ckan})
+
+        portal, bare_id, ds = await resolve_dataset(ctx, "toronto:ds1")
+        assert portal == "toronto"
+        assert bare_id == "ds1"
+        assert ds["title"] == "Test"
+        ckan.package_show.assert_called_once_with("ds1")
+
+    @pytest.mark.asyncio
+    async def test_bare_id_fans_out(self, make_portal_context):
+        ontario_ckan = AsyncMock()
+        ontario_ckan.package_show.side_effect = ValueError("not found")
+        toronto_ckan = AsyncMock()
+        toronto_ckan.package_show.return_value = {"id": "ds1", "title": "Found"}
+        ctx = make_portal_context(
+            portal_clients={"ontario": ontario_ckan, "toronto": toronto_ckan},
+        )
+
+        portal, bare_id, ds = await resolve_dataset(ctx, "ds1")
+        assert portal == "toronto"
+        assert bare_id == "ds1"
+        assert ds["title"] == "Found"
+
+    @pytest.mark.asyncio
+    async def test_not_found_raises(self, make_portal_context):
+        ckan = AsyncMock()
+        ckan.package_show.side_effect = ValueError("not found")
+        ctx = make_portal_context(
+            portal_clients={"ontario": ckan, "toronto": ckan},
+        )
+
+        with pytest.raises(ValueError, match="Dataset 'nonexistent' not found"):
+            await resolve_dataset(ctx, "nonexistent")
+
+
+class TestResolveResourcePortal:
+    @pytest.mark.asyncio
+    async def test_prefixed_id_returns_immediately(self, make_portal_context):
+        ckan = AsyncMock()
+        ctx = make_portal_context(portal_clients={"toronto": ckan})
+
+        portal, bare_id = await resolve_resource_portal(ctx, "toronto:r1")
+        assert portal == "toronto"
+        assert bare_id == "r1"
+        # No API call made — prefix is enough
+        ckan.resource_show.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_bare_id_fans_out(self, make_portal_context):
+        ontario_ckan = AsyncMock()
+        ontario_ckan.resource_show.side_effect = ValueError("not found")
+        toronto_ckan = AsyncMock()
+        toronto_ckan.resource_show.return_value = {"id": "r1"}
+        ctx = make_portal_context(
+            portal_clients={"ontario": ontario_ckan, "toronto": toronto_ckan},
+        )
+
+        portal, bare_id = await resolve_resource_portal(ctx, "r1")
+        assert portal == "toronto"
+        assert bare_id == "r1"
+
+    @pytest.mark.asyncio
+    async def test_not_found_raises(self, make_portal_context):
+        ckan = AsyncMock()
+        ckan.resource_show.side_effect = ValueError("not found")
+        ctx = make_portal_context(
+            portal_clients={"ontario": ckan, "toronto": ckan},
+        )
+
+        with pytest.raises(ValueError, match="Resource 'nonexistent' not found"):
+            await resolve_resource_portal(ctx, "nonexistent")

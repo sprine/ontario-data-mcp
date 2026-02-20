@@ -14,12 +14,12 @@ from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
 from ontario_data.utils import (
     _lifespan_state,
-    fan_out,
     get_cache,
     get_deps,
     json_response,
     make_table_name,
     parse_portal_id,
+    resolve_resource_portal,
 )
 
 logger = logging.getLogger("ontario_data.retrieval")
@@ -115,12 +115,6 @@ async def download_resource(
     configs = _lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
-    async def _try_download(pk: str):
-        ckan, _ = get_deps(ctx, pk)
-        # Verify the resource exists on this portal
-        await ckan.resource_show(bare_id)
-        return pk
-
     cache = get_cache(ctx)
 
     if cache.is_cached(bare_id):
@@ -137,14 +131,7 @@ async def download_resource(
         )
 
     if not portal:
-        results = await fan_out(ctx, None, _try_download, first_match=True)
-        if not results or results[0][2] is not None:
-            errors = "; ".join(f"{pk}: {err}" for pk, _, err in results) if results else "no portals available"
-            raise ValueError(
-                f"Resource '{bare_id}' not found. Tried: {errors}. "
-                f"Use search_datasets to find the correct prefixed ID."
-            )
-        portal = results[0][1]
+        portal, bare_id = await resolve_resource_portal(ctx, resource_id)
 
     ckan, _ = get_deps(ctx, portal)
 

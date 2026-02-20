@@ -125,6 +125,80 @@ async def fan_out(
     return list(await asyncio.gather(*[_safe(k) for k in keys]))
 
 
+def unwrap_first_match(
+    results: list[tuple[str, T | None, str | None]],
+    bare_id: str,
+    entity_type: str = "Dataset",
+) -> tuple[str, T]:
+    """Extract the first success from ``fan_out(first_match=True)`` results.
+
+    Returns ``(portal, result)``.  Raises :class:`ValueError` with a
+    consistent, user-friendly message when every portal failed.
+    """
+    if results and results[0][2] is None:
+        return results[0][0], results[0][1]
+    errors = (
+        "; ".join(f"{pk}: {err}" for pk, _, err in results)
+        if results
+        else "no portals available"
+    )
+    raise ValueError(
+        f"{entity_type} '{bare_id}' not found. Tried: {errors}. "
+        f"Use search_datasets to find the correct prefixed ID."
+    )
+
+
+async def resolve_dataset(
+    ctx: Context, dataset_id: str
+) -> tuple[str, str, dict]:
+    """Resolve a (possibly bare) dataset ID to ``(portal, bare_id, ds_dict)``.
+
+    If *dataset_id* carries a portal prefix the call goes directly to that
+    portal; otherwise every configured portal is tried sequentially via
+    :func:`fan_out`.
+    """
+    configs = _lifespan_state(ctx)["portal_configs"]
+    portal, bare_id = parse_portal_id(dataset_id, set(configs.keys()))
+
+    async def _show(pk: str):
+        client, _ = get_deps(ctx, pk)
+        return await client.package_show(bare_id)
+
+    if portal:
+        client, _ = get_deps(ctx, portal)
+        ds = await client.package_show(bare_id)
+    else:
+        results = await fan_out(ctx, None, _show, first_match=True)
+        portal, ds = unwrap_first_match(results, bare_id, "Dataset")
+
+    return portal, bare_id, ds
+
+
+async def resolve_resource_portal(
+    ctx: Context, resource_id: str
+) -> tuple[str, str]:
+    """Resolve a (possibly bare) resource ID to ``(portal, bare_id)``.
+
+    Unlike :func:`resolve_dataset` this does **not** return the resource
+    dict — callers typically need to make their own follow-up API call
+    (e.g. ``resource_show`` or ``datastore_search``) after knowing the portal.
+    """
+    configs = _lifespan_state(ctx)["portal_configs"]
+    portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
+
+    if portal:
+        return portal, bare_id
+
+    async def _try(pk: str):
+        client, _ = get_deps(ctx, pk)
+        await client.resource_show(bare_id)
+        return pk
+
+    results = await fan_out(ctx, None, _try, first_match=True)
+    unwrap_first_match(results, bare_id, "Resource")
+    return results[0][0], bare_id
+
+
 def get_cache(ctx: Context) -> CacheManager:
     return _lifespan_state(ctx)["cache"]
 
