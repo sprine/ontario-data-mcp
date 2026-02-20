@@ -21,7 +21,6 @@ def make_mock_context(cache: CacheManager, ckan=None):
         "http_client": MagicMock(),
         "portal_configs": PORTALS,
         "portal_clients": {"ontario": mock_ckan},
-        "active_portal": "ontario",
     }
     ctx.report_progress = AsyncMock()
     return ctx
