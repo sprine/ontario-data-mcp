@@ -78,31 +78,23 @@ uv run ontario-data-mcp
 
 ## Supported Portals
 
+All searches fan out to every portal by default — no need to select a portal. Dataset and resource IDs are prefixed with their portal (e.g. `toronto:abc123`).
+
 | Portal | Platform | Datasets |
 |--------|----------|----------|
-| `ontario` (default) | CKAN | ~5,700 |
+| `ontario` | CKAN | ~5,700 |
 | `toronto` | CKAN | ~533 |
-| `ottawa` | ArcGIS Hub | ~665 |
+| `ottawa` | ArcGIS Hub (coming soon) | ~665 |
 
 ## List of tools available to the AI agent
 
 <details>
-<summary><b>Portal Management</b> (3 tools)</summary>
+<summary><b>Discovery</b> (7 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
-| `set_portal` | Set the active data portal for subsequent queries |
-| `list_portals` | List all available portals with platform type and active marker |
-| `search_all_portals` | Search across all portals simultaneously |
-
-</details>
-
-<details>
-<summary><b>Discovery</b> (6 tools)</summary>
-
-| Tool | Description |
-|------|-------------|
-| `search_datasets` | Search for datasets by keyword |
+| `search_datasets` | Search for datasets across all portals (or narrow with `portal=`) |
+| `list_portals` | List all available portals with platform type |
 | `list_organizations` | List government ministries with dataset counts |
 | `list_topics` | List all tags/topics in the catalogue |
 | `get_popular_datasets` | Get popular or recently updated datasets |
@@ -116,10 +108,10 @@ uv run ontario-data-mcp
 
 | Tool | Description |
 |------|-------------|
-| `get_dataset_info` | Get full metadata for a dataset including all resources |
+| `get_dataset_info` | Get full metadata for a dataset (use prefixed ID like `toronto:abc123`) |
 | `list_resources` | List all files in a dataset with formats and sizes |
 | `get_resource_schema` | Get column schema and sample values for a datastore resource |
-| `compare_datasets` | Compare metadata side-by-side for multiple datasets |
+| `compare_datasets` | Compare metadata side-by-side for multiple datasets (cross-portal) |
 
 </details>
 
@@ -128,7 +120,7 @@ uv run ontario-data-mcp
 
 | Tool | Description |
 |------|-------------|
-| `download_resource` | Download a resource and cache it locally in DuckDB (returns staleness info if already cached) |
+| `download_resource` | Download a resource and cache it in DuckDB (use prefixed ID like `toronto:abc123`) |
 | `cache_info` | Cache statistics + list all cached datasets with staleness |
 | `cache_manage` | Remove single resource, clear all, or refresh (action enum) |
 | `refresh_cache` | Re-download cached resources with latest data |
