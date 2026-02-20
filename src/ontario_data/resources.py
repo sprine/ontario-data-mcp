@@ -5,13 +5,13 @@ import json
 from fastmcp import Context
 
 from ontario_data.server import mcp
-from ontario_data.utils import get_deps
+from ontario_data.utils import _lifespan_state, get_cache, get_deps, resolve_dataset
 
 
 @mcp.resource("ontario://cache/index")
 async def cache_index(ctx: Context) -> str:
     """List of all locally cached datasets with freshness info."""
-    _, cache = get_deps(ctx, portal="ontario")
+    cache = get_cache(ctx)
     cached = cache.list_cached()
     stats = cache.get_stats()
     return json.dumps({
@@ -24,30 +24,43 @@ async def cache_index(ctx: Context) -> str:
 
 @mcp.resource("ontario://dataset/{dataset_id}")
 async def dataset_metadata(dataset_id: str, ctx: Context) -> str:
-    """Full metadata for a specific dataset."""
-    ckan, cache = get_deps(ctx, portal="ontario")
+    """Full metadata for a specific dataset (supports prefixed IDs like toronto:abc)."""
+    cache = get_cache(ctx)
     meta = cache.get_dataset_metadata(dataset_id)
     if not meta:
-        meta = await ckan.package_show(dataset_id)
-        cache.store_dataset_metadata(dataset_id, meta)
+        _, _, meta = await resolve_dataset(ctx, dataset_id)
+        cache.store_dataset_metadata(meta.get("id", dataset_id), meta)
     return json.dumps(meta, indent=2, default=str)
 
 
 @mcp.resource("ontario://portal/stats")
 async def portal_stats(ctx: Context) -> str:
-    """Overview statistics about the Ontario Data Catalogue."""
-    ckan, _ = get_deps(ctx, portal="ontario")
-    result = await ckan.package_search(rows=0)
-    total = result["count"]
-    orgs = await ckan.organization_list(all_fields=True, include_dataset_count=True)
-    top_orgs = sorted(orgs, key=lambda x: x.get("package_count", 0), reverse=True)[:10]
-    return json.dumps({
-        "total_datasets": total,
-        "top_organizations": [
-            {"name": o["title"], "datasets": o.get("package_count", 0)}
-            for o in top_orgs
-        ],
-    }, indent=2)
+    """Overview statistics across all data portals."""
+    configs = _lifespan_state(ctx)["portal_configs"]
+    portals = []
+    for portal_key, config in configs.items():
+        try:
+            ckan, _ = get_deps(ctx, portal_key)
+            result = await ckan.package_search(rows=0)
+            total = result["count"]
+            orgs = await ckan.organization_list(all_fields=True, include_dataset_count=True)
+            top_orgs = sorted(orgs, key=lambda x: x.get("package_count", 0), reverse=True)[:5]
+            portals.append({
+                "portal": portal_key,
+                "name": config.name,
+                "total_datasets": total,
+                "top_organizations": [
+                    {"name": o["title"], "datasets": o.get("package_count", 0)}
+                    for o in top_orgs
+                ],
+            })
+        except Exception:
+            portals.append({
+                "portal": portal_key,
+                "name": config.name,
+                "error": "Could not fetch stats",
+            })
+    return json.dumps({"portals": portals}, indent=2)
 
 
 @mcp.resource("ontario://guides/duckdb-sql")
