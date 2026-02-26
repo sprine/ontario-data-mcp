@@ -231,8 +231,13 @@ def make_geo_table_name(dataset_name: str, resource_id: str, portal: str = "onta
 
 def require_cached(cache: CacheManager, resource_id: str) -> str:
     """Return table name, or raise with a user-friendly message that includes
-    the download_resource command to run."""
-    table_name = cache.get_table_name(resource_id)
+    the download_resource command to run.
+
+    Strips any portal prefix (e.g. 'toronto:abc123' -> 'abc123') before
+    cache lookup, since the cache stores bare IDs only.
+    """
+    _, bare_id = parse_portal_id(resource_id, set(PORTALS.keys()))
+    table_name = cache.get_table_name(bare_id)
     if not table_name:
         raise ResourceNotCachedError(
             f"Resource {resource_id} is not cached. "
