@@ -1,7 +1,6 @@
 """Tests for multi-portal routing: parse_portal_id, fan_out, search fan-out, get_deps."""
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock
 
 import pytest
@@ -190,14 +189,11 @@ class TestSearchDatasetsFanOut:
         ctx = make_portal_context(
             portal_clients={"ontario": ontario_ckan, "toronto": toronto_ckan, "ottawa": ottawa_arcgis},
         )
-        result = json.loads(await search_datasets(query="transit", ctx=ctx))
-        assert result["portals_searched"] == 3
-        assert len(result["results"]) == 3
-
-        portal_names = [r["portal"] for r in result["results"]]
-        assert "ontario" in portal_names
-        assert "toronto" in portal_names
-        assert "ottawa" in portal_names
+        result = await search_datasets(query="transit", ctx=ctx)
+        assert "3 portals" in result
+        assert "Ontario Transit" in result
+        assert "TTC Routes" in result
+        assert "OC Transpo" in result
 
     @pytest.mark.asyncio
     async def test_portal_param_narrows(self, make_portal_context):
@@ -210,10 +206,9 @@ class TestSearchDatasetsFanOut:
         }
 
         ctx = make_portal_context(portal_clients={"toronto": toronto_ckan})
-        result = json.loads(await search_datasets(query="transit", portal="toronto", ctx=ctx))
-        assert result["portals_searched"] == 1
-        assert len(result["results"]) == 1
-        assert result["results"][0]["portal"] == "toronto"
+        result = await search_datasets(query="transit", portal="toronto", ctx=ctx)
+        assert "1 portal" in result
+        assert "TTC Routes" in result
 
     @pytest.mark.asyncio
     async def test_error_graceful(self, make_portal_context):
@@ -227,12 +222,11 @@ class TestSearchDatasetsFanOut:
         ctx = make_portal_context(
             portal_clients={"ontario": ontario_ckan, "toronto": toronto_ckan},
         )
-        result = json.loads(await search_datasets(query="transit", ctx=ctx))
-        # Ontario results should still be returned
-        assert result["portals_searched"] == 1
+        result = await search_datasets(query="transit", ctx=ctx)
+        # Ontario had 0 results but no error, so it counts as searched
+        assert "1 portal" in result
         # Toronto should be in skipped with error
-        skipped_portals = {s["portal"] for s in result["skipped"]}
-        assert "toronto" in skipped_portals
+        assert "Connection timeout" in result
 
     @pytest.mark.asyncio
     async def test_prefixed_ids(self, make_portal_context):
@@ -245,9 +239,8 @@ class TestSearchDatasetsFanOut:
         }
 
         ctx = make_portal_context(portal_clients={"ontario": ontario_ckan})
-        result = json.loads(await search_datasets(query="test", portal="ontario", ctx=ctx))
-        ds = result["results"][0]["datasets"][0]
-        assert ds["id"] == "ontario:ds1"
+        result = await search_datasets(query="test", portal="ontario", ctx=ctx)
+        assert "ontario:ds1" in result
 
 
 class TestListPortals:
@@ -256,22 +249,18 @@ class TestListPortals:
         from ontario_data.tools.discovery import list_portals
 
         ctx = make_portal_context()
-        result = json.loads(await list_portals(ctx=ctx))
-        assert len(result["portals"]) == 3
-        keys = [p["key"] for p in result["portals"]]
-        assert "ontario" in keys
-        assert "toronto" in keys
-        assert "ottawa" in keys
+        result = await list_portals(ctx=ctx)
+        assert "ontario" in result
+        assert "toronto" in result
+        assert "ottawa" in result
 
     @pytest.mark.asyncio
     async def test_no_active_marker(self, make_portal_context):
         from ontario_data.tools.discovery import list_portals
 
         ctx = make_portal_context()
-        result = json.loads(await list_portals(ctx=ctx))
+        result = await list_portals(ctx=ctx)
         assert "active_portal" not in result
-        for p in result["portals"]:
-            assert "active" not in p
 
 
 class TestMakeTableNamePortalPrefix:

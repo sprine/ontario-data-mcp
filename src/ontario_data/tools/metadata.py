@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from fastmcp import Context
 
+from ontario_data.formatting import md_response
 from ontario_data.portals import PortalType
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     _lifespan_state,
     fan_out,
     get_deps,
-    json_response,
     parse_portal_id,
     resolve_dataset,
     unwrap_first_match,
@@ -41,7 +41,7 @@ async def get_dataset_info(
             "datastore_active": r.get("datastore_active", False),
         })
 
-    return json_response(
+    return md_response(
         id=f"{portal}:{ds['id']}",
         name=ds.get("name"),
         title=ds.get("title"),
@@ -83,7 +83,7 @@ async def list_resources(
             "datastore_active": r.get("datastore_active", False),
             "data_range": f"{r.get('data_range_start', '?')} to {r.get('data_range_end', '?')}",
         })
-    return json_response(
+    return md_response(
         dataset=ds.get("title"),
         dataset_id=f"{portal}:{ds['id']}",
         num_resources=len(resources),
@@ -107,11 +107,8 @@ async def get_resource_schema(
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return json_response(
-            status="not_available",
-            reason="ArcGIS Hub has no remote schema API.",
-            suggestion=f"Use download_resource(resource_id='{resource_id}') to cache it, then query_cached to inspect columns.",
-        )
+        return "**Not available:** ArcGIS Hub has no remote schema API.\n\n" \
+               f"Use download_resource(resource_id='{resource_id}') to cache it, then query_cached to inspect columns."
 
     async def _schema(pk: str):
         ckan, _ = get_deps(ctx, pk)
@@ -148,7 +145,7 @@ async def get_resource_schema(
         results = await fan_out(ctx, None, _schema, first_match=True)
         _, data = unwrap_first_match(results, bare_id, "Resource")
 
-    return json_response(**data)
+    return md_response(**data)
 
 
 @mcp.tool(annotations=READONLY)
@@ -183,4 +180,4 @@ async def compare_datasets(
     all_tags = [set(c["tags"]) for c in comparisons]
     shared_tags = list(set.intersection(*all_tags)) if all_tags else []
 
-    return json_response(datasets=comparisons, shared_tags=shared_tags)
+    return md_response(datasets=comparisons, shared_tags=shared_tags)

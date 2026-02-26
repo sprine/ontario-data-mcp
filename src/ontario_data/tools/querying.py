@@ -4,6 +4,7 @@ from typing import Any
 
 from fastmcp import Context
 
+from ontario_data.formatting import format_records, md_response
 from ontario_data.portals import PortalType
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
@@ -11,7 +12,6 @@ from ontario_data.utils import (
     fan_out,
     get_cache,
     get_deps,
-    json_response,
     parse_portal_id,
     strip_internal_fields,
     unwrap_first_match,
@@ -44,11 +44,8 @@ async def query_resource(
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return json_response(
-            status="not_available",
-            reason="ArcGIS Hub has no remote datastore API.",
-            suggestion=f"Use download_resource(resource_id='{resource_id}') + query_cached(sql='...') instead.",
-        )
+        return "**Not available:** ArcGIS Hub has no remote datastore API.\n\n" \
+               f"Use download_resource(resource_id='{resource_id}') + query_cached(sql='...') instead."
 
     async def _query(pk: str):
         ckan, _ = get_deps(ctx, pk)
@@ -70,12 +67,7 @@ async def query_resource(
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
     clean_records = strip_internal_fields(result.get("records", []))
 
-    return json_response(
-        total=result.get("total", 0),
-        returned=len(clean_records),
-        fields=field_info,
-        records=clean_records,
-    )
+    return format_records(clean_records, row_count=len(clean_records), total=result.get("total", 0), fields=field_info)
 
 
 @mcp.tool(annotations=READONLY)
@@ -100,21 +92,14 @@ async def sql_query(
     configs = _lifespan_state(ctx)["portal_configs"]
     ckan, _ = get_deps(ctx, portal)
     if configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return json_response(
-            status="not_available",
-            reason="ArcGIS Hub has no remote SQL API.",
-            suggestion="Use download_resource(resource_id='...') + query_cached(sql='...') instead.",
-        )
+        return "**Not available:** ArcGIS Hub has no remote SQL API.\n\n" \
+               "Use download_resource(resource_id='...') + query_cached(sql='...') instead."
 
     result = await ckan.datastore_sql(sql)
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
     clean_records = strip_internal_fields(result.get("records", []))
 
-    return json_response(
-        returned=len(clean_records),
-        fields=field_info,
-        records=clean_records,
-    )
+    return format_records(clean_records, row_count=len(clean_records), fields=field_info)
 
 
 @mcp.tool(annotations=READONLY)
@@ -133,10 +118,7 @@ async def query_cached(
     cache = get_cache(ctx)
     try:
         results = cache.query(sql)
-        return json_response(
-            row_count=len(results),
-            records=results,
-        )
+        return format_records(results, row_count=len(results))
     except Exception as e:
         cached = cache.list_cached()
         table_names = [c["table_name"] for c in cached]
@@ -165,11 +147,8 @@ async def preview_data(
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return json_response(
-            status="not_available",
-            reason="ArcGIS Hub has no remote datastore API.",
-            suggestion=f"Use download_resource(resource_id='{resource_id}') + query_cached(sql='...') instead.",
-        )
+        return "**Not available:** ArcGIS Hub has no remote datastore API.\n\n" \
+               f"Use download_resource(resource_id='{resource_id}') + query_cached(sql='...') instead."
 
     async def _preview(pk: str):
         ckan, _ = get_deps(ctx, pk)
@@ -184,9 +163,4 @@ async def preview_data(
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
     clean_records = strip_internal_fields(result.get("records", []))
 
-    return json_response(
-        total_records=result.get("total", 0),
-        previewing=len(clean_records),
-        fields=field_info,
-        records=clean_records,
-    )
+    return format_records(clean_records, row_count=len(clean_records), total=result.get("total", 0), preview=True, fields=field_info)

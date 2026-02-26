@@ -6,9 +6,9 @@ from fastmcp import Context
 
 from ontario_data.server import READONLY, mcp
 from ontario_data.staleness import FREQUENCY_DAYS
+from ontario_data.formatting import md_response
 from ontario_data.utils import (
     get_cache,
-    json_response,
     require_cached,
     resolve_dataset,
 )
@@ -72,7 +72,7 @@ async def check_data_quality(
         f'SELECT count(*) FROM (SELECT {col_names}, count(*) OVER (PARTITION BY {col_names}) as _cnt FROM "{table_name}") WHERE _cnt > 1'
     )[0]
 
-    return json_response(
+    return md_response(
         resource_id=resource_id,
         table_name=table_name,
         total_rows=total,
@@ -116,7 +116,7 @@ async def check_freshness(
             "last_modified": r_modified,
         })
 
-    return json_response(
+    return md_response(
         dataset=ds.get("title"),
         update_frequency=frequency,
         last_modified=last_modified,
@@ -148,7 +148,7 @@ async def profile_data(
     # Get row count
     row_count = cache.execute_sql(f'SELECT COUNT(*) as cnt FROM "{table_name}"')[0][0]
 
-    return json_response(
+    return md_response(
         resource_id=resource_id,
         table_name=table_name,
         row_count=row_count,

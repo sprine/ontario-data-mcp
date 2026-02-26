@@ -1,7 +1,6 @@
 """Tests for tool behavior with ArcGIS Hub portals."""
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -16,10 +15,10 @@ class TestSqlQueryArcGIS:
 
         ottawa_client = AsyncMock()
         ctx = make_portal_context(portal_clients={"ottawa": ottawa_client})
-        result = json.loads(await sql_query(sql="SELECT 1", portal="ottawa", ctx=ctx))
+        result = await sql_query(sql="SELECT 1", portal="ottawa", ctx=ctx)
 
-        assert result["status"] == "not_available"
-        assert "download_resource" in result["suggestion"]
+        assert "**Not available:**" in result
+        assert "download_resource" in result
         ottawa_client.datastore_sql.assert_not_called()
 
 
@@ -30,10 +29,10 @@ class TestQueryResourceArcGIS:
 
         ottawa_client = AsyncMock()
         ctx = make_portal_context(portal_clients={"ottawa": ottawa_client})
-        result = json.loads(await query_resource(resource_id="ottawa:abc123_0", ctx=ctx))
+        result = await query_resource(resource_id="ottawa:abc123_0", ctx=ctx)
 
-        assert result["status"] == "not_available"
-        assert "download_resource" in result["suggestion"]
+        assert "**Not available:**" in result
+        assert "download_resource" in result
 
 
 class TestPreviewDataArcGIS:
@@ -43,10 +42,10 @@ class TestPreviewDataArcGIS:
 
         ottawa_client = AsyncMock()
         ctx = make_portal_context(portal_clients={"ottawa": ottawa_client})
-        result = json.loads(await preview_data(resource_id="ottawa:abc123_0", ctx=ctx))
+        result = await preview_data(resource_id="ottawa:abc123_0", ctx=ctx)
 
-        assert result["status"] == "not_available"
-        assert "download_resource" in result["suggestion"]
+        assert "**Not available:**" in result
+        assert "download_resource" in result
 
 
 class TestGetResourceSchemaArcGIS:
@@ -56,10 +55,10 @@ class TestGetResourceSchemaArcGIS:
 
         ottawa_client = AsyncMock()
         ctx = make_portal_context(portal_clients={"ottawa": ottawa_client})
-        result = json.loads(await get_resource_schema(resource_id="ottawa:abc123_0", ctx=ctx))
+        result = await get_resource_schema(resource_id="ottawa:abc123_0", ctx=ctx)
 
-        assert result["status"] == "not_available"
-        assert "download_resource" in result["suggestion"]
+        assert "**Not available:**" in result
+        assert "download_resource" in result
 
 
 class TestLoadGeodataArcGIS:
@@ -69,7 +68,7 @@ class TestLoadGeodataArcGIS:
 
         ottawa_client = AsyncMock()
         ctx = make_portal_context(portal_clients={"ottawa": ottawa_client})
-        result = json.loads(await load_geodata(resource_id="ottawa:abc123_0", ctx=ctx))
+        result = await load_geodata(resource_id="ottawa:abc123_0", ctx=ctx)
 
-        assert result["status"] == "not_available"
-        assert "download_resource" in result["suggestion"]
+        assert "**Not available:**" in result
+        assert "download_resource" in result

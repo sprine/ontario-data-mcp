@@ -7,13 +7,13 @@ from fastmcp import Context
 
 from ontario_data.portals import PortalType
 from ontario_data.server import READONLY, mcp
+from ontario_data.formatting import format_records, md_response
 from ontario_data.utils import (
     SpatialExtensionError,
     _lifespan_state,
     fan_out,
     get_cache,
     get_deps,
-    json_response,
     make_geo_table_name,
     parse_portal_id,
     require_cached,
@@ -42,17 +42,14 @@ async def load_geodata(
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return json_response(
-            status="not_available",
-            reason="ArcGIS Feature Service URLs cannot be downloaded as geospatial files.",
-            suggestion=f"Use download_resource(resource_id='{resource_id}') for CSV data, or access the portal directly.",
-        )
+        return "**Not available:** ArcGIS Feature Service URLs cannot be downloaded as geospatial files.\n\n" \
+               f"Use download_resource(resource_id='{resource_id}') for CSV data, or access the portal directly."
 
     cache = get_cache(ctx)
 
     if cache.is_cached(bare_id) and not force_refresh:
         table_name = cache.get_table_name(bare_id)
-        return json_response(status="already_cached", table_name=table_name)
+        return md_response(status="already_cached", table_name=table_name)
 
     if not portal:
         portal, bare_id = await resolve_resource_portal(ctx, resource_id)
@@ -116,7 +113,7 @@ async def load_geodata(
 
     await ctx.report_progress(100, 100, "Done")
 
-    return json_response(
+    return md_response(
         status="loaded",
         table_name=table_name,
         row_count=len(df),
@@ -208,7 +205,7 @@ async def spatial_query(
     # Execute directly since spatial SQL contains functions not in allowed prefixes
     records = cache.execute_sql_dict(sql)
 
-    return json_response(operation=operation, result_count=len(records), records=records)
+    return format_records(records, row_count=len(records))
 
 
 @mcp.tool(annotations=READONLY)
@@ -255,4 +252,4 @@ async def list_geo_datasets(
         if result and not error:
             all_datasets.extend(result)
 
-    return json_response(total=len(all_datasets), datasets=all_datasets[:limit])
+    return md_response(total=len(all_datasets), datasets=all_datasets[:limit])

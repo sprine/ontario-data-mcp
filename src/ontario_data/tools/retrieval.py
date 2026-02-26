@@ -12,12 +12,12 @@ from ontario_data.ckan_client import CKANClient
 from ontario_data.portals import PortalType
 from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
+from ontario_data.formatting import md_response
 from ontario_data.utils import (
     _lifespan_state,
     get_cache,
     get_deps,
     infer_portal_from_table,
-    json_response,
     make_table_name,
     parse_portal_id,
     resolve_resource_portal,
@@ -122,7 +122,7 @@ async def download_resource(
         table_name = cache.get_table_name(bare_id)
         meta = cache.get_resource_meta(bare_id)
         staleness = get_staleness_info(cache, bare_id)
-        return json_response(
+        return md_response(
             status="already_cached",
             table_name=table_name,
             row_count=meta["row_count"],
@@ -165,7 +165,7 @@ async def download_resource(
 
     await ctx.report_progress(100, 100, "Done")
 
-    return json_response(
+    return md_response(
         status="downloaded",
         table_name=table_name,
         row_count=len(df),
@@ -201,7 +201,7 @@ async def cache_info(ctx: Context = None) -> str:
             "is_stale": staleness["is_stale"] if staleness else None,
         })
 
-    return json_response(
+    return md_response(
         **stats,
         total_size_mb=round(stats["total_size_bytes"] / (1024 * 1024), 2),
         datasets=items,
@@ -228,12 +228,12 @@ async def cache_manage(
         configs = _lifespan_state(ctx)["portal_configs"]
         _, bare_id = parse_portal_id(resource_id, set(configs.keys()))
         cache.remove_resource(bare_id)
-        return json_response(status="removed", resource_id=bare_id)
+        return md_response(status="removed", resource_id=bare_id)
 
     elif action == "clear":
         count = len(cache.list_cached())
         cache.remove_all()
-        return json_response(status="cleared", removed_count=count)
+        return md_response(status="cleared", removed_count=count)
 
     else:
         raise ValueError(f"Invalid action '{action}'. Use 'remove' or 'clear'.")
@@ -289,4 +289,4 @@ async def refresh_cache(
         except Exception as e:
             results.append({"resource_id": item["resource_id"], "status": "error", "error": str(e)})
 
-    return json_response(refreshed=results)
+    return md_response(refreshed=results)

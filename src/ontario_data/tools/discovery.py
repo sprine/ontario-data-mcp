@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import json
 import logging
 
 from fastmcp import Context
 
-from ontario_data.portals import PORTALS
+from ontario_data.formatting import format_search_results, md_response
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     _lifespan_state,
     fan_out,
     get_deps,
-    json_response,
     resolve_dataset,
 )
 
@@ -87,7 +85,7 @@ async def search_datasets(
         else:
             results.append(result)
 
-    return json_response(
+    return format_search_results(
         query=query,
         portals_searched=len(results),
         results=results,
@@ -128,7 +126,7 @@ async def list_organizations(
     for _, result, error in raw:
         if result and not error:
             all_orgs.extend(result)
-    return json.dumps(all_orgs, indent=2)
+    return md_response(organizations=all_orgs)
 
 
 @mcp.tool(annotations=READONLY)
@@ -156,7 +154,7 @@ async def list_topics(
     for _, result, error in raw:
         if result and not error:
             all_tags.extend(result)
-    return json.dumps(all_tags, indent=2)
+    return md_response(topics=all_tags)
 
 
 @mcp.tool(annotations=READONLY)
@@ -206,7 +204,7 @@ async def find_related_datasets(
                     "relevance": "same_organization",
                 })
 
-    return json_response(
+    return md_response(
         source={"id": f"{portal}:{source['id']}", "title": source.get("title"), "tags": tags},
         related=related[:limit],
     )
@@ -230,4 +228,4 @@ async def list_portals(
             "description": config.description,
         })
 
-    return json_response(portals=portals)
+    return md_response(portals=portals)
