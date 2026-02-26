@@ -46,7 +46,7 @@ To auto-approve all tool calls (no confirmation prompts), add to your Claude Cod
 }
 ```
 
-All read-only tools are annotated as such. The only destructive tool is `cache_manage`, which removes local cached data (no remote mutations).
+All read-only tools are annotated as such. Tools annotated as destructive only modify local cached data (no remote mutations).
 
 <details>
   <summary>With VS Code</summary>
