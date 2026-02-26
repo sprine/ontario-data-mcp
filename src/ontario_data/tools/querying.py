@@ -98,6 +98,7 @@ async def sql_query(
         portal: Portal to query (default: "ontario"). Required because SQL embeds resource IDs directly.
     """
     configs = _lifespan_state(ctx)["portal_configs"]
+    ckan, _ = get_deps(ctx, portal)
     if configs[portal].portal_type == PortalType.ARCGIS_HUB:
         return json_response(
             status="not_available",
@@ -105,7 +106,6 @@ async def sql_query(
             suggestion="Use download_resource(resource_id='...') + query_cached(sql='...') instead.",
         )
 
-    ckan, _ = get_deps(ctx, portal)
     result = await ckan.datastore_sql(sql)
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
     clean_records = strip_internal_fields(result.get("records", []))
