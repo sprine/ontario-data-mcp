@@ -74,6 +74,14 @@ cd ontario-data-mcp
 uv sync
 uv run ontario-data-mcp
 ```
+
+To connect from source to Claude Code:
+
+> **Note:** MCP subprocesses don't inherit your shell's PATH, so you must use the absolute path to `uv` (find it with `which uv`).
+
+```bash
+claude mcp add ontario-data -- /absolute/path/to/uv run --directory /path/to/ontario-data-mcp fastmcp run src/ontario_data/server.py
+```
 </details>
 
 ## Supported Portals
