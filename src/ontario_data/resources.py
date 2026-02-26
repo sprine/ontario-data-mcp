@@ -4,8 +4,9 @@ import json
 
 from fastmcp import Context
 
+from ontario_data.portals import PORTALS
 from ontario_data.server import mcp
-from ontario_data.utils import _lifespan_state, get_cache, get_deps, resolve_dataset
+from ontario_data.utils import _lifespan_state, get_cache, get_deps, parse_portal_id, resolve_dataset
 
 
 @mcp.resource("ontario://cache/index")
@@ -26,10 +27,11 @@ async def cache_index(ctx: Context) -> str:
 async def dataset_metadata(dataset_id: str, ctx: Context) -> str:
     """Full metadata for a specific dataset (supports prefixed IDs like toronto:abc)."""
     cache = get_cache(ctx)
-    meta = cache.get_dataset_metadata(dataset_id)
+    _, bare_id = parse_portal_id(dataset_id, set(PORTALS.keys()))
+    meta = cache.get_dataset_metadata(bare_id)
     if not meta:
         _, _, meta = await resolve_dataset(ctx, dataset_id)
-        cache.store_dataset_metadata(meta.get("id", dataset_id), meta)
+        cache.store_dataset_metadata(meta.get("id", bare_id), meta)
     return json.dumps(meta, indent=2, default=str)
 
 
