@@ -16,6 +16,7 @@ from ontario_data.utils import (
     _lifespan_state,
     get_cache,
     get_deps,
+    infer_portal_from_table,
     json_response,
     make_table_name,
     parse_portal_id,
@@ -263,10 +264,7 @@ async def refresh_cache(
     for i, item in enumerate(cached):
         await ctx.report_progress(i, len(cached), f"Refreshing {item['table_name']}...")
         try:
-            # Infer portal from table name prefix (ds_<portal>_...)
-            table_name = item["table_name"]
-            parts = table_name.split("_", 2)
-            portal = parts[1] if len(parts) >= 3 else "ontario"
+            portal = infer_portal_from_table(item["table_name"])
 
             ckan, _ = get_deps(ctx, portal)
             configs = _lifespan_state(ctx)["portal_configs"]

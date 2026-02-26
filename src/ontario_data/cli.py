@@ -11,7 +11,9 @@ import sys
 from datetime import datetime, timezone
 
 from ontario_data.cache import CacheManager
+from ontario_data.portals import PORTALS, PortalType
 from ontario_data.staleness import get_staleness_info
+from ontario_data.utils import infer_portal_from_table, parse_portal_id
 
 
 def _muted(text: str) -> str:
@@ -113,12 +115,13 @@ def cmd_query(args: argparse.Namespace) -> None:
 
 def cmd_remove(args: argparse.Namespace) -> None:
     cache = _make_cache()
-    if not cache.is_cached(args.resource_id):
-        print(f"Resource {args.resource_id} is not cached.", file=sys.stderr)
+    _, bare_id = parse_portal_id(args.resource_id, set(PORTALS.keys()))
+    if not cache.is_cached(bare_id):
+        print(f"Resource {bare_id} is not cached.", file=sys.stderr)
         sys.exit(1)
-    table_name = cache.get_table_name(args.resource_id)
-    cache.remove_resource(args.resource_id)
-    print(f"Removed {args.resource_id} (table: {table_name}).")
+    table_name = cache.get_table_name(bare_id)
+    cache.remove_resource(bare_id)
+    print(f"Removed {bare_id} (table: {table_name}).")
 
 
 def cmd_clear(args: argparse.Namespace) -> None:
@@ -140,38 +143,58 @@ def cmd_clear(args: argparse.Namespace) -> None:
 
 def cmd_refresh(args: argparse.Namespace) -> None:
     cache = _make_cache()
-    if not cache.is_cached(args.resource_id):
-        print(f"Resource {args.resource_id} is not cached.", file=sys.stderr)
+    _, bare_id = parse_portal_id(args.resource_id, set(PORTALS.keys()))
+
+    if not cache.is_cached(bare_id):
+        print(f"Resource {bare_id} is not cached.", file=sys.stderr)
         sys.exit(1)
 
-    meta = cache.get_resource_meta(args.resource_id)
+    meta = cache.get_resource_meta(bare_id)
+    portal = infer_portal_from_table(meta["table_name"])
+    config = PORTALS[portal]
 
     async def _do_refresh():
-        from ontario_data.ckan_client import CKANClient
+        import httpx
+
         from ontario_data.staleness import compute_expires_at
-        from ontario_data.tools.retrieval import _download_resource_data
+        from ontario_data.tools.retrieval import (
+            _download_arcgis_resource_data,
+            _download_resource_data,
+        )
 
-        ckan = CKANClient()
-        try:
-            print(f"Downloading {args.resource_id}...")
-            df, resource, dataset = await _download_resource_data(ckan, args.resource_id)
+        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as http:
+            print(f"Downloading {bare_id} from {portal}...")
+            if config.portal_type == PortalType.ARCGIS_HUB:
+                from ontario_data.arcgis_client import ArcGISHubClient
 
-            table_name = meta["table_name"]
+                client = ArcGISHubClient(
+                    base_url=config.base_url,
+                    http_client=http,
+                    org_name=portal,
+                    org_title=config.name.replace(" Open Data", ""),
+                )
+                df, resource, dataset = await _download_arcgis_resource_data(
+                    client, bare_id, http
+                )
+            else:
+                from ontario_data.ckan_client import CKANClient
+
+                client = CKANClient(base_url=config.base_url, http_client=http)
+                df, resource, dataset = await _download_resource_data(client, bare_id)
+
             cache.store_resource(
-                resource_id=args.resource_id,
+                resource_id=bare_id,
                 dataset_id=meta["dataset_id"] or "",
-                table_name=table_name,
+                table_name=meta["table_name"],
                 df=df,
                 source_url=resource.get("url", ""),
             )
 
             update_freq = dataset.get("update_frequency")
             expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
-            cache.update_expires_at(args.resource_id, expires_at)
+            cache.update_expires_at(bare_id, expires_at)
 
-            print(f"Refreshed {args.resource_id}: {len(df)} rows -> {table_name}")
-        finally:
-            await ckan.close()
+            print(f"Refreshed {bare_id}: {len(df)} rows -> {meta['table_name']}")
 
     asyncio.run(_do_refresh())
 

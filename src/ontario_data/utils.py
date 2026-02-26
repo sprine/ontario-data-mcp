@@ -215,6 +215,18 @@ def _slugify(name: str, fallback: str = "unknown", max_len: int = 40) -> str:
     return re.sub(r"_+", "_", slug).strip("_")[:max_len]
 
 
+def infer_portal_from_table(table_name: str) -> str:
+    """Extract portal key from a table name like 'ds_toronto_...' or 'geo_ottawa_...'.
+
+    Inverse of make_table_name / make_geo_table_name. Falls back to 'ontario'
+    for legacy names or unexpected formats.
+    """
+    parts = table_name.split("_", 2)
+    if len(parts) >= 3 and parts[0] in ("ds", "geo") and parts[1] in PORTALS:
+        return parts[1]
+    return "ontario"
+
+
 def make_table_name(dataset_name: str, resource_id: str, portal: str = "ontario") -> str:
     """Build a deterministic table name like 'ds_ontario_covid_cases_a1b2c3d4'
     so the same resource always lands in the same table."""
