@@ -6,6 +6,7 @@ import pytest
 from ontario_data.cache import CacheManager
 from ontario_data.utils import (
     ResourceNotCachedError,
+    infer_portal_from_table,
     json_response,
     make_table_name,
     require_cached,
@@ -54,6 +55,23 @@ class TestMakeTableName:
         assert len(result) <= 3 + 8 + 1 + 40 + 1 + 8
 
 
+class TestInferPortalFromTable:
+    def test_toronto_data_table(self):
+        assert infer_portal_from_table("ds_toronto_ttc_routes_abc12345") == "toronto"
+
+    def test_ottawa_geo_table(self):
+        assert infer_portal_from_table("geo_ottawa_zones_abc12345") == "ottawa"
+
+    def test_ontario_data_table(self):
+        assert infer_portal_from_table("ds_ontario_covid_cases_abc12345") == "ontario"
+
+    def test_legacy_name_defaults_to_ontario(self):
+        assert infer_portal_from_table("covid_cases_abc12345") == "ontario"
+
+    def test_unknown_prefix_defaults_to_ontario(self):
+        assert infer_portal_from_table("ds_bogus_something") == "ontario"
+
+
 class TestRequireCached:
     def test_found(self, tmp_path):
         cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
@@ -71,6 +89,22 @@ class TestRequireCached:
         cache.initialize()
         with pytest.raises(ResourceNotCachedError, match="not cached"):
             require_cached(cache, "nonexistent")
+
+    def test_prefixed_id_strips_portal(self, tmp_path):
+        cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
+        cache.initialize()
+        cache.execute_sql(
+            "INSERT INTO _cache_metadata (resource_id, table_name) VALUES (?, ?)",
+            ["r1", "ds_toronto_test_r1"],
+        )
+        result = require_cached(cache, "toronto:r1")
+        assert result == "ds_toronto_test_r1"
+
+    def test_prefixed_id_not_found_includes_original_id(self, tmp_path):
+        cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
+        cache.initialize()
+        with pytest.raises(ResourceNotCachedError, match="toronto:missing"):
+            require_cached(cache, "toronto:missing")
 
 
 class TestJsonResponse:
