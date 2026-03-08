@@ -23,23 +23,28 @@ def make_ogc_search_response(features: list[dict], total: int = 1) -> dict:
 
 def make_ogc_feature(
     item_id: str = "abc123",
-    layer_index: int = 0,
     title: str = "Test Dataset",
     description: str = "A test",
     tags: list[str] | None = None,
     modified: str = "2025-06-01T00:00:00Z",
+    item_type: str = "Feature Service",
 ) -> dict:
+    """Build a mock OGC search feature.
+
+    The real OGC API returns bare item IDs (no layer suffix).
+    The client appends ``_0`` for layered types (Feature Service, etc.).
+    """
     return {
-        "id": f"{item_id}_{layer_index}",
+        "id": item_id,
         "type": "Feature",
         "properties": {
-            "id": f"{item_id}_{layer_index}",
+            "id": item_id,
             "title": title,
             "description": description,
             "tags": tags or ["transit"],
             "owner": "CityofOttawa_GISsupport",
             "modified": modified,
-            "type": "Feature Service",
+            "type": item_type,
             "url": f"https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/{title}/FeatureServer/0",
         },
     }

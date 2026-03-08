@@ -133,13 +133,15 @@ async def list_organizations(
 async def list_topics(
     query: str | None = None,
     portal: str | None = None,
+    limit: int = 100,
     ctx: Context = None,
 ) -> str:
-    """List all tags/topics used across data portals.
+    """List top tags/topics used across data portals, ranked by dataset count.
 
     Args:
         query: Optional filter to match tag names
         portal: Narrow to one portal. Default: all portals.
+        limit: Max tags to return (default 100). Use a higher value to see more.
     """
 
     async def _list_tags(portal_key: str) -> list[dict]:
@@ -154,7 +156,14 @@ async def list_topics(
     for _, result, error in raw:
         if result and not error:
             all_tags.extend(result)
-    return md_response(topics=all_tags)
+
+    # Sort by count descending so the most-used tags come first
+    all_tags.sort(key=lambda t: t.get("count", 0), reverse=True)
+    total = len(all_tags)
+    all_tags = all_tags[:limit]
+
+    note = f"Showing top {len(all_tags)} of {total} tags" if total > limit else f"{total} tags"
+    return md_response(summary=note, topics=all_tags)
 
 
 @mcp.tool(annotations=READONLY)

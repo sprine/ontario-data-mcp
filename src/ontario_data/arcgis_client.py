@@ -73,17 +73,24 @@ class ArcGISHubClient:
         results = []
         for feature in data.get("features", []):
             props = feature.get("properties", {})
-            ds_id = props.get("id") or feature.get("id", "")
+            raw_id = props.get("id") or feature.get("id", "")
+            item_type = props.get("type", "")
+
+            # Hub v3 indexes Feature Service datasets as {itemId}_0;
+            # non-layered items (Excel, CSV, etc.) use the bare itemId.
+            ds_id = f"{raw_id}_0" if _is_layered_type(item_type) else raw_id
+
             tags_raw = props.get("tags") or []
             tags = [{"name": t} for t in tags_raw] if isinstance(tags_raw, list) else []
 
             url = props.get("url", "")
+            fmt = item_type or "Feature Service"
             resources = []
             if url:
                 resources.append({
                     "id": ds_id,
                     "name": props.get("title", ""),
-                    "format": "Feature Service",
+                    "format": fmt,
                     "url": url,
                     "datastore_active": False,
                     "download_hint": "Use download_resource — CSV download is typically available.",
@@ -115,6 +122,13 @@ class ArcGISHubClient:
         """
         client = await self._get_client()
         resp = await client.get(f"{self.base_url}/api/v3/datasets/{id}")
+
+        # If bare item ID returns 404, try appending _0 (Feature Service layer)
+        if resp.status_code == 404 and "_" not in id:
+            resp = await client.get(f"{self.base_url}/api/v3/datasets/{id}_0")
+            if resp.is_success:
+                id = f"{id}_0"
+
         resp.raise_for_status()
         attrs = resp.json()["data"]["attributes"]
 
@@ -211,6 +225,14 @@ class ArcGISHubClient:
             return None
         except (httpx.HTTPStatusError, httpx.ConnectError):
             return None
+
+
+_LAYERED_TYPES = {"Feature Service", "Map Service"}
+
+
+def _is_layered_type(item_type: str) -> bool:
+    """Return True for ArcGIS item types that have layers (need _0 suffix)."""
+    return item_type in _LAYERED_TYPES
 
 
 def _slugify(title: str) -> str:
