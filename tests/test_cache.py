@@ -110,8 +110,12 @@ class TestSemicolonParser:
         assert _has_semicolons_outside_strings("SELECT * FROM t") is False
 
     def test_escaped_quote_with_semicolon(self):
-        # Semicolon after escaped quote — still inside string
-        assert _has_semicolons_outside_strings(r"SELECT * WHERE x = 'it\'s; here'") is False
+        # SQL-standard: '' escapes a single quote inside a string
+        assert _has_semicolons_outside_strings("SELECT * WHERE x = 'it''s; here'") is False
+
+    def test_backslash_not_an_escape(self):
+        # Backslash is NOT an escape in standard SQL; '\' is a complete string
+        assert _has_semicolons_outside_strings(r"SELECT '\'; DROP TABLE x") is True
 
     def test_semicolon_after_closing_string(self):
         assert _has_semicolons_outside_strings("SELECT * WHERE x = 'safe';") is True

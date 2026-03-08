@@ -82,7 +82,10 @@ async def _download_arcgis_resource_data(
 
     csv_url = await client.get_download_url(resource_id, fmt="csv")
     if csv_url:
-        resp = await http_client.get(csv_url, follow_redirects=True)
+        # Use a dedicated client with a longer timeout for bulk file downloads,
+        # matching _download_resource_data's 120s timeout for CKAN file downloads.
+        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as dl_client:
+            resp = await dl_client.get(csv_url)
         resp.raise_for_status()
         df = pd.read_csv(io.BytesIO(resp.content))
         resource_meta = {

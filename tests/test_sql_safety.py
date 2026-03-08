@@ -1,7 +1,46 @@
 import pytest
 
-from ontario_data.cache import CacheManager, _validate_sql
+from ontario_data.cache import CacheManager, _has_semicolons_outside_strings, _validate_sql
 from ontario_data.utils import InvalidQueryError
+
+
+class TestSemicolonDetection:
+    """Test SQL-standard '' escaping in semicolon detection."""
+
+    def test_no_semicolon(self):
+        assert _has_semicolons_outside_strings("SELECT 1") is False
+
+    def test_semicolon_outside_string(self):
+        assert _has_semicolons_outside_strings("SELECT 1; DROP TABLE x") is True
+
+    def test_semicolon_inside_string(self):
+        assert _has_semicolons_outside_strings("SELECT 'a;b'") is False
+
+    def test_escaped_quote_sql_standard(self):
+        # SQL-standard: '' is an escaped single quote inside a string
+        # 'O''Brien' is the string O'Brien — semicolons after should be detected
+        assert _has_semicolons_outside_strings("SELECT 'O''Brien'; DROP TABLE x") is True
+
+    def test_escaped_quote_no_semicolon(self):
+        assert _has_semicolons_outside_strings("SELECT 'O''Brien'") is False
+
+    def test_backslash_does_not_escape(self):
+        # Backslash is NOT an escape character in standard SQL
+        # '\' is a complete string containing a backslash
+        # The semicolon after is OUTSIDE the string
+        assert _has_semicolons_outside_strings(r"SELECT '\'; DROP TABLE x") is True
+
+    def test_multiple_strings(self):
+        assert _has_semicolons_outside_strings("SELECT 'a', 'b'") is False
+
+    def test_multiple_strings_with_semicolon(self):
+        assert _has_semicolons_outside_strings("SELECT 'a', 'b'; DROP TABLE x") is True
+
+    def test_empty_string_literal(self):
+        assert _has_semicolons_outside_strings("SELECT ''") is False
+
+    def test_empty_sql(self):
+        assert _has_semicolons_outside_strings("") is False
 
 
 class TestValidateSQL:
@@ -60,6 +99,15 @@ class TestValidateSQL:
     def test_line_comment_prefixed_mutation_rejected(self):
         with pytest.raises(InvalidQueryError, match="read-only"):
             _validate_sql("-- just a comment\nDROP TABLE x")
+
+    def test_comment_embedded_quote_injection_rejected(self):
+        # A quote inside a line comment must not open a "string" that hides a semicolon
+        with pytest.raises(InvalidQueryError, match="semicolons"):
+            _validate_sql("SELECT 1 --'\n; DROP TABLE x")
+
+    def test_block_comment_embedded_quote_injection_rejected(self):
+        with pytest.raises(InvalidQueryError, match="semicolons"):
+            _validate_sql("SELECT 1 /* ' */ ; DROP TABLE x")
 
 
 class TestCacheManagerQuerySafety:

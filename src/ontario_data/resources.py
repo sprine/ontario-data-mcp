@@ -31,7 +31,12 @@ async def dataset_metadata(dataset_id: str, ctx: Context) -> str:
     meta = cache.get_dataset_metadata(bare_id)
     if not meta:
         _, _, meta = await resolve_dataset(ctx, dataset_id)
-        cache.store_dataset_metadata(meta.get("id", bare_id), meta)
+        canonical_id = meta.get("id", bare_id)
+        cache.store_dataset_metadata(canonical_id, meta)
+        # Also store under the bare_id if it differs (e.g. slug vs UUID)
+        # so future lookups by slug hit the cache
+        if bare_id != canonical_id:
+            cache.store_dataset_metadata(bare_id, meta)
     return json.dumps(meta, indent=2, default=str)
 
 

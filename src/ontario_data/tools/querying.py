@@ -126,9 +126,12 @@ async def query_cached(
         hints = ["Quote table names with double quotes."]
         if any(kw in msg for kw in ("conversion", "cast", "type mismatch", "could not convert")):
             hints.append("Numeric columns may be stored as text. Use TRY_CAST(column AS DOUBLE).")
-        raise type(e)(
-            f"{e}\n\nAvailable tables: {table_names}\nHints: {' '.join(hints)}"
-        ) from e
+        augmented = f"{e}\n\nAvailable tables: {table_names}\nHints: {' '.join(hints)}"
+        try:
+            raise type(e)(augmented) from None
+        except TypeError:
+            # DuckDB exception constructors may reject a single string arg
+            raise RuntimeError(augmented) from None
 
 
 @mcp.tool(annotations=READONLY)

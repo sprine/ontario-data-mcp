@@ -82,7 +82,6 @@ from ontario_data import resources  # noqa: E402, F401
 
 
 def main():
-    import sys
     if len(sys.argv) > 1 and sys.argv[1] == "cache":
         from ontario_data.cli import run
         run(sys.argv[2:])

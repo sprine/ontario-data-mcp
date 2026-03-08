@@ -24,13 +24,25 @@ class InvalidQueryError(Exception):
 
 
 def _has_semicolons_outside_strings(sql: str) -> bool:
-    """Defense against statement-stacking injection (e.g. 'SELECT 1; DROP TABLE')."""
+    """Defense against statement-stacking injection (e.g. 'SELECT 1; DROP TABLE').
+
+    Uses SQL-standard '' (doubled single-quote) escaping, NOT backslash escaping.
+    """
     in_string = False
-    for i, char in enumerate(sql):
-        if char == "'" and (i == 0 or sql[i - 1] != "\\"):
-            in_string = not in_string
+    i = 0
+    while i < len(sql):
+        char = sql[i]
+        if char == "'" and not in_string:
+            in_string = True
+        elif char == "'" and in_string:
+            # SQL-standard escape: '' means a literal single quote
+            if i + 1 < len(sql) and sql[i + 1] == "'":
+                i += 1  # skip the second quote
+            else:
+                in_string = False
         elif char == ";" and not in_string:
             return True
+        i += 1
     return False
 
 
@@ -42,8 +54,10 @@ def _validate_sql(sql: str) -> None:
     # Strip leading whitespace and comments
     cleaned = re.sub(r"(/\*.*?\*/|--[^\n]*\n?)", "", sql, flags=re.DOTALL).strip()
 
-    # Reject semicolons outside string literals (defense-in-depth against injection)
-    if _has_semicolons_outside_strings(sql):
+    # Reject semicolons outside string literals (defense-in-depth against injection).
+    # Check comment-stripped SQL so a quote inside a comment (e.g. --')
+    # can't open a fake "string" that hides a real semicolon.
+    if _has_semicolons_outside_strings(cleaned):
         raise InvalidQueryError(
             "SQL queries must not contain semicolons outside string literals. "
             "Send one statement at a time."
