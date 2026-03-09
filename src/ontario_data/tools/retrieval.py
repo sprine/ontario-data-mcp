@@ -131,7 +131,7 @@ async def download_resource(
         table_name = cache.get_table_name(bare_id)
         meta = cache.get_resource_meta(bare_id)
         staleness = get_staleness_info(cache, bare_id)
-        return md_response(
+        response_kwargs = dict(
             status="already_cached",
             table_name=table_name,
             row_count=meta["row_count"],
@@ -139,6 +139,12 @@ async def download_resource(
             staleness=staleness,
             hint="Use query_cached tool with SQL to analyze this data. Use refresh_cache(resource_id=...) to re-download.",
         )
+        if meta.get("type_warnings"):
+            response_kwargs["type_warnings"] = (
+                f"Columns {meta['type_warnings']} are VARCHAR but contain numbers. "
+                f"Use TRY_CAST(col AS DOUBLE) for comparisons."
+            )
+        return md_response(**response_kwargs)
 
     if not portal:
         portal, bare_id = await resolve_resource_portal(ctx, resource_id)
@@ -174,7 +180,7 @@ async def download_resource(
 
     await ctx.report_progress(100, 100, "Done")
 
-    return md_response(
+    response_kwargs = dict(
         status="downloaded",
         table_name=table_name,
         row_count=len(df),
@@ -182,6 +188,13 @@ async def download_resource(
         dtypes={col: str(dtype) for col, dtype in df.dtypes.items()},
         hint=f'Use query_cached tool with SQL like: SELECT * FROM "{table_name}" LIMIT 10',
     )
+    meta = cache.get_resource_meta(bare_id)
+    if meta and meta.get("type_warnings"):
+        response_kwargs["type_warnings"] = (
+            f"Columns {meta['type_warnings']} are VARCHAR but contain numbers. "
+            f"Use TRY_CAST(col AS DOUBLE) for comparisons."
+        )
+    return md_response(**response_kwargs)
 
 
 @mcp.tool(annotations=READONLY)

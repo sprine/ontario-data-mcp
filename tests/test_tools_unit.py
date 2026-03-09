@@ -382,6 +382,29 @@ class TestSpatialQueryValidation:
             )
 
 
+class TestVarcharDetectionAtDownload:
+    """Tests for Item 9: detect VARCHAR-as-number at download time."""
+
+    def test_type_warnings_stored(self, cache):
+        df = pd.DataFrame({
+            "year": ["2020", "2021", "2022"],
+            "name": ["Alice", "Bob", "Charlie"],
+            "amount": ["100.5", "200.3", "300.1"],
+        })
+        cache.store_resource(
+            resource_id="test-tw",
+            dataset_id="test-ds",
+            table_name="ds_type_warn_test",
+            df=df,
+            source_url="http://example.com",
+        )
+        meta = cache.get_resource_meta("test-tw")
+        assert meta["type_warnings"] is not None
+        assert "year" in meta["type_warnings"]
+        assert "amount" in meta["type_warnings"]
+        assert "name" not in meta["type_warnings"]
+
+
 class TestDownloadResourceAlreadyCached:
     @pytest.mark.asyncio
     async def test_returns_staleness_info(self, populated_cache):

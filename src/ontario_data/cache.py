@@ -136,6 +136,11 @@ class CacheManager:
                     expires_at TIMESTAMP
                 )
             """)
+            # Migration: add type_warnings column if missing
+            try:
+                conn.execute("ALTER TABLE _cache_metadata ADD COLUMN type_warnings JSON")
+            except Exception:
+                pass  # column already exists
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS _dataset_metadata (
                     dataset_id VARCHAR PRIMARY KEY,
@@ -175,6 +180,28 @@ class CacheManager:
     def has_spatial_extension(self) -> bool:
         return self._has_spatial
 
+    @staticmethod
+    def _detect_numeric_varchars(conn, table_name: str) -> list[str]:
+        """Detect VARCHAR columns whose values look numeric."""
+        columns = conn.execute(f'DESCRIBE "{table_name}"').fetchall()
+        numeric_re = re.compile(r"^-?\d+\.?\d*$")
+        suspects = []
+        for col in columns:
+            col_name, col_type = col[0], str(col[1])
+            if "VARCHAR" not in col_type.upper():
+                continue
+            sample = conn.execute(
+                f'SELECT DISTINCT "{col_name}" FROM "{table_name}" '
+                f'WHERE "{col_name}" IS NOT NULL LIMIT 100'
+            ).fetchall()
+            values = [str(r[0]) for r in sample if r[0] is not None and str(r[0]).strip()]
+            if not values:
+                continue
+            numeric_count = sum(1 for v in values if numeric_re.match(v.strip()))
+            if numeric_count / len(values) > 0.8:
+                suspects.append(col_name)
+        return suspects
+
     def store_resource(
         self,
         resource_id: str,
@@ -200,14 +227,18 @@ class CacheManager:
             # Create table from DataFrame
             conn.execute(f'CREATE TABLE "{table_name}" AS SELECT * FROM df')
 
+            # Detect VARCHAR columns that look numeric
+            type_warnings = self._detect_numeric_varchars(conn, table_name)
+
             # Record metadata
             now = datetime.now(timezone.utc)
             size = df.memory_usage(deep=True).sum()
             conn.execute(
                 """INSERT INTO _cache_metadata
-                   (resource_id, dataset_id, table_name, downloaded_at, row_count, size_bytes, source_url)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                [resource_id, dataset_id, table_name, now, len(df), int(size), source_url],
+                   (resource_id, dataset_id, table_name, downloaded_at, row_count, size_bytes, source_url, type_warnings)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                [resource_id, dataset_id, table_name, now, len(df), int(size), source_url,
+                 json.dumps(type_warnings) if type_warnings else None],
             )
 
         self._with_retry(_do)
@@ -372,7 +403,7 @@ class CacheManager:
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT resource_id, dataset_id, table_name, downloaded_at, "
-                "row_count, size_bytes, source_url, expires_at "
+                "row_count, size_bytes, source_url, expires_at, type_warnings "
                 "FROM _cache_metadata WHERE resource_id = ?",
                 [resource_id],
             ).fetchone()
@@ -380,6 +411,10 @@ class CacheManager:
                 return None
             cols = [
                 "resource_id", "dataset_id", "table_name", "downloaded_at",
-                "row_count", "size_bytes", "source_url", "expires_at",
+                "row_count", "size_bytes", "source_url", "expires_at", "type_warnings",
             ]
-            return dict(zip(cols, row))
+            meta = dict(zip(cols, row))
+            # Parse JSON type_warnings
+            if meta["type_warnings"]:
+                meta["type_warnings"] = json.loads(meta["type_warnings"])
+            return meta
