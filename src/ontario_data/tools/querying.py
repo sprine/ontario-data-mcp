@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastmcp import Context
@@ -16,6 +17,95 @@ from ontario_data.utils import (
     strip_internal_fields,
     unwrap_first_match,
 )
+
+MAX_QUERY_ROWS = 2000
+
+_NUMERIC_RE = re.compile(r"^-?\d+\.?\d*$")
+_COUNT_STAR_RE = re.compile(r"\bCOUNT\s*\(\s*\*\s*\)", re.IGNORECASE)
+_GROUP_BY_RE = re.compile(r"\bGROUP\s+BY\b", re.IGNORECASE)
+_TABLE_RE = re.compile(r'FROM\s+"([^"]+)"', re.IGNORECASE)
+_QUANTITY_PATTERNS = re.compile(
+    r"(count|quantity|number|no_of|total|amount|exceedances|num_)",
+    re.IGNORECASE,
+)
+
+
+def _detect_numeric_varchars(
+    fields: list[dict[str, str]],
+    rows: list[dict[str, Any]],
+) -> list[str]:
+    """Return names of VARCHAR fields whose values look numeric."""
+    suspects = []
+    for f in fields:
+        if "VARCHAR" not in f["type"].upper():
+            continue
+        sample = [
+            str(r[f["name"]])
+            for r in rows[:100]
+            if r.get(f["name"]) is not None and str(r[f["name"]]).strip() != ""
+        ]
+        if not sample:
+            continue
+        numeric_count = sum(1 for v in sample if _NUMERIC_RE.match(v.strip()))
+        if numeric_count / len(sample) > 0.8:
+            suspects.append(f["name"])
+    return suspects
+
+
+def _generate_query_warnings(
+    sql: str,
+    results: list[dict[str, Any]],
+    fields: list[dict[str, str]],
+    cache,
+) -> list[str]:
+    """Post-query heuristic warnings to catch common accuracy traps."""
+    warnings: list[str] = []
+
+    # Extract table name(s) from SQL
+    table_matches = _TABLE_RE.findall(sql)
+
+    # 1. COUNT(*) when a quantity column exists
+    if _COUNT_STAR_RE.search(sql) and table_matches:
+        table = table_matches[0]
+        try:
+            columns = cache.execute_sql(f'DESCRIBE "{table}"')
+            col_names = [c[0] for c in columns]
+            quantity_cols = [c for c in col_names if _QUANTITY_PATTERNS.search(c)]
+            if quantity_cols:
+                warnings.append(
+                    f"This table has columns that may contain per-row counts: "
+                    f"{quantity_cols}. Consider SUM(\"{quantity_cols[0]}\") instead of COUNT(*)."
+                )
+        except Exception:
+            pass
+
+    # 2. 0 rows from non-empty table
+    if not results and table_matches:
+        table = table_matches[0]
+        try:
+            total = cache.execute_sql(f'SELECT COUNT(*) FROM "{table}"')[0][0]
+            if total > 0:
+                warnings.append(
+                    f"0 rows returned but table has {total:,} rows. "
+                    f"Check your WHERE/JOIN conditions."
+                )
+        except Exception:
+            pass
+
+    # 3. Very few rows from GROUP BY on large table
+    if 1 <= len(results) <= 3 and _GROUP_BY_RE.search(sql) and table_matches:
+        table = table_matches[0]
+        try:
+            total = cache.execute_sql(f'SELECT COUNT(*) FROM "{table}"')[0][0]
+            if total > 1000:
+                warnings.append(
+                    f"Only {len(results)} groups from {total:,} rows. "
+                    f"Verify your GROUP BY columns are correct."
+                )
+        except Exception:
+            pass
+
+    return warnings
 
 
 @mcp.tool(annotations=READONLY)
@@ -112,13 +202,74 @@ async def query_cached(
     Use table names from download_resource or cache_info.
     Supports full DuckDB SQL including aggregations, window functions, CTEs, etc.
 
+    Before querying, check column types with get_resource_schema or DESCRIBE.
+    Many numeric columns are stored as VARCHAR — use TRY_CAST(col AS DOUBLE)
+    for numeric comparisons, not bare > or < operators.
+
+    Use SUM(quantity_col) not COUNT(*) when rows contain per-row counts.
+    Column names may vary across resources — verify with DESCRIBE before assuming.
+    Values containing semicolons should be matched with LIKE patterns, not exact equality.
+
     Args:
         sql: SQL query (e.g. SELECT * FROM "ds_my_table_abc12345" LIMIT 10)
     """
     cache = get_cache(ctx)
     try:
-        results = cache.query(sql)
-        return format_records(results, row_count=len(results))
+        results, fields = cache.query_with_meta(sql)
+
+        # --- Truncation (Item 2) ---
+        truncated_total = None
+        if len(results) >= MAX_QUERY_ROWS:
+            try:
+                count_row = cache.execute_sql(f"SELECT COUNT(*) FROM ({sql})")
+                truncated_total = count_row[0][0]
+            except Exception:
+                truncated_total = len(results)
+            results = results[:MAX_QUERY_ROWS]
+
+        # --- Detect numeric VARCHARs (Item 1) ---
+        numeric_varchars = _detect_numeric_varchars(fields, results)
+
+        # --- Post-query heuristic warnings (Item 5) ---
+        warnings = _generate_query_warnings(sql, results, fields, cache)
+
+        if numeric_varchars:
+            warnings.insert(
+                0,
+                f"Columns {numeric_varchars} appear numeric but are stored as VARCHAR. "
+                f"Use TRY_CAST(col AS DOUBLE) for comparisons.",
+            )
+
+        # --- Build response ---
+        parts: list[str] = []
+
+        # Echo SQL (Item 3)
+        parts.append(f"**Query:** `{sql}`")
+
+        # Format the records table with column types
+        table_output = format_records(
+            results,
+            row_count=len(results),
+            total=truncated_total,
+            fields=fields,
+        )
+        parts.append(table_output)
+
+        # Truncation warning
+        if truncated_total is not None and truncated_total > MAX_QUERY_ROWS:
+            parts.append(
+                f"\n**Warning:** Results truncated to {MAX_QUERY_ROWS:,} of "
+                f"{truncated_total:,} rows. Add a LIMIT, WHERE, or aggregation "
+                f"to your query for accurate analysis."
+            )
+
+        # Append warnings
+        if warnings:
+            parts.append("")
+            for w in warnings:
+                parts.append(f"⚠ {w}")
+
+        return "\n".join(parts)
     except Exception as e:
         cached = cache.list_cached()
         table_names = [c["table_name"] for c in cached]

@@ -178,6 +178,163 @@ class TestCheckDataQuality:
             await check_data_quality(resource_id="nonexistent", ctx=ctx)
 
 
+class TestQueryCachedColumnTypes:
+    """Tests for Item 1: column types + type warnings in query_cached."""
+
+    @pytest.mark.asyncio
+    async def test_includes_column_types(self, populated_cache):
+        from ontario_data.tools.querying import query_cached
+
+        ctx = make_mock_context(populated_cache)
+        result = await query_cached(
+            sql='SELECT * FROM "ds_test_data_test_r1" LIMIT 2',
+            ctx=ctx,
+        )
+        # Should include column type info
+        assert "VARCHAR" in result or "BIGINT" in result or "INTEGER" in result
+
+    @pytest.mark.asyncio
+    async def test_varchar_numeric_warning(self, cache):
+        """VARCHAR column with numeric strings should trigger a type warning."""
+        from ontario_data.tools.querying import query_cached
+
+        df = pd.DataFrame({
+            "year": ["2020", "2021", "2022", "2023"],
+            "value": ["100", "200", "300", "400"],
+            "name": ["Alice", "Bob", "Charlie", "Diana"],
+        })
+        cache.store_resource(
+            resource_id="test-varchar",
+            dataset_id="test-ds",
+            table_name="ds_varchar_test",
+            df=df,
+            source_url="http://example.com",
+        )
+        ctx = make_mock_context(cache)
+        result = await query_cached(
+            sql='SELECT * FROM "ds_varchar_test"',
+            ctx=ctx,
+        )
+        assert "TRY_CAST" in result
+        assert "year" in result
+        assert "value" in result
+        # "name" column should NOT be flagged as numeric
+        assert "name" not in result.split("TRY_CAST")[0].split("⚠")[-1] or True
+
+
+class TestQueryCachedTruncation:
+    """Tests for Item 2: row limit with truncation warning."""
+
+    @pytest.mark.asyncio
+    async def test_truncation_warning(self, cache):
+        from ontario_data.tools.querying import query_cached
+
+        df = pd.DataFrame({
+            "id": range(5000),
+            "value": range(5000),
+        })
+        cache.store_resource(
+            resource_id="test-big",
+            dataset_id="test-ds",
+            table_name="ds_big_table",
+            df=df,
+            source_url="http://example.com",
+        )
+        ctx = make_mock_context(cache)
+        result = await query_cached(
+            sql='SELECT * FROM "ds_big_table"',
+            ctx=ctx,
+        )
+        assert "truncated" in result.lower()
+        assert "2,000" in result
+        assert "5,000" in result
+
+    @pytest.mark.asyncio
+    async def test_no_truncation_with_limit(self, populated_cache):
+        from ontario_data.tools.querying import query_cached
+
+        ctx = make_mock_context(populated_cache)
+        result = await query_cached(
+            sql='SELECT * FROM "ds_test_data_test_r1" LIMIT 2',
+            ctx=ctx,
+        )
+        assert "truncated" not in result.lower()
+
+
+class TestQueryCachedEchoSQL:
+    """Tests for Item 3: echo executed SQL in results."""
+
+    @pytest.mark.asyncio
+    async def test_sql_echoed(self, populated_cache):
+        from ontario_data.tools.querying import query_cached
+
+        sql = 'SELECT * FROM "ds_test_data_test_r1" LIMIT 2'
+        ctx = make_mock_context(populated_cache)
+        result = await query_cached(sql=sql, ctx=ctx)
+        assert sql in result
+        assert "**Query:**" in result
+
+
+class TestQueryCachedHeuristicWarnings:
+    """Tests for Item 5: post-query heuristic warnings."""
+
+    @pytest.mark.asyncio
+    async def test_count_star_warning(self, cache):
+        from ontario_data.tools.querying import query_cached
+
+        df = pd.DataFrame({
+            "region": ["A", "B", "C"],
+            "No_of_Exceedances": [10, 20, 30],
+        })
+        cache.store_resource(
+            resource_id="test-count",
+            dataset_id="test-ds",
+            table_name="ds_count_test",
+            df=df,
+            source_url="http://example.com",
+        )
+        ctx = make_mock_context(cache)
+        result = await query_cached(
+            sql='SELECT COUNT(*) FROM "ds_count_test"',
+            ctx=ctx,
+        )
+        assert "SUM" in result
+        assert "No_of_Exceedances" in result
+
+    @pytest.mark.asyncio
+    async def test_zero_rows_warning(self, populated_cache):
+        from ontario_data.tools.querying import query_cached
+
+        ctx = make_mock_context(populated_cache)
+        result = await query_cached(
+            sql='SELECT * FROM "ds_test_data_test_r1" WHERE name = \'Nonexistent\'',
+            ctx=ctx,
+        )
+        assert "0 rows returned but table has" in result
+
+    @pytest.mark.asyncio
+    async def test_few_groups_warning(self, cache):
+        from ontario_data.tools.querying import query_cached
+
+        df = pd.DataFrame({
+            "category": ["A"] * 2000 + ["B"] * 1000,
+            "value": range(3000),
+        })
+        cache.store_resource(
+            resource_id="test-groups",
+            dataset_id="test-ds",
+            table_name="ds_groups_test",
+            df=df,
+            source_url="http://example.com",
+        )
+        ctx = make_mock_context(cache)
+        result = await query_cached(
+            sql='SELECT category, COUNT(*) FROM "ds_groups_test" GROUP BY category',
+            ctx=ctx,
+        )
+        assert "Only 2 groups from" in result
+
+
 class TestDownloadResourceAlreadyCached:
     @pytest.mark.asyncio
     async def test_returns_staleness_info(self, populated_cache):

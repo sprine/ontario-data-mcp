@@ -291,12 +291,25 @@ class CacheManager:
         For programmatically-built SQL from trusted internal code, use
         execute_sql() or execute_sql_dict() instead.
         """
+        rows, _ = self.query_with_meta(sql)
+        return rows
+
+    def query_with_meta(self, sql: str) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+        """Like query() but also returns column metadata.
+
+        Returns (rows, fields) where fields is a list of
+        {"name": col_name, "type": duckdb_type_name} dicts.
+        """
         _validate_sql(sql)
         with self._connect() as conn:
             result = conn.execute(sql)
-            columns = [desc[0] for desc in result.description]
-            rows = result.fetchall()
-            return [dict(zip(columns, row)) for row in rows]
+            description = result.description
+            columns = [desc[0] for desc in description]
+            type_names = [str(desc[1]) for desc in description]
+            raw_rows = result.fetchall()
+            rows = [dict(zip(columns, row)) for row in raw_rows]
+            fields = [{"name": col, "type": typ} for col, typ in zip(columns, type_names)]
+            return rows, fields
 
     def query_df(self, sql: str) -> pd.DataFrame:
         """Like query() but returns a DataFrame. Also validates SQL."""
