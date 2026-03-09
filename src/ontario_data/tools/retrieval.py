@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -9,7 +10,6 @@ import pandas as pd
 from fastmcp import Context
 
 from ontario_data.ckan_client import CKANClient
-from ontario_data.portals import PortalType
 from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
 from ontario_data.formatting import md_response
@@ -18,6 +18,7 @@ from ontario_data.utils import (
     get_cache,
     get_deps,
     infer_portal_from_table,
+    is_arcgis_portal,
     make_table_name,
     parse_portal_id,
     resolve_resource_portal,
@@ -29,6 +30,7 @@ logger = logging.getLogger("ontario_data.retrieval")
 async def _download_resource_data(
     ckan: CKANClient,
     resource_id: str,
+    http_client: httpx.AsyncClient,
 ) -> tuple[pd.DataFrame, dict[str, Any], dict[str, Any]]:
     """Fetch resource data, preferring the CKAN datastore (structured API)
     and falling back to direct file download for CSV/XLSX/JSON/GeoJSON."""
@@ -47,11 +49,10 @@ async def _download_resource_data(
         df = df.drop(columns=internal_cols, errors="ignore")
         return df, resource, dataset
 
-    # Download file directly
-    async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        content = response.content
+    # Download file directly using shared client with extended timeout
+    response = await http_client.get(url, timeout=120.0, follow_redirects=True)
+    response.raise_for_status()
+    content = response.content
 
     if fmt in ("CSV", "TXT"):
         df = pd.read_csv(io.BytesIO(content))
@@ -82,10 +83,7 @@ async def _download_arcgis_resource_data(
 
     csv_url = await client.get_download_url(resource_id, fmt="csv")
     if csv_url:
-        # Use a dedicated client with a longer timeout for bulk file downloads,
-        # matching _download_resource_data's 120s timeout for CKAN file downloads.
-        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as dl_client:
-            resp = await dl_client.get(csv_url)
+        resp = await http_client.get(csv_url, timeout=120.0, follow_redirects=True)
         resp.raise_for_status()
         df = pd.read_csv(io.BytesIO(resp.content))
         resource_meta = {
@@ -153,12 +151,11 @@ async def download_resource(
 
     await ctx.report_progress(0, 100, "Downloading resource...")
 
-    config = configs[portal]
-    if config.portal_type == PortalType.ARCGIS_HUB:
-        http_client = _lifespan_state(ctx)["http_client"]
+    http_client = _lifespan_state(ctx)["http_client"]
+    if is_arcgis_portal(ctx, portal):
         df, resource, dataset = await _download_arcgis_resource_data(ckan, bare_id, http_client)
     else:
-        df, resource, dataset = await _download_resource_data(ckan, bare_id)
+        df, resource, dataset = await _download_resource_data(ckan, bare_id, http_client)
 
     await ctx.report_progress(70, 100, "Storing in DuckDB...")
 
@@ -174,7 +171,6 @@ async def download_resource(
 
     # Set staleness expiry based on update frequency
     update_freq = dataset.get("update_frequency")
-    from datetime import datetime, timezone
     expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
     cache.update_expires_at(bare_id, expires_at)
 
@@ -282,6 +278,7 @@ async def refresh_cache(
         if not cached:
             raise ValueError(f"Resource {bare_id} not found in cache")
 
+    http_client = _lifespan_state(ctx)["http_client"]
     results = []
     for i, item in enumerate(cached):
         await ctx.report_progress(i, len(cached), f"Refreshing {item['table_name']}...")
@@ -289,13 +286,10 @@ async def refresh_cache(
             portal = infer_portal_from_table(item["table_name"])
 
             ckan, _ = get_deps(ctx, portal)
-            configs = _lifespan_state(ctx)["portal_configs"]
-            config = configs.get(portal)
-            if config and config.portal_type == PortalType.ARCGIS_HUB:
-                http_client = _lifespan_state(ctx)["http_client"]
+            if is_arcgis_portal(ctx, portal):
                 df, resource, dataset = await _download_arcgis_resource_data(ckan, item["resource_id"], http_client)
             else:
-                df, resource, dataset = await _download_resource_data(ckan, item["resource_id"])
+                df, resource, dataset = await _download_resource_data(ckan, item["resource_id"], http_client)
             cache.store_resource(
                 resource_id=item["resource_id"],
                 dataset_id=item["dataset_id"],
@@ -304,7 +298,6 @@ async def refresh_cache(
                 source_url=item["source_url"],
             )
             update_freq = dataset.get("update_frequency")
-            from datetime import datetime, timezone
             expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
             cache.update_expires_at(item["resource_id"], expires_at)
             results.append({"resource_id": item["resource_id"], "status": "refreshed", "new_row_count": len(df)})

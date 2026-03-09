@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import io
 import logging
-import httpx
 from fastmcp import Context
 
-from ontario_data.portals import PortalType
 from ontario_data.server import READONLY, mcp
 from ontario_data.formatting import format_records, md_response
 from ontario_data.utils import (
     SpatialExtensionError,
     _lifespan_state,
+    arcgis_guard,
     fan_out,
     get_cache,
     get_deps,
+    is_arcgis_portal,
     make_geo_table_name,
     parse_portal_id,
     require_cached,
@@ -41,9 +41,11 @@ async def load_geodata(
     configs = _lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
-    if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return "**Not available:** ArcGIS Feature Service URLs cannot be downloaded as geospatial files.\n\n" \
-               f"Use download_resource(resource_id='{resource_id}') for CSV data, or access the portal directly."
+    if portal and is_arcgis_portal(ctx, portal):
+        return arcgis_guard(
+            resource_id,
+            alternative=f"download_resource(resource_id='{resource_id}') for CSV data, or access the portal directly",
+        )
 
     cache = get_cache(ctx)
 
@@ -63,10 +65,10 @@ async def load_geodata(
 
     await ctx.report_progress(0, 100, "Downloading geospatial data...")
 
-    async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        content = response.content
+    http_client = _lifespan_state(ctx)["http_client"]
+    response = await http_client.get(url, timeout=120.0, follow_redirects=True)
+    response.raise_for_status()
+    content = response.content
 
     await ctx.report_progress(50, 100, "Parsing geospatial data...")
 

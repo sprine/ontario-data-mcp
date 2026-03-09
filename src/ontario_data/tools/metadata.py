@@ -3,12 +3,13 @@ from __future__ import annotations
 from fastmcp import Context
 
 from ontario_data.formatting import md_response
-from ontario_data.portals import PortalType
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     _lifespan_state,
+    arcgis_guard,
     fan_out,
     get_deps,
+    is_arcgis_portal,
     parse_portal_id,
     resolve_dataset,
     unwrap_first_match,
@@ -106,9 +107,11 @@ async def get_resource_schema(
     configs = _lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
-    if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return "**Not available:** ArcGIS Hub has no remote schema API.\n\n" \
-               f"Use download_resource(resource_id='{resource_id}') to cache it, then query_cached to inspect columns."
+    if portal and is_arcgis_portal(ctx, portal):
+        return arcgis_guard(
+            resource_id,
+            alternative=f"download_resource(resource_id='{resource_id}') to cache it, then query_cached to inspect columns",
+        )
 
     async def _schema(pk: str):
         ckan, _ = get_deps(ctx, pk)

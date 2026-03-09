@@ -87,10 +87,19 @@ async def schema_resource(table_name: str, ctx: Context) -> str:
     except Exception:
         samples = []
 
-    # Detect numeric VARCHARs
-    import re
-    numeric_re = re.compile(r"^-?\d+\.?\d*$")
+    # Read type_warnings from cache metadata (detected at download time)
     type_warnings = []
+    try:
+        meta_rows = cache.execute_sql(
+            "SELECT type_warnings FROM _cache_metadata WHERE table_name = ?",
+            [table_name],
+        )
+        if meta_rows and meta_rows[0][0]:
+            type_warnings = json.loads(meta_rows[0][0])
+    except Exception:
+        pass
+
+    type_warnings_set = set(type_warnings)
     fields = []
     for col in columns:
         col_name = col.get("column_name", col.get("Field", ""))
@@ -101,12 +110,8 @@ async def schema_resource(table_name: str, ctx: Context) -> str:
             "type": col_type,
             "sample_values": sample_vals,
         }
-        # Check for numeric VARCHARs
-        if "VARCHAR" in str(col_type).upper() and sample_vals:
-            non_empty = [v for v in sample_vals if v.strip()]
-            if non_empty and all(numeric_re.match(v.strip()) for v in non_empty):
-                field["type_warning"] = "Values appear numeric — use TRY_CAST(col AS DOUBLE) for queries"
-                type_warnings.append(col_name)
+        if col_name in type_warnings_set:
+            field["type_warning"] = "Values appear numeric — use TRY_CAST(col AS DOUBLE) for queries"
         fields.append(field)
 
     result = {

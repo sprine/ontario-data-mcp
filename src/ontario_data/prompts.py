@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import logging
-
 from fastmcp import Context
 from fastmcp.prompts import Message
 
 from ontario_data.server import mcp
-from ontario_data.utils import get_cache, get_deps
-
-logger = logging.getLogger("ontario_data.prompts")
+from ontario_data.utils import get_cache
 
 
 def _format_cached_context(cache) -> str:
@@ -21,27 +17,6 @@ def _format_cached_context(cache) -> str:
     return "\n".join(lines)
 
 
-async def _get_topic_context(ctx, topic: str) -> str:
-    """Pre-fetch a few search results from each CKAN portal so the prompt
-    has concrete dataset names to reference."""
-    lines = []
-    from ontario_data.utils import _lifespan_state
-    configs = _lifespan_state(ctx)["portal_configs"]
-    for portal_key, config in configs.items():
-        try:
-            ckan, _ = get_deps(ctx, portal_key)
-            result = await ckan.package_search(query=topic, rows=5)
-            count = result["count"]
-            titles = [ds.get("title", "?") for ds in result["results"][:5]]
-            lines.append(
-                f"\n{config.name} has {count} dataset(s) matching '{topic}'."
-                f"\nTop results: {', '.join(titles)}"
-            )
-        except Exception as e:
-            logger.warning("Failed to fetch topic context from %s: %s", portal_key, e)
-    return "".join(lines)
-
-
 @mcp.prompt
 async def explore_topic(topic: str, ctx: Context = None) -> list[Message]:
     """Guided exploration of a topic across all open data portals.
@@ -49,7 +24,6 @@ async def explore_topic(topic: str, ctx: Context = None) -> list[Message]:
     Searches for datasets, summarizes what's available, and suggests deep dives.
     """
     cache = get_cache(ctx)
-    topic_ctx = await _get_topic_context(ctx, topic)
     cache_ctx = _format_cached_context(cache)
 
     return [
@@ -57,7 +31,7 @@ async def explore_topic(topic: str, ctx: Context = None) -> list[Message]:
             role="user",
             content=(
                 f"I want to explore open data about: {topic}\n"
-                f"{topic_ctx}{cache_ctx}\n\n"
+                f"{cache_ctx}\n\n"
                 "Please:\n"
                 "1. Use search_datasets to find relevant datasets across all portals\n"
                 "2. Summarize the top results — what data is available, from which organizations\n"
@@ -73,24 +47,14 @@ async def explore_topic(topic: str, ctx: Context = None) -> list[Message]:
 @mcp.prompt
 async def data_investigation(dataset_id: str, ctx: Context = None) -> list[Message]:
     """Deep investigation of a specific dataset: schema, quality, statistics, insights."""
-    from ontario_data.utils import resolve_dataset
-
     cache = get_cache(ctx)
-
-    ds_title = dataset_id
-    try:
-        _, _, ds = await resolve_dataset(ctx, dataset_id)
-        ds_title = ds.get("title", dataset_id)
-    except Exception as e:
-        logger.warning("Failed to fetch dataset context: %s", e)
-
     cache_ctx = _format_cached_context(cache)
 
     return [
         Message(
             role="user",
             content=(
-                f"Investigate this dataset thoroughly: {ds_title} ({dataset_id})\n"
+                f"Investigate this dataset thoroughly: {dataset_id}\n"
                 f"{cache_ctx}\n\n"
                 "Please follow this workflow:\n"
                 "1. get_dataset_info — understand what this dataset contains\n"
@@ -99,8 +63,7 @@ async def data_investigation(dataset_id: str, ctx: Context = None) -> list[Messa
                 "3. For the primary CSV/data resource:\n"
                 "   a. get_resource_schema — understand the columns\n"
                 "   b. download_resource — cache it locally\n"
-                "   c. check_data_quality — assess completeness and consistency\n"
-                "   d. profile_data — statistical profile using DuckDB SUMMARIZE\n"
+                "   c. profile_data — statistical profile using DuckDB SUMMARIZE\n"
                 "4. Provide insights: What stories does this data tell? What's surprising?\n"
                 "5. Suggest follow-up analyses or related datasets\n"
                 "6. For time series or correlations, write DuckDB SQL directly with query_cached"

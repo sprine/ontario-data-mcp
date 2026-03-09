@@ -1,4 +1,3 @@
-import json
 from unittest.mock import AsyncMock
 
 import pytest
@@ -7,7 +6,6 @@ from ontario_data.cache import CacheManager
 from ontario_data.utils import (
     ResourceNotCachedError,
     infer_portal_from_table,
-    json_response,
     make_table_name,
     require_cached,
     resolve_dataset,
@@ -105,20 +103,6 @@ class TestRequireCached:
         cache.initialize()
         with pytest.raises(ResourceNotCachedError, match="toronto:missing"):
             require_cached(cache, "toronto:missing")
-
-
-class TestJsonResponse:
-    def test_basic(self):
-        result = json_response(status="ok", count=42)
-        parsed = json.loads(result)
-        assert parsed["status"] == "ok"
-        assert parsed["count"] == 42
-
-    def test_handles_non_serializable(self):
-        from datetime import datetime, timezone
-        result = json_response(timestamp=datetime(2024, 1, 1, tzinfo=timezone.utc))
-        parsed = json.loads(result)
-        assert "2024" in parsed["timestamp"]
 
 
 class TestUnwrapFirstMatch:

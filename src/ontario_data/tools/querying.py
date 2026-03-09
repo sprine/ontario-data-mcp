@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 from typing import Any
 
 from fastmcp import Context
 
-from ontario_data.formatting import format_records, md_response
-from ontario_data.portals import PortalType
+from ontario_data.cache import InvalidQueryError
+from ontario_data.formatting import format_records
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
     _lifespan_state,
+    arcgis_guard,
     fan_out,
     get_cache,
     get_deps,
+    is_arcgis_portal,
     parse_portal_id,
     strip_internal_fields,
     unwrap_first_match,
@@ -20,7 +23,6 @@ from ontario_data.utils import (
 
 MAX_QUERY_ROWS = 2000
 
-_NUMERIC_RE = re.compile(r"^-?\d+\.?\d*$")
 _COUNT_STAR_RE = re.compile(r"\bCOUNT\s*\(\s*\*\s*\)", re.IGNORECASE)
 _GROUP_BY_RE = re.compile(r"\bGROUP\s+BY\b", re.IGNORECASE)
 _TABLE_RE = re.compile(r'FROM\s+"([^"]+)"', re.IGNORECASE)
@@ -30,26 +32,23 @@ _QUANTITY_PATTERNS = re.compile(
 )
 
 
-def _detect_numeric_varchars(
-    fields: list[dict[str, str]],
-    rows: list[dict[str, Any]],
-) -> list[str]:
-    """Return names of VARCHAR fields whose values look numeric."""
-    suspects = []
-    for f in fields:
-        if "VARCHAR" not in f["type"].upper():
-            continue
-        sample = [
-            str(r[f["name"]])
-            for r in rows[:100]
-            if r.get(f["name"]) is not None and str(r[f["name"]]).strip() != ""
-        ]
-        if not sample:
-            continue
-        numeric_count = sum(1 for v in sample if _NUMERIC_RE.match(v.strip()))
-        if numeric_count / len(sample) > 0.8:
-            suspects.append(f["name"])
-    return suspects
+def _get_type_warnings_for_tables(cache, table_names: list[str]) -> list[str]:
+    """Read numeric VARCHAR warnings from cache metadata for the given tables."""
+    warnings = []
+    for tname in table_names:
+        # Look up resource metadata by table name
+        try:
+            rows = cache.execute_sql(
+                "SELECT type_warnings FROM _cache_metadata WHERE table_name = ?",
+                [tname],
+            )
+            if rows and rows[0][0]:
+                import json
+                cols = json.loads(rows[0][0])
+                warnings.extend(cols)
+        except Exception:
+            pass
+    return warnings
 
 
 def _generate_query_warnings(
@@ -133,9 +132,8 @@ async def query_resource(
     configs = _lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
-    if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return "**Not available:** ArcGIS Hub has no remote datastore API.\n\n" \
-               f"Use download_resource(resource_id='{resource_id}') + query_cached(sql='...') instead."
+    if portal and is_arcgis_portal(ctx, portal):
+        return arcgis_guard(resource_id)
 
     async def _query(pk: str):
         ckan, _ = get_deps(ctx, pk)
@@ -179,11 +177,9 @@ async def sql_query(
         sql: SQL query string (read-only, SELECT only)
         portal: Portal to query (default: "ontario"). Required because SQL embeds resource IDs directly.
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
     ckan, _ = get_deps(ctx, portal)
-    if configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return "**Not available:** ArcGIS Hub has no remote SQL API.\n\n" \
-               "Use download_resource(resource_id='...') + query_cached(sql='...') instead."
+    if is_arcgis_portal(ctx, portal):
+        return arcgis_guard("", alternative="download_resource + query_cached")
 
     result = await ckan.datastore_sql(sql)
     field_info = [{"name": f["id"], "type": f.get("type")} for f in result.get("fields", []) if not f["id"].startswith("_")]
@@ -232,8 +228,9 @@ async def query_cached(
                 truncated_total = len(results)
             results = results[:MAX_QUERY_ROWS]
 
-        # --- Detect numeric VARCHARs (Item 1) ---
-        numeric_varchars = _detect_numeric_varchars(fields, results)
+        # --- Detect numeric VARCHARs from cache metadata (Item 1) ---
+        table_names_for_warnings = _TABLE_RE.findall(sql)
+        numeric_varchars = _get_type_warnings_for_tables(cache, table_names_for_warnings)
 
         # --- Post-query heuristic warnings (Item 5) ---
         warnings = _generate_query_warnings(sql, results, fields, cache)
@@ -283,7 +280,6 @@ async def query_cached(
                     downloaded = str(tm["downloaded_at"]).split(".")[0] if tm["downloaded_at"] else "unknown"
                     expires = tm.get("expires_at")
                     if expires:
-                        from datetime import datetime, timezone
                         now = datetime.now(timezone.utc)
                         is_stale = now > expires if hasattr(expires, '__gt__') else False
                         status = "**stale**" if is_stale else "fresh"
@@ -307,11 +303,7 @@ async def query_cached(
         if any(kw in msg for kw in ("conversion", "cast", "type mismatch", "could not convert")):
             hints.append("Numeric columns may be stored as text. Use TRY_CAST(column AS DOUBLE).")
         augmented = f"{e}\n\nAvailable tables: {table_names}\nHints: {' '.join(hints)}"
-        try:
-            raise type(e)(augmented) from None
-        except TypeError:
-            # DuckDB exception constructors may reject a single string arg
-            raise RuntimeError(augmented) from None
+        raise InvalidQueryError(augmented) from e
 
 
 @mcp.tool(annotations=READONLY)
@@ -329,9 +321,8 @@ async def preview_data(
     configs = _lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
-    if portal and configs[portal].portal_type == PortalType.ARCGIS_HUB:
-        return "**Not available:** ArcGIS Hub has no remote datastore API.\n\n" \
-               f"Use download_resource(resource_id='{resource_id}') + query_cached(sql='...') instead."
+    if portal and is_arcgis_portal(ctx, portal):
+        return arcgis_guard(resource_id)
 
     async def _preview(pk: str):
         ckan, _ = get_deps(ctx, pk)

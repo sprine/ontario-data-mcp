@@ -129,8 +129,3 @@ class TestCacheManagerQuerySafety:
         with pytest.raises(InvalidQueryError):
             cache.query("SELECT 1; DROP TABLE _cache_metadata")
 
-    def test_query_df_validates(self, tmp_path):
-        cache = CacheManager(db_path=str(tmp_path / "test.duckdb"))
-        cache.initialize()
-        with pytest.raises(InvalidQueryError):
-            cache.query_df("DELETE FROM _cache_metadata")

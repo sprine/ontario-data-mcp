@@ -9,8 +9,17 @@ from typing import TypeVar
 from fastmcp import Context
 
 from ontario_data.cache import CacheManager, InvalidQueryError  # noqa: F401
-from ontario_data.ckan_client import CKANClient
 from ontario_data.portals import PORTALS, PortalType
+from ontario_data.protocols import PortalClient
+
+# Re-export for consumers
+__all__ = [
+    "ResourceNotCachedError", "DatastoreNotAvailableError", "SpatialExtensionError",
+    "get_deps", "get_cache", "parse_portal_id", "fan_out", "unwrap_first_match",
+    "resolve_dataset", "resolve_resource_portal", "strip_internal_fields",
+    "make_table_name", "make_geo_table_name", "require_cached", "infer_portal_from_table",
+    "arcgis_guard", "is_arcgis_portal", "_lifespan_state",
+]
 
 T = TypeVar("T")
 
@@ -34,7 +43,7 @@ def _lifespan_state(ctx: Context) -> dict:
     return ctx.lifespan_context
 
 
-def get_deps(ctx: Context, portal: str) -> tuple[CKANClient, CacheManager]:
+def get_deps(ctx: Context, portal: str) -> tuple[PortalClient, CacheManager]:
     """Extract portal client and cache manager from MCP context.
 
     Lazily creates the client for the requested portal on first use.
@@ -51,6 +60,7 @@ def get_deps(ctx: Context, portal: str) -> tuple[CKANClient, CacheManager]:
     if portal not in clients:
         config = configs[portal]
         if config.portal_type == PortalType.CKAN:
+            from ontario_data.ckan_client import CKANClient
             clients[portal] = CKANClient(
                 base_url=config.base_url,
                 http_client=state["http_client"],
@@ -241,6 +251,24 @@ def make_geo_table_name(dataset_name: str, resource_id: str, portal: str = "onta
     return f"geo_{portal}_{slug}_{resource_id[:8]}"
 
 
+def arcgis_guard(resource_id: str, alternative: str = "download_resource + query_cached") -> str:
+    """Return a user-friendly 'not available' message for ArcGIS Hub resources.
+
+    Use in tools that rely on CKAN datastore APIs (query_resource, sql_query,
+    preview_data, get_resource_schema).
+    """
+    return (
+        "**Not available:** ArcGIS Hub has no remote datastore API.\n\n"
+        f"Use {alternative} instead."
+    )
+
+
+def is_arcgis_portal(ctx: Context, portal: str) -> bool:
+    """Check if a portal is an ArcGIS Hub portal."""
+    configs = _lifespan_state(ctx)["portal_configs"]
+    return portal in configs and configs[portal].portal_type == PortalType.ARCGIS_HUB
+
+
 def require_cached(cache: CacheManager, resource_id: str) -> str:
     """Return table name, or raise with a user-friendly message that includes
     the download_resource command to run.
@@ -258,7 +286,3 @@ def require_cached(cache: CacheManager, resource_id: str) -> str:
     return table_name
 
 
-def json_response(**kwargs) -> str:
-    """Serialize to JSON with default=str so datetimes and other
-    non-native types don't blow up."""
-    return json.dumps(kwargs, indent=2, default=str)

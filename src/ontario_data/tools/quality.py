@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import re
+import json
 from datetime import datetime, timezone
 
 from fastmcp import Context
@@ -13,104 +13,6 @@ from ontario_data.utils import (
     require_cached,
     resolve_dataset,
 )
-
-_NUMERIC_RE = re.compile(r"^-?\d+\.?\d*$")
-
-
-@mcp.tool(annotations=READONLY)
-async def check_data_quality(
-    resource_id: str,
-    ctx: Context = None,
-) -> str:
-    """Analyze data quality: null counts, type consistency, duplicates, and outliers.
-
-    Resource must be cached locally first (use download_resource).
-    Reports numeric statistics (min, max, mean, stddev) for numeric columns and
-    for VARCHAR columns that contain numeric values (detected automatically).
-
-    Only reports numeric statistics for columns with numeric DuckDB types. VARCHAR
-    columns containing numbers will show null/distinct counts plus numeric stats
-    via TRY_CAST — use TRY_CAST in your queries too.
-
-    Args:
-        resource_id: Resource ID
-    """
-    cache = get_cache(ctx)
-    table_name = require_cached(cache, resource_id)
-
-    # Get total rows
-    total = cache.execute_sql(f'SELECT count(*) FROM "{table_name}"')[0][0]
-
-    # Get column info
-    columns = cache.execute_sql(f'DESCRIBE "{table_name}"')
-
-    quality_report = []
-    for col in columns:
-        col_name, col_type = col[0], col[1]
-        stats = {"name": col_name, "type": col_type}
-
-        # Null count
-        null_count = cache.execute_sql(
-            f'SELECT count(*) FROM "{table_name}" WHERE "{col_name}" IS NULL'
-        )[0][0]
-        stats["null_count"] = null_count
-        stats["null_pct"] = round(null_count / total * 100, 1) if total > 0 else 0
-
-        # Distinct values
-        distinct = cache.execute_sql(
-            f'SELECT count(DISTINCT "{col_name}") FROM "{table_name}"'
-        )[0][0]
-        stats["distinct_count"] = distinct
-        stats["cardinality_pct"] = round(distinct / total * 100, 1) if total > 0 else 0
-
-        # For numeric columns: min, max, mean, stddev
-        if any(t in col_type.upper() for t in ("INT", "FLOAT", "DOUBLE", "DECIMAL", "NUMERIC")):
-            num_stats = cache.execute_sql(
-                f'SELECT min("{col_name}"), max("{col_name}"), avg("{col_name}"), stddev("{col_name}") FROM "{table_name}"'
-            )[0]
-            stats["min"] = num_stats[0]
-            stats["max"] = num_stats[1]
-            stats["mean"] = round(float(num_stats[2]), 4) if num_stats[2] is not None else None
-            stats["stddev"] = round(float(num_stats[3]), 4) if num_stats[3] is not None else None
-        elif "VARCHAR" in col_type.upper():
-            # Check if VARCHAR values look numeric
-            sample = cache.execute_sql(
-                f'SELECT DISTINCT "{col_name}" FROM "{table_name}" '
-                f'WHERE "{col_name}" IS NOT NULL LIMIT 100'
-            )
-            values = [str(r[0]) for r in sample if r[0] is not None and str(r[0]).strip()]
-            if values:
-                numeric_count = sum(1 for v in values if _NUMERIC_RE.match(v.strip()))
-                if numeric_count / len(values) > 0.8:
-                    stats["type_note"] = "VARCHAR but values appear numeric — use TRY_CAST for queries"
-                    try:
-                        num_stats = cache.execute_sql(
-                            f'SELECT min(TRY_CAST("{col_name}" AS DOUBLE)), '
-                            f'max(TRY_CAST("{col_name}" AS DOUBLE)), '
-                            f'avg(TRY_CAST("{col_name}" AS DOUBLE)) '
-                            f'FROM "{table_name}"'
-                        )[0]
-                        stats["min"] = num_stats[0]
-                        stats["max"] = num_stats[1]
-                        stats["mean"] = round(float(num_stats[2]), 4) if num_stats[2] is not None else None
-                    except Exception:
-                        pass
-
-        quality_report.append(stats)
-
-    # Duplicate row check using COLUMNS(*)
-    col_names = ", ".join(f'"{col[0]}"' for col in columns)
-    dup_count = cache.execute_sql(
-        f'SELECT count(*) FROM (SELECT {col_names}, count(*) OVER (PARTITION BY {col_names}) as _cnt FROM "{table_name}") WHERE _cnt > 1'
-    )[0]
-
-    return md_response(
-        resource_id=resource_id,
-        table_name=table_name,
-        total_rows=total,
-        duplicate_rows=dup_count[0] if dup_count else 0,
-        columns=quality_report,
-    )
 
 
 @mcp.tool(annotations=READONLY)
@@ -164,9 +66,11 @@ async def profile_data(
     resource_id: str,
     ctx: Context = None,
 ) -> str:
-    """Statistical profile of a cached dataset using DuckDB SUMMARIZE.
+    """Statistical profile and quality check of a cached dataset.
 
-    Provides column-level statistics (min, max, avg, std, nulls, unique counts).
+    Uses DuckDB SUMMARIZE for column-level statistics (min, max, avg, std,
+    nulls, unique counts). Also checks for duplicate rows and reports
+    type warnings for VARCHAR columns that contain numeric values.
 
     Args:
         resource_id: Resource ID (must be cached)
@@ -174,15 +78,47 @@ async def profile_data(
     cache = get_cache(ctx)
     table_name = require_cached(cache, resource_id)
 
-    # Use DuckDB's SUMMARIZE command
+    # Use DuckDB's SUMMARIZE command — one query for all column stats
     summary = cache.execute_sql_dict(f'SUMMARIZE SELECT * FROM "{table_name}"')
 
     # Get row count
-    row_count = cache.execute_sql(f'SELECT COUNT(*) as cnt FROM "{table_name}"')[0][0]
+    row_count = cache.execute_sql(f'SELECT COUNT(*) FROM "{table_name}"')[0][0]
 
-    return md_response(
+    # Duplicate row check
+    columns = cache.execute_sql(f'DESCRIBE "{table_name}"')
+    col_names = ", ".join(f'"{col[0]}"' for col in columns)
+    dup_result = cache.execute_sql(
+        f'SELECT count(*) FROM ('
+        f'SELECT {col_names}, count(*) OVER (PARTITION BY {col_names}) as _cnt '
+        f'FROM "{table_name}"'
+        f') WHERE _cnt > 1'
+    )
+    duplicate_rows = dup_result[0][0] if dup_result else 0
+
+    # Read type warnings from cache metadata (detected at download time)
+    type_warnings = []
+    try:
+        meta_rows = cache.execute_sql(
+            "SELECT type_warnings FROM _cache_metadata WHERE table_name = ?",
+            [table_name],
+        )
+        if meta_rows and meta_rows[0][0]:
+            type_warnings = json.loads(meta_rows[0][0])
+    except Exception:
+        pass
+
+    result = dict(
         resource_id=resource_id,
         table_name=table_name,
         row_count=row_count,
+        duplicate_rows=duplicate_rows,
         columns=summary,
     )
+    if type_warnings:
+        result["type_warnings"] = type_warnings
+        result["hint"] = (
+            f"Columns {type_warnings} are VARCHAR but contain numbers. "
+            f"Use TRY_CAST(col AS DOUBLE) for comparisons."
+        )
+
+    return md_response(**result)

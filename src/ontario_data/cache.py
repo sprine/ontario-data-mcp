@@ -342,12 +342,6 @@ class CacheManager:
             fields = [{"name": col, "type": typ} for col, typ in zip(columns, type_names)]
             return rows, fields
 
-    def query_df(self, sql: str) -> pd.DataFrame:
-        """Like query() but returns a DataFrame. Also validates SQL."""
-        _validate_sql(sql)
-        with self._connect() as conn:
-            return conn.execute(sql).fetchdf()
-
     def update_expires_at(self, resource_id: str, expires_at):
         def _do(conn):
             conn.execute(

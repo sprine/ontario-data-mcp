@@ -157,25 +157,17 @@ class TestProfileData:
             await profile_data(resource_id="nonexistent", ctx=ctx)
 
 
-class TestCheckDataQuality:
+class TestProfileDataQuality:
+    """Tests for merged profile_data (formerly check_data_quality + profile_data)."""
+
     @pytest.mark.asyncio
-    async def test_quality_report(self, populated_cache):
-        from ontario_data.tools.quality import check_data_quality
+    async def test_includes_duplicate_count(self, populated_cache):
+        from ontario_data.tools.quality import profile_data
 
         ctx = make_mock_context(populated_cache)
-        result = await check_data_quality(resource_id="test-r1", ctx=ctx)
-        assert "total_rows" in result
-        assert "name" in result
-        assert "age" in result
-        assert "salary" in result
-
-    @pytest.mark.asyncio
-    async def test_quality_not_cached(self, cache):
-        from ontario_data.tools.quality import check_data_quality
-
-        ctx = make_mock_context(cache)
-        with pytest.raises(ResourceNotCachedError):
-            await check_data_quality(resource_id="nonexistent", ctx=ctx)
+        result = await profile_data(resource_id="test-r1", ctx=ctx)
+        assert "duplicate_rows" in result
+        assert "row_count" in result
 
 
 class TestQueryCachedColumnTypes:
@@ -399,12 +391,12 @@ class TestQueryCachedProvenance:
         assert "Downloaded:" in result
 
 
-class TestCheckDataQualityVarchar:
-    """Tests for Item 11: check_data_quality for text-as-number columns."""
+class TestProfileDataTypeWarnings:
+    """Tests for profile_data type warnings (from merged check_data_quality)."""
 
     @pytest.mark.asyncio
-    async def test_varchar_numeric_stats(self, cache):
-        from ontario_data.tools.quality import check_data_quality
+    async def test_varchar_type_warnings(self, cache):
+        from ontario_data.tools.quality import profile_data
 
         df = pd.DataFrame({
             "year": ["2020", "2021", "2022", "2023"],
@@ -418,12 +410,10 @@ class TestCheckDataQualityVarchar:
             source_url="http://example.com",
         )
         ctx = make_mock_context(cache)
-        result = await check_data_quality(resource_id="test-qv", ctx=ctx)
-        assert "type_note" in result
+        result = await profile_data(resource_id="test-qv", ctx=ctx)
+        assert "type_warnings" in result
         assert "TRY_CAST" in result
-        # Should have numeric stats for the year column
-        assert "2020" in result  # min
-        assert "2023" in result  # max
+        assert "year" in result
 
 
 class TestVarcharDetectionAtDownload:

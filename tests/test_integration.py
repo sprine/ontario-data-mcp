@@ -5,7 +5,7 @@ from ontario_data.server import mcp
 
 @pytest.mark.asyncio
 async def test_all_tools_registered():
-    """Verify all 23 tools are registered."""
+    """Verify all 22 tools are registered."""
     async with Client(mcp) as client:
         tools = await client.list_tools()
         tool_names = [t.name for t in tools]
@@ -20,8 +20,8 @@ async def test_all_tools_registered():
             "download_resource", "cache_info", "cache_manage", "refresh_cache",
             # Querying (4)
             "query_resource", "sql_query", "query_cached", "preview_data",
-            # Quality (3)
-            "check_data_quality", "check_freshness", "profile_data",
+            # Quality (2) — check_data_quality merged into profile_data
+            "check_freshness", "profile_data",
             # Geospatial (3)
             "load_geodata", "spatial_query", "list_geo_datasets",
         ]
@@ -34,6 +34,7 @@ async def test_all_tools_registered():
             "profile_dataset", "summarize", "time_series_analysis",
             "cross_tabulate", "correlation_matrix", "compare_periods",
             "geocode_lookup", "get_popular_datasets", "search_by_location",
+            "check_data_quality",  # merged into profile_data
         ]
         for name in removed:
             assert name not in tool_names, f"Tool should be removed: {name}"
