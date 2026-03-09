@@ -200,15 +200,20 @@ async def query_cached(
     """Run a SQL query against locally cached data in DuckDB.
 
     Use table names from download_resource or cache_info.
-    Supports full DuckDB SQL including aggregations, window functions, CTEs, etc.
+    Supports full DuckDB SQL: aggregations, window functions, CTEs, JOINs across tables.
 
-    Before querying, check column types with get_resource_schema or DESCRIBE.
-    Many numeric columns are stored as VARCHAR — use TRY_CAST(col AS DOUBLE)
-    for numeric comparisons, not bare > or < operators.
+    IMPORTANT — before querying, check column types with get_resource_schema or
+    DESCRIBE "{table}". Many numeric columns are stored as VARCHAR. Use
+    TRY_CAST(col AS DOUBLE) for numeric comparisons — bare operators like
+    WHERE year > 2020 do string comparison and return wrong results silently.
 
-    Use SUM(quantity_col) not COUNT(*) when rows contain per-row counts.
-    Column names may vary across resources — verify with DESCRIBE before assuming.
-    Values containing semicolons should be matched with LIKE patterns, not exact equality.
+    Use SUM(quantity_col) not COUNT(*) when rows contain per-row counts (e.g.
+    a "count" or "number_of" column). COUNT(*) counts rows, not quantities.
+    Column names vary across resources in the same dataset — always DESCRIBE first.
+    Values containing semicolons should be matched with LIKE patterns, not = equality.
+
+    After downloading, the table name is returned by download_resource and shown
+    by cache_info. Quote table names with double quotes in SQL.
 
     Args:
         sql: SQL query (e.g. SELECT * FROM "ds_my_table_abc12345" LIMIT 10)

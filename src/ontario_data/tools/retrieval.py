@@ -113,6 +113,12 @@ async def download_resource(
     Supports CSV, XLSX, JSON, and datastore-active resources.
     If already cached, returns staleness info so you can decide whether to refresh.
 
+    After downloading, check the returned dtypes field — VARCHAR columns containing
+    numbers need TRY_CAST(col AS DOUBLE) in queries. The table name is returned in
+    the response; use it with query_cached to analyze the data.
+
+    Workflow: search_datasets → get_dataset_info → download_resource → query_cached.
+
     Args:
         resource_id: Prefixed resource ID (e.g. "toronto:abc123") or bare ID
     """

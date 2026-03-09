@@ -22,6 +22,12 @@ async def check_data_quality(
     """Analyze data quality: null counts, type consistency, duplicates, and outliers.
 
     Resource must be cached locally first (use download_resource).
+    Reports numeric statistics (min, max, mean, stddev) for numeric columns and
+    for VARCHAR columns that contain numeric values (detected automatically).
+
+    Only reports numeric statistics for columns with numeric DuckDB types. VARCHAR
+    columns containing numbers will show null/distinct counts plus numeric stats
+    via TRY_CAST — use TRY_CAST in your queries too.
 
     Args:
         resource_id: Resource ID

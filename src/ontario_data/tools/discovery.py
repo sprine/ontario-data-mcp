@@ -27,7 +27,13 @@ async def search_datasets(
     portal: str | None = None,
     ctx: Context = None,
 ) -> str:
-    """Search for datasets across all open data portals.
+    """Search for datasets across all open data portals (Ontario, Toronto, Ottawa).
+
+    Results include portal-prefixed IDs (e.g. toronto:abc123). Use these IDs with
+    get_dataset_info to view full metadata, then download_resource to cache locally.
+    Use get_resource_schema to check column types before writing queries.
+
+    Searches fan out to all portals by default. Narrow to one portal with the portal param.
 
     Args:
         query: Search terms (e.g. "covid cases", "housing prices", "school enrollment")
