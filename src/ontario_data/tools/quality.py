@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 
 from fastmcp import Context
@@ -12,6 +13,8 @@ from ontario_data.utils import (
     require_cached,
     resolve_dataset,
 )
+
+_NUMERIC_RE = re.compile(r"^-?\d+\.?\d*$")
 
 
 @mcp.tool(annotations=READONLY)
@@ -69,6 +72,29 @@ async def check_data_quality(
             stats["max"] = num_stats[1]
             stats["mean"] = round(float(num_stats[2]), 4) if num_stats[2] is not None else None
             stats["stddev"] = round(float(num_stats[3]), 4) if num_stats[3] is not None else None
+        elif "VARCHAR" in col_type.upper():
+            # Check if VARCHAR values look numeric
+            sample = cache.execute_sql(
+                f'SELECT DISTINCT "{col_name}" FROM "{table_name}" '
+                f'WHERE "{col_name}" IS NOT NULL LIMIT 100'
+            )
+            values = [str(r[0]) for r in sample if r[0] is not None and str(r[0]).strip()]
+            if values:
+                numeric_count = sum(1 for v in values if _NUMERIC_RE.match(v.strip()))
+                if numeric_count / len(values) > 0.8:
+                    stats["type_note"] = "VARCHAR but values appear numeric — use TRY_CAST for queries"
+                    try:
+                        num_stats = cache.execute_sql(
+                            f'SELECT min(TRY_CAST("{col_name}" AS DOUBLE)), '
+                            f'max(TRY_CAST("{col_name}" AS DOUBLE)), '
+                            f'avg(TRY_CAST("{col_name}" AS DOUBLE)) '
+                            f'FROM "{table_name}"'
+                        )[0]
+                        stats["min"] = num_stats[0]
+                        stats["max"] = num_stats[1]
+                        stats["mean"] = round(float(num_stats[2]), 4) if num_stats[2] is not None else None
+                    except Exception:
+                        pass
 
         quality_report.append(stats)
 

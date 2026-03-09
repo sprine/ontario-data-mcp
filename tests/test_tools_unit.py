@@ -399,6 +399,33 @@ class TestQueryCachedProvenance:
         assert "Downloaded:" in result
 
 
+class TestCheckDataQualityVarchar:
+    """Tests for Item 11: check_data_quality for text-as-number columns."""
+
+    @pytest.mark.asyncio
+    async def test_varchar_numeric_stats(self, cache):
+        from ontario_data.tools.quality import check_data_quality
+
+        df = pd.DataFrame({
+            "year": ["2020", "2021", "2022", "2023"],
+            "name": ["Alice", "Bob", "Charlie", "Diana"],
+        })
+        cache.store_resource(
+            resource_id="test-qv",
+            dataset_id="test-ds",
+            table_name="ds_quality_varchar_test",
+            df=df,
+            source_url="http://example.com",
+        )
+        ctx = make_mock_context(cache)
+        result = await check_data_quality(resource_id="test-qv", ctx=ctx)
+        assert "type_note" in result
+        assert "TRY_CAST" in result
+        # Should have numeric stats for the year column
+        assert "2020" in result  # min
+        assert "2023" in result  # max
+
+
 class TestVarcharDetectionAtDownload:
     """Tests for Item 9: detect VARCHAR-as-number at download time."""
 
