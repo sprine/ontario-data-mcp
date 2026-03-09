@@ -399,6 +399,22 @@ class CacheManager:
             rows = result.fetchall()
             return [dict(zip(columns, row)) for row in rows]
 
+    def get_tables_metadata(self, table_names: list[str]) -> list[dict[str, Any]]:
+        """Look up cache metadata by table name(s)."""
+        if not table_names:
+            return []
+        with self._connect() as conn:
+            placeholders = ", ".join("?" for _ in table_names)
+            rows = conn.execute(
+                f"SELECT resource_id, dataset_id, table_name, downloaded_at, "
+                f"row_count, expires_at "
+                f"FROM _cache_metadata WHERE table_name IN ({placeholders})",
+                table_names,
+            ).fetchall()
+            cols = ["resource_id", "dataset_id", "table_name", "downloaded_at",
+                    "row_count", "expires_at"]
+            return [dict(zip(cols, row)) for row in rows]
+
     def get_resource_meta(self, resource_id: str) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(

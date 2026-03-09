@@ -274,6 +274,30 @@ async def query_cached(
             for w in warnings:
                 parts.append(f"⚠ {w}")
 
+        # --- Data provenance (Item 10) ---
+        table_names_in_sql = _TABLE_RE.findall(sql)
+        if table_names_in_sql:
+            try:
+                table_metas = cache.get_tables_metadata(table_names_in_sql)
+                for tm in table_metas:
+                    downloaded = str(tm["downloaded_at"]).split(".")[0] if tm["downloaded_at"] else "unknown"
+                    expires = tm.get("expires_at")
+                    if expires:
+                        from datetime import datetime, timezone
+                        now = datetime.now(timezone.utc)
+                        is_stale = now > expires if hasattr(expires, '__gt__') else False
+                        status = "**stale**" if is_stale else "fresh"
+                    else:
+                        status = "unknown"
+                    parts.append(
+                        f"\n**Source:** `{tm['table_name']}` | "
+                        f"Resource: `{tm['resource_id']}` | "
+                        f"Downloaded: {downloaded} | "
+                        f"Status: {status}"
+                    )
+            except Exception:
+                pass
+
         return "\n".join(parts)
     except Exception as e:
         cached = cache.list_cached()

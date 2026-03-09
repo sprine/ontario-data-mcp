@@ -382,6 +382,23 @@ class TestSpatialQueryValidation:
             )
 
 
+class TestQueryCachedProvenance:
+    """Tests for Item 10: data provenance in query_cached results."""
+
+    @pytest.mark.asyncio
+    async def test_provenance_in_response(self, populated_cache):
+        from ontario_data.tools.querying import query_cached
+
+        ctx = make_mock_context(populated_cache)
+        result = await query_cached(
+            sql='SELECT * FROM "ds_test_data_test_r1" LIMIT 2',
+            ctx=ctx,
+        )
+        assert "**Source:**" in result
+        assert "test-r1" in result
+        assert "Downloaded:" in result
+
+
 class TestVarcharDetectionAtDownload:
     """Tests for Item 9: detect VARCHAR-as-number at download time."""
 
