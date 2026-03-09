@@ -70,6 +70,56 @@ async def portal_stats(ctx: Context) -> str:
     return json.dumps({"portals": portals}, indent=2)
 
 
+@mcp.resource("ontario://schema/{table_name}")
+async def schema_resource(table_name: str, ctx: Context) -> str:
+    """Column schema, types, sample values, and type warnings for a cached table."""
+    cache = get_cache(ctx)
+
+    # Get column info
+    try:
+        columns = cache.execute_sql_dict(f'DESCRIBE "{table_name}"')
+    except Exception:
+        return json.dumps({"error": f"Table '{table_name}' not found in cache."})
+
+    # Get sample rows
+    try:
+        samples = cache.execute_sql_dict(f'SELECT * FROM "{table_name}" LIMIT 3')
+    except Exception:
+        samples = []
+
+    # Detect numeric VARCHARs
+    import re
+    numeric_re = re.compile(r"^-?\d+\.?\d*$")
+    type_warnings = []
+    fields = []
+    for col in columns:
+        col_name = col.get("column_name", col.get("Field", ""))
+        col_type = col.get("column_type", col.get("Type", ""))
+        sample_vals = [str(row.get(col_name, "")) for row in samples if row.get(col_name) is not None]
+        field = {
+            "name": col_name,
+            "type": col_type,
+            "sample_values": sample_vals,
+        }
+        # Check for numeric VARCHARs
+        if "VARCHAR" in str(col_type).upper() and sample_vals:
+            non_empty = [v for v in sample_vals if v.strip()]
+            if non_empty and all(numeric_re.match(v.strip()) for v in non_empty):
+                field["type_warning"] = "Values appear numeric — use TRY_CAST(col AS DOUBLE) for queries"
+                type_warnings.append(col_name)
+        fields.append(field)
+
+    result = {
+        "table_name": table_name,
+        "columns": fields,
+    }
+    if type_warnings:
+        result["type_warnings"] = type_warnings
+        result["hint"] = f"Columns {type_warnings} are VARCHAR but contain numbers. Use TRY_CAST() for comparisons."
+
+    return json.dumps(result, indent=2, default=str)
+
+
 @mcp.resource("ontario://guides/duckdb-sql")
 async def duckdb_sql_guide() -> str:
     """DuckDB SQL reference for Ontario open data analysis."""
