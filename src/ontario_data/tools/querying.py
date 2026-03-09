@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -43,7 +44,6 @@ def _get_type_warnings_for_tables(cache, table_names: list[str]) -> list[str]:
                 [tname],
             )
             if rows and rows[0][0]:
-                import json
                 cols = json.loads(rows[0][0])
                 warnings.extend(cols)
         except Exception:
