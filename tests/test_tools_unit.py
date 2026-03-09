@@ -335,6 +335,53 @@ class TestQueryCachedHeuristicWarnings:
         assert "Only 2 groups from" in result
 
 
+class TestSpatialQueryValidation:
+    """Tests for Item 8: parameterized spatial queries + coordinate validation."""
+
+    @pytest.mark.asyncio
+    async def test_invalid_latitude(self, populated_cache):
+        from ontario_data.tools.geospatial import spatial_query
+
+        ctx = make_mock_context(populated_cache)
+        with pytest.raises(ValueError, match="Latitude .* out of range"):
+            await spatial_query(
+                resource_id="test-r1",
+                operation="contains_point",
+                latitude=9999,
+                longitude=-79.0,
+                ctx=ctx,
+            )
+
+    @pytest.mark.asyncio
+    async def test_invalid_longitude(self, populated_cache):
+        from ontario_data.tools.geospatial import spatial_query
+
+        ctx = make_mock_context(populated_cache)
+        with pytest.raises(ValueError, match="Longitude .* out of range"):
+            await spatial_query(
+                resource_id="test-r1",
+                operation="contains_point",
+                latitude=43.0,
+                longitude=999,
+                ctx=ctx,
+            )
+
+    @pytest.mark.asyncio
+    async def test_invalid_radius(self, populated_cache):
+        from ontario_data.tools.geospatial import spatial_query
+
+        ctx = make_mock_context(populated_cache)
+        with pytest.raises(ValueError, match="Radius must be positive"):
+            await spatial_query(
+                resource_id="test-r1",
+                operation="within_radius",
+                latitude=43.0,
+                longitude=-79.0,
+                radius_km=-5,
+                ctx=ctx,
+            )
+
+
 class TestDownloadResourceAlreadyCached:
     @pytest.mark.asyncio
     async def test_returns_staleness_info(self, populated_cache):

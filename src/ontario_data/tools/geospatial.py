@@ -141,9 +141,9 @@ async def spatial_query(
     Args:
         resource_id: Resource ID (must be cached via load_geodata)
         operation: "contains_point", "within_bbox", or "within_radius"
-        latitude: Latitude for point queries
-        longitude: Longitude for point queries
-        radius_km: Radius in kilometers (for within_radius)
+        latitude: Latitude for point queries (-90 to 90)
+        longitude: Longitude for point queries (-180 to 180)
+        radius_km: Radius in kilometers (for within_radius, must be > 0)
         bbox: Bounding box as [min_lng, min_lat, max_lng, max_lat] (for within_bbox)
         limit: Max results
     """
@@ -156,54 +156,87 @@ async def spatial_query(
             "Spatial queries require the spatial extension to be installed."
         )
 
+    # Validate coordinates
+    if latitude is not None and not (-90 <= latitude <= 90):
+        raise ValueError(f"Latitude {latitude} out of range. Must be between -90 and 90.")
+    if longitude is not None and not (-180 <= longitude <= 180):
+        raise ValueError(f"Longitude {longitude} out of range. Must be between -180 and 180.")
+    if radius_km is not None and radius_km <= 0:
+        raise ValueError(f"Radius must be positive, got {radius_km}.")
+    if bbox is not None:
+        if len(bbox) != 4:
+            raise ValueError(f"Bounding box must have 4 values [min_lng, min_lat, max_lng, max_lat], got {len(bbox)}.")
+        if not (-180 <= bbox[0] <= 180 and -180 <= bbox[2] <= 180):
+            raise ValueError(f"Bounding box longitudes out of range (-180 to 180).")
+        if not (-90 <= bbox[1] <= 90 and -90 <= bbox[3] <= 90):
+            raise ValueError(f"Bounding box latitudes out of range (-90 to 90).")
+
     if operation == "contains_point" and latitude is not None and longitude is not None:
         sql = f"""
             SELECT *, ST_Distance(
                 ST_GeomFromText(geometry_wkt),
-                ST_Point({longitude}, {latitude})
+                ST_Point(?, ?)
             ) as distance
             FROM "{table_name}"
             WHERE geometry_wkt IS NOT NULL
-            AND ST_Contains(ST_GeomFromText(geometry_wkt), ST_Point({longitude}, {latitude}))
+            AND ST_Contains(ST_GeomFromText(geometry_wkt), ST_Point(?, ?))
             LIMIT {limit}
         """
+        params = [longitude, latitude, longitude, latitude]
     elif operation == "within_radius" and latitude is not None and longitude is not None and radius_km is not None:
         degree_radius = radius_km / 111.0
         sql = f"""
             SELECT *, ST_Distance(
                 ST_GeomFromText(geometry_wkt),
-                ST_Point({longitude}, {latitude})
+                ST_Point(?, ?)
             ) * 111.0 as distance_km
             FROM "{table_name}"
             WHERE geometry_wkt IS NOT NULL
             AND ST_DWithin(
                 ST_GeomFromText(geometry_wkt),
-                ST_Point({longitude}, {latitude}),
-                {degree_radius}
+                ST_Point(?, ?),
+                ?
             )
             ORDER BY distance_km
             LIMIT {limit}
         """
+        params = [longitude, latitude, longitude, latitude, degree_radius]
     elif operation == "within_bbox" and bbox and len(bbox) == 4:
-        min_lng, min_lat, max_lng, max_lat = bbox
         sql = f"""
             SELECT *
             FROM "{table_name}"
             WHERE geometry_wkt IS NOT NULL
             AND ST_Intersects(
                 ST_GeomFromText(geometry_wkt),
-                ST_MakeEnvelope({min_lng}, {min_lat}, {max_lng}, {max_lat})
+                ST_MakeEnvelope(?, ?, ?, ?)
             )
             LIMIT {limit}
         """
+        params = list(bbox)
     else:
         raise ValueError(
             f"Invalid operation '{operation}' or missing parameters. "
             f"Valid: contains_point (lat, lng), within_radius (lat, lng, radius_km), within_bbox (bbox)"
         )
 
-    # Execute directly since spatial SQL contains functions not in allowed prefixes
-    records = cache.execute_sql_dict(sql)
+    records = cache.execute_sql_dict(sql, params=params)
+
+    if not records:
+        # Provide context when no results found
+        parts = [format_records(records, row_count=0)]
+        try:
+            total = cache.execute_sql(f'SELECT COUNT(*) FROM "{table_name}" WHERE geometry_wkt IS NOT NULL')[0][0]
+            if total > 0:
+                context = f"No features found"
+                if operation == "within_radius":
+                    context += f" within {radius_km}km of ({latitude}, {longitude})"
+                elif operation == "contains_point":
+                    context += f" containing point ({latitude}, {longitude})"
+                context += f". The table has {total:,} features with geometry."
+                parts.append(context)
+        except Exception:
+            pass
+        return "\n".join(parts)
 
     return format_records(records, row_count=len(records))
 
