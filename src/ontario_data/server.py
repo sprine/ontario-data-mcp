@@ -59,7 +59,7 @@ mcp = FastMCP(
         "then JOIN them in DuckDB via query_cached.\n\n"
         "Key guidelines:\n"
         "- Prefer download_resource + query_cached over sql_query (avoids remote API rate limits)\n"
-        "- Many numeric columns are stored as text — use TRY_CAST(col AS DOUBLE)\n"
+        "- Numeric columns stored as text are auto-cast to DOUBLE at download time\n"
         "- Use SUM(quantity_col) not COUNT(*) when rows have a count/quantity column\n"
         "- Check unit columns before comparing datasets (e.g. mg/L vs µg/L)\n"
         "- Values may contain semicolons — use LIKE patterns instead of exact string matches\n"

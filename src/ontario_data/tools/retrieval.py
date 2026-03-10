@@ -113,10 +113,7 @@ async def download_resource(
 
     Supports CSV, XLSX, JSON, and datastore-active resources.
     If already cached, returns staleness info so you can decide whether to refresh.
-
-    After downloading, check the returned dtypes field — VARCHAR columns containing
-    numbers need TRY_CAST(col AS DOUBLE) in queries. The table name is returned in
-    the response; use it with query_cached to analyze the data.
+    Numeric columns stored as text are automatically cast to DOUBLE.
 
     Workflow: search_datasets → get_dataset_info → download_resource → query_cached.
 
@@ -132,7 +129,7 @@ async def download_resource(
         table_name = cache.get_table_name(bare_id)
         meta = cache.get_resource_meta(bare_id)
         staleness = get_staleness_info(cache, bare_id)
-        response_kwargs = dict(
+        return md_response(
             status="already_cached",
             table_name=table_name,
             row_count=meta["row_count"],
@@ -140,12 +137,6 @@ async def download_resource(
             staleness=staleness,
             hint="Use query_cached tool with SQL to analyze this data. Use refresh_cache(resource_id=...) to re-download.",
         )
-        if meta.get("type_warnings"):
-            response_kwargs["type_warnings"] = (
-                f"Columns {meta['type_warnings']} are VARCHAR but contain numbers. "
-                f"Use TRY_CAST(col AS DOUBLE) for comparisons."
-            )
-        return md_response(**response_kwargs)
 
     if not portal:
         portal, bare_id = await resolve_resource_portal(ctx, resource_id)
@@ -179,7 +170,7 @@ async def download_resource(
 
     await ctx.report_progress(100, 100, "Done")
 
-    response_kwargs = dict(
+    return md_response(
         status="downloaded",
         table_name=table_name,
         row_count=len(df),
@@ -187,13 +178,6 @@ async def download_resource(
         dtypes={col: str(dtype) for col, dtype in df.dtypes.items()},
         hint=f'Use query_cached tool with SQL like: SELECT * FROM "{table_name}" LIMIT 10',
     )
-    meta = cache.get_resource_meta(bare_id)
-    if meta and meta.get("type_warnings"):
-        response_kwargs["type_warnings"] = (
-            f"Columns {meta['type_warnings']} are VARCHAR but contain numbers. "
-            f"Use TRY_CAST(col AS DOUBLE) for comparisons."
-        )
-    return md_response(**response_kwargs)
 
 
 @mcp.tool(annotations=READONLY)

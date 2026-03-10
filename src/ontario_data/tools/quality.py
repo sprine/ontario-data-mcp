@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timezone
 
@@ -72,8 +71,7 @@ async def profile_data(
     """Statistical profile and quality check of a cached dataset.
 
     Uses DuckDB SUMMARIZE for column-level statistics (min, max, avg, std,
-    nulls, unique counts). Also checks for duplicate rows and reports
-    type warnings for VARCHAR columns that contain numeric values.
+    nulls, unique counts). Also checks for duplicate rows.
 
     Args:
         resource_id: Resource ID (must be cached)
@@ -98,62 +96,10 @@ async def profile_data(
     )
     duplicate_rows = dup_result[0][0] if dup_result else 0
 
-    # Read type warnings from cache metadata (detected at download time)
-    type_warnings = []
-    try:
-        meta_rows = cache.execute_sql(
-            "SELECT type_warnings FROM _cache_metadata WHERE table_name = ?",
-            [table_name],
-        )
-        if meta_rows and meta_rows[0][0]:
-            type_warnings = json.loads(meta_rows[0][0])
-    except Exception:
-        logger.debug("Failed to read type warnings for table %s", table_name, exc_info=True)
-
-    # Compute actual numeric stats for VARCHAR columns flagged as numeric
-    numeric_stats = {}
-    if type_warnings:
-        agg_parts = []
-        for col in type_warnings:
-            c = col.replace('"', '""')
-            agg_parts.extend([
-                f'MIN(TRY_CAST("{c}" AS DOUBLE)) AS "{c}_min"',
-                f'MAX(TRY_CAST("{c}" AS DOUBLE)) AS "{c}_max"',
-                f'AVG(TRY_CAST("{c}" AS DOUBLE)) AS "{c}_avg"',
-                f'STDDEV(TRY_CAST("{c}" AS DOUBLE)) AS "{c}_std"',
-                f'COUNT(TRY_CAST("{c}" AS DOUBLE)) AS "{c}_numeric_count"',
-            ])
-        try:
-            agg_sql = f'SELECT {", ".join(agg_parts)} FROM "{table_name}"'
-            row = cache.execute_sql(agg_sql)
-            if row:
-                vals = row[0]
-                idx = 0
-                for col in type_warnings:
-                    numeric_stats[col] = {
-                        "min": vals[idx],
-                        "max": vals[idx + 1],
-                        "avg": round(vals[idx + 2], 4) if vals[idx + 2] is not None else None,
-                        "std": round(vals[idx + 3], 4) if vals[idx + 3] is not None else None,
-                        "numeric_count": vals[idx + 4],
-                    }
-                    idx += 5
-        except Exception:
-            logger.debug("Failed to compute numeric stats for %s", table_name, exc_info=True)
-
-    result = dict(
+    return md_response(
         resource_id=resource_id,
         table_name=table_name,
         row_count=row_count,
         duplicate_rows=duplicate_rows,
         columns=summary,
     )
-    if type_warnings:
-        result["type_warnings"] = type_warnings
-        result["numeric_varchar_stats"] = numeric_stats
-        result["hint"] = (
-            f"Columns {type_warnings} are VARCHAR but contain numbers. "
-            f"Use TRY_CAST(col AS DOUBLE) for comparisons."
-        )
-
-    return md_response(**result)

@@ -171,7 +171,7 @@ class TestProfileDataQuality:
 
 
 class TestQueryCachedColumnTypes:
-    """Tests for Item 1: column types + type warnings in query_cached."""
+    """Tests for column types in query_cached — numeric VARCHARs are auto-cast."""
 
     @pytest.mark.asyncio
     async def test_includes_column_types(self, populated_cache):
@@ -186,8 +186,8 @@ class TestQueryCachedColumnTypes:
         assert "VARCHAR" in result or "BIGINT" in result or "INTEGER" in result
 
     @pytest.mark.asyncio
-    async def test_varchar_numeric_warning(self, cache):
-        """VARCHAR column with numeric strings should trigger a type warning."""
+    async def test_numeric_varchars_auto_cast(self, cache):
+        """VARCHAR columns with numeric strings should be auto-cast to DOUBLE."""
         from ontario_data.tools.querying import query_cached
 
         df = pd.DataFrame({
@@ -207,12 +207,13 @@ class TestQueryCachedColumnTypes:
             sql='SELECT * FROM "ds_varchar_test"',
             ctx=ctx,
         )
-        assert "TRY_CAST" in result
-        assert "year" in result
-        assert "value" in result
-        # "name" column should NOT be flagged as numeric
-        warning_section = result.split("⚠")[1] if "⚠" in result else ""
-        assert "name" not in warning_section, f"'name' should not be in type warnings: {warning_section}"
+        # Numeric columns should be DOUBLE, not VARCHAR
+        assert "year (DOUBLE)" in result
+        assert "value (DOUBLE)" in result
+        # String column stays VARCHAR
+        assert "name (VARCHAR)" in result
+        # No type warnings surfaced to user
+        assert "TRY_CAST" not in result
 
 
 class TestQueryCachedTruncation:
@@ -392,11 +393,11 @@ class TestQueryCachedProvenance:
         assert "Downloaded:" in result
 
 
-class TestProfileDataTypeWarnings:
-    """Tests for profile_data type warnings (from merged check_data_quality)."""
+class TestProfileDataAutoCast:
+    """Tests that profile_data works correctly with auto-cast numeric columns."""
 
     @pytest.mark.asyncio
-    async def test_varchar_type_warnings(self, cache):
+    async def test_auto_cast_columns_profiled_as_double(self, cache):
         from ontario_data.tools.quality import profile_data
 
         df = pd.DataFrame({
@@ -412,13 +413,14 @@ class TestProfileDataTypeWarnings:
         )
         ctx = make_mock_context(cache)
         result = await profile_data(resource_id="test-qv", ctx=ctx)
-        assert "type_warnings" in result
-        assert "TRY_CAST" in result
+        # No type warnings or TRY_CAST hints in output
+        assert "type_warnings" not in result
+        assert "TRY_CAST" not in result
         assert "year" in result
 
     @pytest.mark.asyncio
-    async def test_numeric_varchar_stats_computed(self, cache):
-        """Numeric stats (min/max/avg/std) are computed for flagged VARCHAR columns."""
+    async def test_auto_cast_stats_in_summarize(self, cache):
+        """SUMMARIZE gets real numeric stats since columns are auto-cast to DOUBLE."""
         from ontario_data.tools.quality import profile_data
 
         df = pd.DataFrame({
@@ -434,15 +436,13 @@ class TestProfileDataTypeWarnings:
         )
         ctx = make_mock_context(cache)
         result = await profile_data(resource_id="test-numstats", ctx=ctx)
-        assert "numeric_varchar_stats" in result
-        # Should contain actual numeric values for the "amount" column
-        assert "10.0" in result  # min
-        assert "40.0" in result  # max
-        assert "25.0" in result  # avg
+        # No separate numeric_varchar_stats needed — SUMMARIZE handles DOUBLE columns
+        assert "numeric_varchar_stats" not in result
+        assert "amount" in result
 
     @pytest.mark.asyncio
-    async def test_numeric_varchar_stats_handles_mixed_values(self, cache):
-        """Numeric stats handle columns with mix of numeric and non-numeric values."""
+    async def test_mixed_values_auto_cast_with_nulls(self, cache):
+        """Mixed numeric/non-numeric values: non-numeric become NULL after auto-cast."""
         from ontario_data.tools.quality import profile_data
 
         # >80% numeric to pass detection threshold (9/10 = 90%)
@@ -459,16 +459,14 @@ class TestProfileDataTypeWarnings:
         )
         ctx = make_mock_context(cache)
         result = await profile_data(resource_id="test-mixed", ctx=ctx)
-        # Should still produce stats — TRY_CAST skips non-numeric values
-        assert "numeric_varchar_stats" in result
-        # Should have 9 numeric values (N/A is skipped by TRY_CAST)
-        assert "numeric_count" in result
+        # No type warnings — column was auto-cast
+        assert "type_warnings" not in result
 
 
-class TestVarcharDetectionAtDownload:
-    """Tests for Item 9: detect VARCHAR-as-number at download time."""
+class TestNumericVarcharAutoCast:
+    """Tests that numeric VARCHAR columns are auto-cast to DOUBLE at download time."""
 
-    def test_type_warnings_stored(self, cache):
+    def test_numeric_columns_cast_to_double(self, cache):
         df = pd.DataFrame({
             "year": ["2020", "2021", "2022"],
             "name": ["Alice", "Bob", "Charlie"],
@@ -481,11 +479,31 @@ class TestVarcharDetectionAtDownload:
             df=df,
             source_url="http://example.com",
         )
-        meta = cache.get_resource_meta("test-tw")
-        assert meta["type_warnings"] is not None
-        assert "year" in meta["type_warnings"]
-        assert "amount" in meta["type_warnings"]
-        assert "name" not in meta["type_warnings"]
+        # Columns should now be DOUBLE in the table
+        columns = cache.execute_sql('DESCRIBE "ds_type_warn_test"')
+        col_types = {c[0]: str(c[1]) for c in columns}
+        assert col_types["year"] == "DOUBLE"
+        assert col_types["amount"] == "DOUBLE"
+        assert "VARCHAR" in col_types["name"]
+
+    def test_comma_formatted_numbers_cast(self, cache):
+        df = pd.DataFrame({
+            "award": ["1,234,567", "2,345,678", "3,456,789"],
+            "name": ["Project A", "Project B", "Project C"],
+        })
+        cache.store_resource(
+            resource_id="test-comma",
+            dataset_id="test-ds",
+            table_name="ds_comma_test",
+            df=df,
+            source_url="http://example.com",
+        )
+        columns = cache.execute_sql('DESCRIBE "ds_comma_test"')
+        col_types = {c[0]: str(c[1]) for c in columns}
+        assert col_types["award"] == "DOUBLE"
+        # Verify actual values
+        vals = cache.execute_sql('SELECT "award" FROM "ds_comma_test" ORDER BY "award"')
+        assert vals[0][0] == 1234567.0
 
 
 class TestDownloadResourceAlreadyCached:

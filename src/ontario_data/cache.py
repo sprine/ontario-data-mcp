@@ -181,11 +181,15 @@ class CacheManager:
         return self._has_spatial
 
     @staticmethod
-    def _detect_numeric_varchars(conn, table_name: str) -> list[str]:
-        """Detect VARCHAR columns whose values look numeric."""
+    def _detect_numeric_varchars(conn, table_name: str) -> list[dict]:
+        """Detect VARCHAR columns whose values look numeric.
+
+        Returns a list of dicts with 'name' and 'has_commas' keys.
+        """
         columns = conn.execute(f'DESCRIBE "{table_name}"').fetchall()
-        numeric_re = re.compile(r"^-?\d+\.?\d*$")
-        suspects = []
+        plain_re = re.compile(r"^-?\d+\.?\d*$")
+        comma_re = re.compile(r"^-?\d{1,3}(,\d{3})+(\.\d+)?$")
+        suspects: list[dict] = []
         for col in columns:
             col_name, col_type = col[0], str(col[1])
             if "VARCHAR" not in col_type.upper():
@@ -194,12 +198,14 @@ class CacheManager:
                 f'SELECT DISTINCT "{col_name}" FROM "{table_name}" '
                 f'WHERE "{col_name}" IS NOT NULL LIMIT 100'
             ).fetchall()
-            values = [str(r[0]) for r in sample if r[0] is not None and str(r[0]).strip()]
+            values = [str(r[0]).strip() for r in sample if r[0] is not None and str(r[0]).strip()]
             if not values:
                 continue
-            numeric_count = sum(1 for v in values if numeric_re.match(v.strip()))
+            plain_count = sum(1 for v in values if plain_re.match(v))
+            comma_count = sum(1 for v in values if comma_re.match(v))
+            numeric_count = plain_count + comma_count
             if numeric_count / len(values) > 0.8:
-                suspects.append(col_name)
+                suspects.append({"name": col_name, "has_commas": comma_count > 0})
         return suspects
 
     def store_resource(
@@ -227,8 +233,21 @@ class CacheManager:
             # Create table from DataFrame
             conn.execute(f'CREATE TABLE "{table_name}" AS SELECT * FROM df')
 
-            # Detect VARCHAR columns that look numeric
-            type_warnings = self._detect_numeric_varchars(conn, table_name)
+            # Detect VARCHAR columns that look numeric and auto-cast to DOUBLE
+            numeric_varchars = self._detect_numeric_varchars(conn, table_name)
+            for col_info in numeric_varchars:
+                c = col_info["name"].replace('"', '""')
+                if col_info["has_commas"]:
+                    expr = f'TRY_CAST(REPLACE("{c}", \',\', \'\') AS DOUBLE)'
+                else:
+                    expr = f'TRY_CAST("{c}" AS DOUBLE)'
+                try:
+                    conn.execute(
+                        f'ALTER TABLE "{table_name}" ALTER "{c}" '
+                        f'TYPE DOUBLE USING {expr}'
+                    )
+                except Exception:
+                    logger.debug("Failed to auto-cast column %s in %s", c, table_name, exc_info=True)
 
             # Record metadata
             now = datetime.now(timezone.utc)
@@ -241,8 +260,7 @@ class CacheManager:
                 """INSERT INTO _cache_metadata
                    (resource_id, dataset_id, table_name, downloaded_at, row_count, size_bytes, source_url, type_warnings)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                [resource_id, dataset_id, table_name, now, len(df), int(size), source_url,
-                 json.dumps(type_warnings) if type_warnings else None],
+                [resource_id, dataset_id, table_name, now, len(df), int(size), source_url, None],
             )
 
         self._with_retry(_do)

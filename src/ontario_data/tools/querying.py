@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -35,23 +34,6 @@ _QUANTITY_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
-
-def _get_type_warnings_for_tables(cache, table_names: list[str]) -> list[str]:
-    """Read numeric VARCHAR warnings from cache metadata for the given tables."""
-    warnings = []
-    for tname in table_names:
-        # Look up resource metadata by table name
-        try:
-            rows = cache.execute_sql(
-                "SELECT type_warnings FROM _cache_metadata WHERE table_name = ?",
-                [tname],
-            )
-            if rows and rows[0][0]:
-                cols = json.loads(rows[0][0])
-                warnings.extend(cols)
-        except Exception:
-            logger.debug("Failed to read type warnings for table %s", tname, exc_info=True)
-    return warnings
 
 
 def _generate_query_warnings(
@@ -201,18 +183,11 @@ async def query_cached(
     Use table names from download_resource or cache_info.
     Supports full DuckDB SQL: aggregations, window functions, CTEs, JOINs across tables.
 
-    IMPORTANT — before querying, check column types with get_resource_schema or
-    DESCRIBE "{table}". Many numeric columns are stored as VARCHAR. Use
-    TRY_CAST(col AS DOUBLE) for numeric comparisons — bare operators like
-    WHERE year > 2020 do string comparison and return wrong results silently.
-
     Use SUM(quantity_col) not COUNT(*) when rows contain per-row counts (e.g.
     a "count" or "number_of" column). COUNT(*) counts rows, not quantities.
     Column names vary across resources in the same dataset — always DESCRIBE first.
     Values containing semicolons should be matched with LIKE patterns, not = equality.
-
-    After downloading, the table name is returned by download_resource and shown
-    by cache_info. Quote table names with double quotes in SQL.
+    Quote table names with double quotes in SQL.
 
     Args:
         sql: SQL query (e.g. SELECT * FROM "ds_my_table_abc12345" LIMIT 10)
@@ -231,19 +206,8 @@ async def query_cached(
                 truncated_total = len(results)
             results = results[:MAX_QUERY_ROWS]
 
-        # --- Detect numeric VARCHARs from cache metadata (Item 1) ---
-        table_names_for_warnings = _TABLE_RE.findall(sql)
-        numeric_varchars = _get_type_warnings_for_tables(cache, table_names_for_warnings)
-
         # --- Post-query heuristic warnings (Item 5) ---
         warnings = _generate_query_warnings(sql, results, fields, cache)
-
-        if numeric_varchars:
-            warnings.insert(
-                0,
-                f"Columns {numeric_varchars} appear numeric but are stored as VARCHAR. "
-                f"Use TRY_CAST(col AS DOUBLE) for comparisons.",
-            )
 
         # --- Build response ---
         parts: list[str] = []
@@ -303,8 +267,6 @@ async def query_cached(
         table_names = [c["table_name"] for c in cached]
         msg = str(e).lower()
         hints = ["Quote table names with double quotes."]
-        if any(kw in msg for kw in ("conversion", "cast", "type mismatch", "could not convert")):
-            hints.append("Numeric columns may be stored as text. Use TRY_CAST(column AS DOUBLE).")
         augmented = f"{e}\n\nAvailable tables: {table_names}\nHints: {' '.join(hints)}"
         raise InvalidQueryError(augmented) from e
 

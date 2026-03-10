@@ -72,7 +72,7 @@ async def portal_stats(ctx: Context) -> str:
 
 @mcp.resource("ontario://schema/{table_name}")
 async def schema_resource(table_name: str, ctx: Context) -> str:
-    """Column schema, types, sample values, and type warnings for a cached table."""
+    """Column schema, types, and sample values for a cached table."""
     cache = get_cache(ctx)
 
     # Get column info
@@ -87,42 +87,18 @@ async def schema_resource(table_name: str, ctx: Context) -> str:
     except Exception:
         samples = []
 
-    # Read type_warnings from cache metadata (detected at download time)
-    type_warnings = []
-    try:
-        meta_rows = cache.execute_sql(
-            "SELECT type_warnings FROM _cache_metadata WHERE table_name = ?",
-            [table_name],
-        )
-        if meta_rows and meta_rows[0][0]:
-            type_warnings = json.loads(meta_rows[0][0])
-    except Exception:
-        pass
-
-    type_warnings_set = set(type_warnings)
     fields = []
     for col in columns:
         col_name = col.get("column_name", col.get("Field", ""))
         col_type = col.get("column_type", col.get("Type", ""))
         sample_vals = [str(row.get(col_name, "")) for row in samples if row.get(col_name) is not None]
-        field = {
+        fields.append({
             "name": col_name,
             "type": col_type,
             "sample_values": sample_vals,
-        }
-        if col_name in type_warnings_set:
-            field["type_warning"] = "Values appear numeric — use TRY_CAST(col AS DOUBLE) for queries"
-        fields.append(field)
+        })
 
-    result = {
-        "table_name": table_name,
-        "columns": fields,
-    }
-    if type_warnings:
-        result["type_warnings"] = type_warnings
-        result["hint"] = f"Columns {type_warnings} are VARCHAR but contain numbers. Use TRY_CAST() for comparisons."
-
-    return json.dumps(result, indent=2, default=str)
+    return json.dumps({"table_name": table_name, "columns": fields}, indent=2, default=str)
 
 
 @mcp.resource("ontario://guides/duckdb-sql")
@@ -138,7 +114,7 @@ async def duckdb_sql_guide() -> str:
             "Use LAG/LEAD window functions for period comparisons",
             "Common Ontario columns: _id, date, year, region, municipality",
             "SUMMARIZE <table> gives quick statistics for all columns",
-            "Many Ontario data columns are VARCHAR even when values are numeric — use TRY_CAST(col AS DOUBLE)",
+            "Numeric columns are auto-cast to DOUBLE at download time",
             "Values containing semicolons break query_cached — use LIKE patterns instead of exact matches",
             "Use SUM(quantity_column) not COUNT(*) when rows represent aggregated counts",
             "Column names may vary across resources in the same dataset (e.g. TotalEV vs Total EV)",
