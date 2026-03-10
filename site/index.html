@@ -12,7 +12,7 @@
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a1a; background: #fff; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1C2826; background: #FAFAF7; line-height: 1.6; -webkit-font-smoothing: antialiased; }
     a { color: inherit; }
     a:focus-visible, button:focus-visible { outline: 2px solid #0B6E4F; outline-offset: 2px; border-radius: 2px; }
     code, pre { font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace; }
@@ -21,7 +21,7 @@
     .hero {
       padding: 100px 24px 72px;
       text-align: center;
-      background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(11,110,79,0.07) 0%, transparent 70%);
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(11,110,79,0.10) 0%, transparent 70%);
     }
     .hero h1 {
       font-size: clamp(2.2rem, 5vw, 3.4rem);
@@ -30,11 +30,10 @@
       line-height: 1.1;
       margin-bottom: 20px;
     }
-    .hero h1 span { color: #0B6E4F; }
+    .hero h1 span { color: #0B6E4F; font-size: 120%; }
     .hero .subtitle {
       font-size: 1.1rem;
-      color: #444;
-      max-width: 520px;
+      color: #4A5856;
       margin: 0 auto 40px;
       line-height: 1.7;
     }
@@ -42,7 +41,7 @@
       display: inline-flex;
       align-items: center;
       gap: 12px;
-      background: #111;
+      background: #151D1B;
       border-radius: 10px;
       padding: 14px 20px;
       font-size: 0.95rem;
@@ -50,38 +49,38 @@
     .install-box code { color: #a8d8a8; }
     .install-box button {
       background: rgba(255,255,255,0.1);
-      border: none; color: #aaa; cursor: pointer;
+      border: none; color: #8A9593; cursor: pointer;
       font-size: 0.75rem; font-weight: 500;
       padding: 5px 12px; border-radius: 6px;
       transition: all 0.15s;
     }
     .install-box button:hover { background: rgba(255,255,255,0.18); color: #fff; }
     .links { margin-top: 28px; font-size: 0.85rem; display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
-    .links a { color: #555; text-decoration: none; transition: color 0.15s; }
+    .links a { color: #586462; text-decoration: none; transition: color 0.15s; }
     .links a:hover { color: #0B6E4F; }
 
     /* Stats ribbon */
     .stats {
       display: flex; justify-content: center; gap: 48px;
-      padding: 40px 24px; border-bottom: 1px solid #f0f0f0;
+      padding: 40px 24px; border-bottom: 1px solid #EAE8E3;
     }
     .stat { text-align: center; }
-    .stat-num { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; color: #0B6E4F; }
-    .stat-label { font-size: 0.78rem; color: #666; margin-top: 2px; }
+    .stat-num { font-weight: 700; letter-spacing: -0.02em; color: #B07D24; }
+    .stat-label { font-size: 0.78rem; color: #697774; margin-top: 2px; }
 
     /* Sections */
     section { padding: 80px 24px; }
     .section-header { text-align: center; margin-bottom: 52px; }
     .section-header h2 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 8px; }
-    .section-header p { font-size: 1rem; color: #555; max-width: 520px; margin: 0 auto; line-height: 1.7; }
+    .section-header p { font-size: 1rem; color: #586462; max-width: 520px; margin: 0 auto; line-height: 1.7; }
     .container { max-width: 720px; margin: 0 auto; }
     .container--wide { max-width: 960px; margin: 0 auto; }
-    .bg-muted { background: #f8f8f8; }
+    .bg-muted { background: #F4F3EF; }
 
     /* Tool cards */
     .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
     .tool-card {
-      border: 1px solid #eee; border-radius: 12px; padding: 0;
+      border: 1px solid #E5E2DC; border-radius: 12px; padding: 0;
       transition: all 0.2s; position: relative; overflow: hidden;
     }
     .tool-card > summary {
@@ -94,24 +93,27 @@
       content: ''; position: absolute; top: 0; left: 0;
       width: 3px; height: 100%; background: #0B6E4F; opacity: 0; transition: opacity 0.2s;
     }
-    .tool-card:hover { border-color: #ddd; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+    .tool-card:hover { border-color: #D6D3CC; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
     .tool-card:hover::before { opacity: 1; }
     .tool-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .tool-card-name { font-weight: 600; font-size: 1rem; }
     .tool-card-count { font-size: 0.7rem; font-weight: 600; color: #0B6E4F; background: rgba(11,110,79,0.08); padding: 3px 8px; border-radius: 100px; }
-    .tool-card-desc { font-size: 0.88rem; color: #555; line-height: 1.6; }
+    .tool-card-desc { font-size: 0.88rem; color: #586462; line-height: 1.6; }
     .tool-card-detail {
-      display: block; padding: 0 24px 24px; margin-top: 0; padding-top: 12px; border-top: 1px solid #f0f0f0;
-      font-size: 0.78rem; color: #666; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1.8;
+      display: block; padding: 0 24px 24px; margin-top: 0; padding-top: 12px; border-top: 1px solid #EAE8E3;
+      font-size: 0.78rem; color: #697774; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1.8;
     }
 
     /* How it works */
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; max-width: 720px; margin: 0 auto; }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; max-width: 860px; margin: 0 auto; }
     .step-num { font-size: 2.5rem; font-weight: 800; color: rgba(11,110,79,0.12); line-height: 1; margin-bottom: 8px; }
     .step-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
-    .step-desc { font-size: 0.88rem; color: #555; line-height: 1.65; }
+    .step-desc { font-size: 0.88rem; color: #586462; line-height: 1.65; }
 
     .hero-inner { max-width: 640px; margin: 0 auto; }
+    .hero-install { max-width: 540px; margin: 0 auto 20px; text-align: left; }
+    .hero-install .tabs { justify-content: center; }
+    .hero-install .source-note { text-align: center; }
 
     /* Install */
     .install-inner { max-width: 640px; margin: 0 auto; }
@@ -119,40 +121,40 @@
     .tab-btn {
       background: none; border: none;
       padding: 8px 16px; font-size: 0.82rem; font-weight: 500;
-      color: #666; cursor: pointer; border-radius: 6px; transition: all 0.15s;
+      color: #697774; cursor: pointer; border-radius: 6px; transition: all 0.15s;
     }
     .tab-btn:hover { color: #333; }
-    .tab-btn.active { background: #f0f0f0; color: #1a1a1a; }
-    .bg-muted .tab-btn.active { background: #fff; }
-    .code-block { background: #111; border-radius: 10px; padding: 24px; position: relative; }
-    .code-block p { font-size: 0.8rem; color: #999; margin-bottom: 12px; }
+    .tab-btn.active { background: #EAE8E3; color: #1C2826; }
+    .bg-muted .tab-btn.active { background: #FAFAF7; }
+    .code-block { background: #151D1B; border-radius: 10px; padding: 24px; position: relative; }
+    .code-block p { font-size: 0.8rem; color: #8A9895; margin-bottom: 12px; }
     .code-block pre { font-size: 0.85rem; color: #a8d8a8; overflow-x: auto; line-height: 1.7; }
     .code-block .copy-btn {
       position: absolute; top: 14px; right: 14px;
       background: rgba(255,255,255,0.06); border: none;
-      color: #555; font-size: 0.72rem; font-weight: 500;
+      color: #586462; font-size: 0.72rem; font-weight: 500;
       cursor: pointer; padding: 5px 10px; border-radius: 5px;
     }
-    .code-block .copy-btn:hover { color: #999; background: rgba(255,255,255,0.12); }
-    .source-note { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #666; }
-    .source-note code { font-size: 0.75rem; color: #555; }
+    .code-block .copy-btn:hover { color: #8A9895; background: rgba(255,255,255,0.12); }
+    .source-note { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #697774; }
+    .source-note code { font-size: 0.75rem; color: #586462; }
 
     /* CTA strip */
     .cta-strip {
       text-align: center;
       padding: 48px 24px;
-      border-top: 1px solid #f0f0f0;
-      border-bottom: 1px solid #f0f0f0;
+      border-top: 1px solid #EAE8E3;
+      border-bottom: 1px solid #EAE8E3;
     }
     .cta-strip p {
       font-size: 1.1rem;
-      color: #444;
+      color: #4A5856;
       margin-bottom: 20px;
     }
     .cta-strip .install-box { margin-bottom: 12px; }
     .cta-strip .cta-alt {
       font-size: 0.85rem;
-      color: #666;
+      color: #697774;
     }
     .cta-strip .cta-alt a {
       color: #0B6E4F;
@@ -161,20 +163,20 @@
     }
 
     /* Feedback */
-    .feedback { text-align: center; font-size: 0.85rem; color: #555; padding: 32px 24px; }
-    .feedback a { color: #444; text-decoration: underline; text-underline-offset: 3px; }
+    .feedback { text-align: center; font-size: 0.85rem; color: #586462; padding: 32px 24px; }
+    .feedback a { color: #4A5856; text-decoration: underline; text-underline-offset: 3px; }
     .feedback a:hover { color: #0B6E4F; }
 
     /* Footer */
-    footer { padding: 48px 24px; text-align: center; font-size: 0.8rem; color: #666; border-top: 1px solid #f0f0f0; }
-    footer a { color: #555; text-decoration: none; }
+    footer { padding: 48px 24px; text-align: center; font-size: 0.8rem; color: #697774; border-top: 1px solid #EAE8E3; }
+    footer a { color: #586462; text-decoration: none; }
     footer a:hover { color: #0B6E4F; }
     footer .footer-links { display: flex; gap: 24px; justify-content: center; margin-bottom: 12px; }
     footer .footer-meta { font-size: 0.75rem; }
 
     /* Ticker feed */
     .ticker-wrapper {
-      background: #111;
+      background: #151D1B;
       color: #fff;
       display: flex;
       align-items: center;
@@ -237,7 +239,7 @@
     }
     .ticker-item-time {
       font-size: 0.78rem;
-      color: #666;
+      color: #697774;
       flex-shrink: 0;
     }
     .ticker-dot {
@@ -256,7 +258,7 @@
     .carousel-section { padding: 80px 0; }
     .carousel-header { text-align: center; margin-bottom: 32px; padding: 0 24px; }
     .carousel-header h2 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 8px; }
-    .carousel-header p { font-size: 1rem; color: #555; line-height: 1.7; }
+    .carousel-header p { font-size: 1rem; color: #586462; line-height: 1.7; }
     .carousel-track {
       display: flex;
       gap: 16px;
@@ -270,12 +272,12 @@
     .carousel-card {
       flex: 0 0 400px;
       scroll-snap-align: center;
-      border: 1px solid #eee;
+      border: 1px solid #E5E2DC;
       border-radius: 15px;
       padding: 25px;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .carousel-card:hover { border-color: #ddd; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+    .carousel-card:hover { border-color: #D6D3CC; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
     .carousel-card:first-child { margin-left: calc(50% - 200px - 12px); }
     .carousel-card:last-child { margin-right: calc(50% - 200px - 12px); }
     .carousel-tag {
@@ -294,32 +296,32 @@
       font-size: 1.19rem;
       font-weight: 500;
       line-height: 1.45;
-      color: #1a1a1a;
+      color: #1C2826;
       margin-bottom: 12px;
     }
     .carousel-a {
       font-size: 1.025rem;
-      color: #555;
+      color: #586462;
       line-height: 1.6;
       margin-bottom: 15px;
     }
-    .carousel-a strong { color: #1a1a1a; }
+    .carousel-a strong { color: #1C2826; }
     .carousel-sources {
       font-size: 0.9rem;
-      color: #666;
+      color: #697774;
       margin-bottom: 10px;
       line-height: 1.5;
     }
     .carousel-sources a { color: #0B6E4F; text-decoration: underline; text-underline-offset: 2px; }
     .carousel-card details {
       margin-top: 10px;
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid #EAE8E3;
       padding-top: 10px;
     }
     .carousel-card summary {
       font-size: 0.9rem;
       font-weight: 500;
-      color: #888;
+      color: #7E8C89;
       cursor: pointer;
       user-select: none;
     }
@@ -327,13 +329,13 @@
     .carousel-card .hood-content {
       margin-top: 10px;
       font-size: 0.9rem;
-      color: #666;
+      color: #697774;
       line-height: 1.6;
     }
     .carousel-card .hood-step { margin-bottom: 4px; }
     .carousel-card .tool-name { color: #0B6E4F; font-weight: 500; }
     .carousel-card .hood-code {
-      background: #1a1a1a;
+      background: #151D1B;
       color: #a8d8a8;
       font-family: 'SF Mono', 'Fira Code', monospace;
       font-size: 0.85rem;
@@ -360,12 +362,12 @@
     }
     .carousel-prev, .carousel-next {
       background: none;
-      border: 1px solid #ddd;
+      border: 1px solid #D6D3CC;
       border-radius: 50%;
       width: 36px;
       height: 36px;
       font-size: 1rem;
-      color: #555;
+      color: #586462;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -382,8 +384,8 @@
       cursor: default;
     }
     .carousel-prev:disabled:hover, .carousel-next:disabled:hover {
-      border-color: #ddd;
-      color: #555;
+      border-color: #D6D3CC;
+      color: #586462;
     }
     .carousel-dots {
       display: flex;
@@ -394,13 +396,13 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #ddd;
+      background: #D6D3CC;
       border: none;
       padding: 0;
       cursor: pointer;
       transition: all 0.2s;
     }
-    .carousel-dot:hover { background: #aaa; }
+    .carousel-dot:hover { background: #8A9593; }
     .carousel-dot.active {
       background: #0B6E4F;
       transform: scale(1.25);
@@ -409,7 +411,7 @@
     .carousel-card .followup-content {
       margin-top: 10px;
       font-size: 0.95rem;
-      color: #555;
+      color: #586462;
       line-height: 1.6;
     }
     .carousel-card .followup-content .carousel-q {
@@ -428,8 +430,7 @@
     @media (max-width: 640px) {
       .hero { padding: 72px 24px 56px; }
       .stats { gap: 24px; flex-wrap: wrap; }
-      .stat-num { font-size: 1.4rem; }
-      .steps { grid-template-columns: 1fr; gap: 28px; }
+      .steps { grid-template-columns: repeat(2, 1fr); gap: 24px; }
       .tools-grid { grid-template-columns: 1fr; }
       .ticker-label { padding: 14px 14px; font-size: 0.72rem; }
       .ticker-item-title { max-width: 220px; }
@@ -444,11 +445,49 @@
   <!-- Hero -->
   <header class="hero">
     <div class="hero-inner">
-      <h1>An MCP server for <span>Ontario's open data.</span></h1>
-      <p class="subtitle">Search, cache, and query 6,900+ government datasets. Cross-dataset joins, iterative analysis, DuckDB-backed local storage. No API key required.</p>
-      <div class="install-box">
-        <code>uvx ontario-data-mcp</code>
-        <button onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
+      <h1>An MCP server for<br/><span>Ontario's open data</span></h1>
+      <p class="subtitle">Search, cache, and query <span class="stat-num" data-target="6900" data-suffix="+">0</span> government datasets.<br/>Cross-dataset joins, iterative analysis, <a href="https://duckdb.org/">DuckDB-backed</a> local storage.<br/>No API key required.</p>
+      <div class="hero-install">
+        <div class="tabs">
+          <button onclick="switchTab('code')" data-tab="code" class="tab-btn active">Claude Code</button>
+          <button onclick="switchTab('json')" data-tab="json" class="tab-btn">mcp.json</button>
+          <button onclick="switchTab('cli')" data-tab="cli" class="tab-btn">CLI</button>
+        </div>
+
+        <div id="panel-code" class="tab-panel">
+          <div class="code-block">
+            <p>Add via Claude Code CLI</p>
+            <pre><code>claude mcp add ontario-data -- uvx ontario-data-mcp</code></pre>
+            <button class="copy-btn" onclick="copyText('claude mcp add ontario-data -- uvx ontario-data-mcp', this)">Copy</button>
+          </div>
+        </div>
+
+        <div id="panel-json" class="tab-panel" style="display:none">
+          <div class="code-block">
+            <p>Add to mcp.json (VS Code, Cursor, Windsurf, etc.)</p>
+            <pre><code>{
+  "mcpServers": {
+    "ontario-data": {
+      "command": "uvx",
+      "args": ["ontario-data-mcp"]
+    }
+  }
+}</code></pre>
+            <button class="copy-btn" onclick="copyText(this.closest('.code-block').querySelector('pre code').textContent, this)">Copy</button>
+          </div>
+        </div>
+
+        <div id="panel-cli" class="tab-panel" style="display:none">
+          <div class="code-block">
+            <p>Run directly with uvx</p>
+            <pre><code>uvx ontario-data-mcp</code></pre>
+            <button class="copy-btn" onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
+          </div>
+        </div>
+
+        <div class="source-note">
+          Or clone from source: <code>git clone https://github.com/sprine/ontario-data-mcp && cd ontario-data-mcp && uv sync</code>
+        </div>
       </div>
       <div class="links">
         <a href="https://github.com/sprine/ontario-data-mcp">GitHub</a>
@@ -457,26 +496,6 @@
       </div>
     </div>
   </header>
-
-  <!-- Stats - LED Counters -->
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-num" data-target="6900" data-suffix="+">0</div>
-      <div class="stat-label">datasets</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num" data-target="23">0</div>
-      <div class="stat-label">tools</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num" data-target="3">0</div>
-      <div class="stat-label">prompts</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num" data-target="5">0</div>
-      <div class="stat-label">resources</div>
-    </div>
-  </div>
 
   <!-- Ticker Feed -->
   <div id="ticker-section" class="ticker-wrapper" style="display: none;">
@@ -509,6 +528,11 @@
           <div class="step-title">Analyze</div>
           <div class="step-desc">Runs SQL against cached data. Aggregations, joins, window functions — results come back as insight.</div>
         </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-title">Validate</div>
+          <div class="step-desc">Cross-checks every claim against the underlying query. Catches hallucinations before they reach you.</div>
+        </div>
       </div>
     </div>
   </section>
@@ -528,83 +552,6 @@
     </div>
   </section>
 
-
-  <!-- CTA strip -->
-  <div class="cta-strip">
-    <p>Works with any MCP-compatible client. No API key required.</p>
-    <div class="install-box">
-      <code>uvx ontario-data-mcp</code>
-      <button onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
-    </div>
-    <div class="cta-alt">or <a href="#get-started">see setup instructions</a></div>
-  </div>
-
-  <!-- Get started -->
-  <section id="get-started" class="bg-muted" aria-labelledby="install-heading">
-    <div class="install-inner">
-      <div class="section-header">
-        <h2 id="install-heading">Get started</h2>
-        <p>Works with any <a href="https://modelcontextprotocol.io/" style="color:#0B6E4F; text-decoration: underline; text-underline-offset: 3px;">MCP-compatible</a> client.</p>
-      </div>
-
-      <div class="tabs">
-        <button onclick="switchTab('json')" data-tab="json" class="tab-btn active">Claude Desktop</button>
-        <button onclick="switchTab('code')" data-tab="code" class="tab-btn">Claude Code</button>
-        <button onclick="switchTab('vscode')" data-tab="vscode" class="tab-btn">VS Code</button>
-        <button onclick="switchTab('cli')" data-tab="cli" class="tab-btn">CLI</button>
-      </div>
-
-      <div id="panel-json" class="tab-panel">
-        <div class="code-block">
-          <p>Add to claude_desktop_config.json</p>
-          <pre><code>{
-  "mcpServers": {
-    "ontario-data": {
-      "command": "uvx",
-      "args": ["ontario-data-mcp"]
-    }
-  }
-}</code></pre>
-          <button class="copy-btn" onclick="copyText(this.closest('.code-block').querySelector('pre code').textContent, this)">Copy</button>
-        </div>
-      </div>
-
-      <div id="panel-code" class="tab-panel" style="display:none">
-        <div class="code-block">
-          <p>Add via Claude Code CLI</p>
-          <pre><code>claude mcp add ontario-data -- uvx ontario-data-mcp</code></pre>
-          <button class="copy-btn" onclick="copyText('claude mcp add ontario-data -- uvx ontario-data-mcp', this)">Copy</button>
-        </div>
-      </div>
-
-      <div id="panel-vscode" class="tab-panel" style="display:none">
-        <div class="code-block">
-          <p>Add to .vscode/mcp.json</p>
-          <pre><code>{
-  "mcpServers": {
-    "ontario-data": {
-      "command": "uvx",
-      "args": ["ontario-data-mcp"]
-    }
-  }
-}</code></pre>
-          <button class="copy-btn" onclick="copyText(this.closest('.code-block').querySelector('pre code').textContent, this)">Copy</button>
-        </div>
-      </div>
-
-      <div id="panel-cli" class="tab-panel" style="display:none">
-        <div class="code-block">
-          <p>Run directly with uvx</p>
-          <pre><code>uvx ontario-data-mcp</code></pre>
-          <button class="copy-btn" onclick="copyText('uvx ontario-data-mcp', this)">Copy</button>
-        </div>
-      </div>
-
-      <div class="source-note">
-        Or clone from source: <code>git clone https://github.com/sprine/ontario-data-mcp && cd ontario-data-mcp && uv sync</code>
-      </div>
-    </div>
-  </section>
 
   <!-- Tools, Prompts & Resources -->
   <section aria-labelledby="tools-heading">
@@ -773,7 +720,7 @@
         });
       }, { threshold: 0.3 });
 
-      observer.observe(document.querySelector('.stats'));
+      observer.observe(document.querySelector('.hero'));
     })();
 
     function switchTab(tab) {
