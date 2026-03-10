@@ -27,4 +27,4 @@ async def test_resources_registered():
     """Verify resources are registered."""
     async with Client(mcp) as client:
         resources = await client.list_resources()
-        assert len(resources) >= 0
+        assert len(resources) >= 1, f"Expected at least 1 resource, got {len(resources)}"

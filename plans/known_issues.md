@@ -48,18 +48,6 @@ File: `src/ontario_data/ckan_client.py:194-227`
 
 ## P2 — Moderate (fix when convenient)
 
-### Tautological test assertions
-
-| Test | File:Line | Issue |
-|------|-----------|-------|
-| `test_resources_registered` | `tests/test_integration.py:30` | `assert len(resources) >= 0` — always true |
-| `test_varchar_numeric_warning` | `tests/test_tools_unit.py:214` | `... or True` — always passes |
-| `test_server_starts` | `tests/test_server.py:12` | `assert isinstance(tools, list)` — trivially true |
-
-Fix: replace with meaningful assertions.
-
----
-
 ### `store_resource` not transactional
 
 Drop/create/insert sequence has no explicit transaction. If interrupted mid-sequence, cache is inconsistent. Recovery: user just re-downloads.

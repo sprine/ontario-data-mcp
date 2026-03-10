@@ -211,7 +211,8 @@ class TestQueryCachedColumnTypes:
         assert "year" in result
         assert "value" in result
         # "name" column should NOT be flagged as numeric
-        assert "name" not in result.split("TRY_CAST")[0].split("⚠")[-1] or True
+        warning_section = result.split("⚠")[1] if "⚠" in result else ""
+        assert "name" not in warning_section, f"'name' should not be in type warnings: {warning_section}"
 
 
 class TestQueryCachedTruncation:
