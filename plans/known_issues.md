@@ -102,32 +102,6 @@ File: `src/ontario_data/arcgis_client.py`
 
 ---
 
-### JSON log format breaks on messages containing quotes
-
-`logging_config.py:31` uses `%(message)s` inside JSON template. Quotes in messages produce malformed JSON.
-
-Fix: switch to plain-text format (simplest) or escape with `json.dumps` in a custom formatter. Don't add a dependency for this.
-
-File: `src/ontario_data/logging_config.py:31`
-
----
-
-### Dead code: `logger` in `geospatial.py`
-
-`logging` imported and `logger` defined but never used.
-
-File: `src/ontario_data/tools/geospatial.py:4, 23`
-
----
-
-### SQL highlighter: 5 dead entries in `FUNCTIONS` set
-
-`FIRST`, `LEFT`, `RIGHT`, `CAST`, `REPLACE` appear in both `KEYWORDS` and `FUNCTIONS`. Keywords checked first, so function entries are unreachable.
-
-File: `site/sql-highlight.js:9-29`
-
----
-
 ### SQL highlighter: double-quoted identifiers not handled
 
 No tokenizer branch for `"..."`. Content between double-quotes is tokenized as normal SQL — `SELECT "FROM"` highlights `FROM` as a keyword.
@@ -141,14 +115,6 @@ File: `site/sql-highlight.js:99-125`
 `renderCard` always renders `esc(ex.punchline)` — if missing, outputs string `"undefined"`. Same for `esc(s.tool)`.
 
 File: `site/carousel.js:28, 63-64`
-
----
-
-### Duplicate test coverage: semicolon detection
-
-`test_cache.py:102-134` and `test_sql_safety.py:7-43` overlap on 4 identical test cases.
-
-Fix: consolidate into `test_sql_safety.py`.
 
 ---
 

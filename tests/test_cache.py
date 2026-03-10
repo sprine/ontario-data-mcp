@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from ontario_data.cache import CacheManager, InvalidQueryError, _has_semicolons_outside_strings
+from ontario_data.cache import CacheManager, InvalidQueryError
 
 
 @pytest.fixture
@@ -99,26 +99,10 @@ class TestSQLQuery:
         assert result[0]["name"] == "Alice"
 
 
-class TestSemicolonParser:
-    def test_bare_semicolon_detected(self):
-        assert _has_semicolons_outside_strings("SELECT 1; DROP TABLE x") is True
-
-    def test_semicolon_in_string_allowed(self):
-        assert _has_semicolons_outside_strings("SELECT * FROM t WHERE name = 'Phosphorus; total'") is False
-
-    def test_no_semicolons(self):
-        assert _has_semicolons_outside_strings("SELECT * FROM t") is False
-
-    def test_escaped_quote_with_semicolon(self):
-        # SQL-standard: '' escapes a single quote inside a string
-        assert _has_semicolons_outside_strings("SELECT * WHERE x = 'it''s; here'") is False
-
-    def test_backslash_not_an_escape(self):
-        # Backslash is NOT an escape in standard SQL; '\' is a complete string
-        assert _has_semicolons_outside_strings(r"SELECT '\'; DROP TABLE x") is True
-
-    def test_semicolon_after_closing_string(self):
-        assert _has_semicolons_outside_strings("SELECT * WHERE x = 'safe';") is True
+class TestSemicolonIntegration:
+    """Integration tests for semicolon handling through cache.query().
+    Pure unit tests for _has_semicolons_outside_strings live in test_sql_safety.py.
+    """
 
     def test_query_cached_allows_semicolons_in_strings(self, cache):
         df = pd.DataFrame({"name": ["Phosphorus; total", "Nitrogen"], "value": [1.0, 2.0]})

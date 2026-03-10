@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import logging
 from fastmcp import Context
 
 from ontario_data.server import READONLY, mcp
@@ -19,8 +18,6 @@ from ontario_data.utils import (
     require_cached,
     resolve_resource_portal,
 )
-
-logger = logging.getLogger("ontario_data.geospatial")
 
 
 @mcp.tool(annotations=READONLY)
