@@ -76,6 +76,7 @@ from ontario_data.tools import metadata  # noqa: E402, F401
 from ontario_data.tools import retrieval  # noqa: E402, F401
 from ontario_data.tools import querying  # noqa: E402, F401
 from ontario_data.tools import quality  # noqa: E402, F401
+from ontario_data.tools import validation  # noqa: E402, F401
 from ontario_data.tools import geospatial  # noqa: E402, F401
 from ontario_data import prompts  # noqa: E402, F401
 from ontario_data import resources  # noqa: E402, F401
