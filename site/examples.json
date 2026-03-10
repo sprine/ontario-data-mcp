@@ -1,260 +1,252 @@
 [
   {
-    "tag": "Time series",
-    "question": "How fast is electric vehicle adoption growing in Ontario?",
-    "answer": "Caches 16 quarterly CSVs of EV registrations by Forward Sortation Area. Runs province-wide totals with window functions.",
-    "punchline": "Ontario's registered EVs surged from 37,595 in Q1 2022 to 246,448 by Q4 2025 — a 6.6× increase in under four years, with battery-electric vehicles making up about three-quarters of the fleet.",
+    "tag": "Cross-dataset",
+    "question": "Is Ontario on track to build 1.5 million homes by 2031?",
+    "answer": "Downloads 2023 and 2024 housing supply CSVs for 50 municipalities with provincial targets. Joins by municipality to compare year-over-year performance against ten-year goals.",
+    "punchline": "Only 15 of 50 municipalities exceeded their 2024 housing target -- down from 19 in 2023. Twelve that were on track last year fell to 'Not met'. Toronto dropped from 31,656 starts in 2023 to 20,999 in 2024. Province-wide, just 20% of the 1.3 million home target has been started.",
     "sources": [
       {
-        "title": "Electric Vehicles in Ontario -- By Forward Sortation Area",
-        "url": "https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area",
-        "org": "Transportation"
+        "title": "Ontario's housing supply progress",
+        "url": "https://data.ontario.ca/dataset/ontario-s-housing-supply-progress",
+        "org": "Municipal Affairs and Housing"
       }
     ],
     "hood": {
       "steps": [
         {
           "tool": "search_datasets",
-          "description": "b5696d0c"
+          "description": "77ac513f"
         },
         {
           "tool": "download_resource",
-          "description": "16 quarterly CSVs"
+          "description": "2023 + 2024 CSVs"
         },
         {
           "tool": "query_cached",
           "description": ""
         }
       ],
-      "sql": "SELECT quarter,\n  SUM(TRY_CAST(\"Total EV\" AS INTEGER)) AS total_evs,\n  ROUND(SUM(TRY_CAST(\"Total EV\" AS INTEGER)) * 1.0 /\n    LAG(SUM(TRY_CAST(\"Total EV\" AS INTEGER))) OVER (\n      ORDER BY quarter\n    ), 2) AS growth\nFROM ev_registrations\nGROUP BY quarter\nORDER BY quarter"
+      "sql": "SELECT a.Municipality,\n  a.\"Total 2023 housing progress\" AS starts_2023,\n  b.\"Total 2024 housing progress\" AS starts_2024,\n  a.\"Housing Target Status\" AS status_2023,\n  b.\"Housing target status\" AS status_2024\nFROM housing_2023 a\nJOIN housing_2024 b\n  ON a.Municipality = b.Municipality\nORDER BY b.\"Ten-year housing target\" DESC"
     },
     "followup": {
-      "question": "Which postal codes saw the fastest EV growth?",
-      "answer": "Your 16 quarterly CSVs are already cached. Compares Q1 2022 to Q4 2025 per FSA.",
-      "punchline": "BEVs consistently make up 72–75% of all EVs. Growth accelerated in 2025: Q4 2025 (246,448) is more than double Q4 2024 (119,846).",
+      "question": "Which municipalities actually exceeded their targets?",
+      "answer": "Re-uses the cached 2024 data. Filters to municipalities where actual starts exceeded the annual target.",
+      "punchline": "Pickering hit 173.6% of its 2024 target (1,880 starts vs 1,083 target). Oakville (133.8%), Milton (129.1%), and Waterloo (129.2%) also outperformed. But none of the five largest -- Toronto, Ottawa, Mississauga, Brampton, Hamilton -- exceeded their 2024 annual target.",
       "sources": [
         {
-          "title": "Electric Vehicles in Ontario -- By Forward Sortation Area",
-          "url": "https://data.ontario.ca/dataset/electric-vehicles-in-ontario-by-forward-sortation-area",
-          "org": "Transportation"
+          "title": "Ontario's housing supply progress",
+          "url": "https://data.ontario.ca/dataset/ontario-s-housing-supply-progress",
+          "org": "Municipal Affairs and Housing"
         }
       ]
     }
   },
   {
     "tag": "Time series",
-    "question": "How much slower are Ontario ambulances compared to three years ago?",
-    "answer": "Downloads ambulance response time CSVs for 50+ coverage areas. Compares 2020 vs 2023 average response times by region.",
-    "punchline": "Response times jumped 1–2 minutes province-wide between 2020 and 2023. Kenora waits nearly 15 minutes (14:56) — almost 2 minutes longer than 2020. Even urban Durham went from 6:38 to 8:10.",
+    "question": "How much time do Toronto subway riders lose to delays?",
+    "answer": "Downloads 28,191 TTC subway delay records for 2025. Groups by line and station to find the worst bottlenecks.",
+    "punchline": "10,087 delays in 2025 totalled 1,385 hours of lost service. The Yonge-University line alone racked up 46,921 minutes across 5,628 incidents. Eglinton Station had the most cumulative delay (3,122 min), while Sheppard West averaged 15.3 minutes per incident -- the longest in the system.",
     "sources": [
       {
-        "title": "Land Ambulance Response Time Standard - Response Times",
-        "url": "https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times",
-        "org": "Health"
+        "title": "TTC Subway Delay Data",
+        "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/ttc-subway-delay-data",
+        "org": "City of Toronto"
       }
     ],
     "hood": {
       "steps": [
         {
           "tool": "search_datasets",
-          "description": "0c4c8e2d"
+          "description": "996cfe8d"
         },
         {
           "tool": "download_resource",
-          "description": "response times + population density"
+          "description": "2025 CSV, 28k rows"
         },
         {
           "tool": "query_cached",
           "description": ""
         }
       ],
-      "sql": "SELECT \"Ambulance Service Coverage Area\",\n  old.\"Average Response Time\" AS resp_2020,\n  new.\"Average Response Time\" AS resp_2023\nFROM ambulance_2023 new\nJOIN ambulance_2020 old\n  ON new.\"Ambulance Service Coverage Area\"\n   = old.\"Ambulance Service Coverage Area\"\nORDER BY new.\"Average Response Time\" DESC"
+      "sql": "SELECT Station,\n  COUNT(*) AS delay_count,\n  SUM(\"Min Delay\") AS total_delay_min,\n  ROUND(AVG(\"Min Delay\"), 1) AS avg_delay_min\nFROM ttc_delays_2025\nWHERE \"Min Delay\" > 0\nGROUP BY Station\nORDER BY total_delay_min DESC\nLIMIT 10"
     },
     "followup": {
-      "question": "Does population density predict ambulance wait times?",
-      "answer": "Re-uses cached data, joins population density. Areas under 5 people/km² average 13–15 min; areas over 100/km² average 7–8 min.",
-      "punchline": "The gap between fastest (Weeneebayko, 6:18) and slowest (Kenora, 14:56) is 8 minutes and 38 seconds.",
+      "question": "Which subway line is the most unreliable?",
+      "answer": "Groups the same 2025 delay data by line. Compares total delay minutes and average incident duration.",
+      "punchline": "Yonge-University dominates with 56% of all delay minutes (46,921 of 83,120). Bloor-Danforth adds another 40% (32,875 min). The Sheppard line is small but troubled: 390 delays averaging 8.5 minutes each.",
       "sources": [
         {
-          "title": "Land Ambulance Response Time Standard - Response Times",
-          "url": "https://data.ontario.ca/dataset/land-ambulance-response-time-standard-response-times",
-          "org": "Health"
+          "title": "TTC Subway Delay Data",
+          "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/ttc-subway-delay-data",
+          "org": "City of Toronto"
         }
       ]
     }
   },
   {
     "tag": "Investigation",
-    "question": "Which Ontario facilities had the most air emission violations in 2024?",
-    "answer": "Downloads 2024 air emissions compliance data — 279 records across 44 facilities. Groups by facility owner using SUM on the exceedance count column.",
-    "punchline": "Three steel companies — Algoma Steel (408), ArcelorMittal Dofasco (385), and Stelco (307) — accounted for 1,100 of Ontario's 1,639 reported exceedances. Opacity (visible smoke) alone was 84% of all violations.",
+    "question": "What are the most common food safety violations in Toronto?",
+    "answer": "Downloads 149,938 DineSafe inspection records covering 22,254 establishments. Groups 92,705 rated infractions by violation type and severity.",
+    "punchline": "Unsanitized equipment surfaces top the list at 13,269 occurrences. Dirty floors in food-handling rooms (11,664) and unsanitary room conditions (7,497) round out the top three. Of the 92,705 infractions with a severity rating, 4,016 were crucial -- the most serious category before closure. Total fines collected: $238,303.",
     "sources": [
       {
-        "title": "Environmental Compliance Reports",
-        "url": "https://data.ontario.ca/dataset/environmental-compliance-reports",
-        "org": "Environment, Conservation and Parks"
+        "title": "Dinesafe",
+        "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/dinesafe",
+        "org": "City of Toronto"
       }
     ],
     "hood": {
       "steps": [
         {
           "tool": "search_datasets",
-          "description": "13cab7d0"
-        },
-        {
-          "tool": "list_resources",
-          "description": "2024 air emissions"
+          "description": "b6b4f3fb"
         },
         {
           "tool": "download_resource",
-          "description": "c8d27e55"
+          "description": "150k inspection rows"
         },
         {
           "tool": "query_cached",
           "description": ""
         }
       ],
-      "sql": "SELECT \"Facility Owner\",\n  SUM(TRY_CAST(\"No. of Exceedances\" AS INTEGER)) AS total\nFROM air_emissions_2024\nGROUP BY \"Facility Owner\"\nORDER BY total DESC\nLIMIT 10"
+      "sql": "SELECT \"Infraction Details\",\n  COUNT(*) AS occurrences\nFROM dinesafe\nWHERE \"Infraction Details\" IS NOT NULL\n  AND \"Infraction Details\" != ''\nGROUP BY \"Infraction Details\"\nORDER BY occurrences DESC\nLIMIT 10"
     },
     "followup": {
-      "question": "What contaminants are driving the violations?",
-      "answer": "Groups the same 279 records by contaminant type.",
-      "punchline": "Opacity alone accounts for 1,375 of 1,639 total exceedances (84%). The Iron and Steel sector generated 1,261 — more than all other industries combined.",
+      "question": "How are violations enforced?",
+      "answer": "Groups the same 149,938 records by severity level and enforcement action.",
+      "punchline": "54,150 minor infractions, 28,750 significant, and 4,016 crucial. The most common enforcement is 'Notice to Comply' (74,035 times). Only 6 full closure orders were issued, but 457 tickets and 71 summonses were handed out.",
       "sources": [
         {
-          "title": "Environmental Compliance Reports",
-          "url": "https://data.ontario.ca/dataset/environmental-compliance-reports",
-          "org": "Environment, Conservation and Parks"
+          "title": "Dinesafe",
+          "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/dinesafe",
+          "org": "City of Toronto"
         }
       ]
     }
   },
   {
-    "tag": "Cross-dataset",
-    "question": "How has phosphorus in Ontario's Great Lakes changed since the 1970s?",
-    "answer": "Caches 439,841 water quality readings from drinking water intakes (1976–2023). Averages total phosphorus by lake and decade.",
-    "punchline": "Lake Ontario saw the steepest decline — from 0.021 mg/L in the late 1970s to 0.010 mg/L by the 2010s, a 54% drop. Lake Erie fell 29% but remains more than double the concentration of Huron or Superior.",
+    "tag": "Time series",
+    "question": "Is voter turnout in Ontario municipal elections improving or declining?",
+    "answer": "Downloads municipal election data from 2014, 2018, and 2022 -- three CSVs spanning 444 municipalities and over 10 million electors. Compares turnout across election cycles, with a focus on Ottawa versus the province.",
+    "punchline": "Province-wide turnout fell from 38.6% in 2014 to 31.5% in 2022. Toronto plunged from 45.1% (2018) to 29.7% (2022). Ottawa bucked the trend entirely -- rising from 39.9% to 42.6% to 43.8% across all three elections, the only large municipality (>100,000 electors) where turnout improved.",
     "sources": [
       {
-        "title": "Lake Water Quality at Drinking Water Intakes",
-        "url": "https://data.ontario.ca/dataset/lake-water-quality-at-drinking-water-intakes",
-        "org": "Environment, Conservation and Parks"
+        "title": "Municipal election results",
+        "url": "https://data.ontario.ca/dataset/municipal-election-results",
+        "org": "Municipal Affairs and Housing"
       }
     ],
     "hood": {
       "steps": [
         {
           "tool": "search_datasets",
-          "description": "324d6422"
+          "description": "a5871234"
         },
         {
           "tool": "download_resource",
-          "description": "439k rows, XLSX"
+          "description": "2014 + 2018 + 2022 CSVs"
         },
         {
           "tool": "query_cached",
           "description": ""
         }
       ],
-      "sql": "SELECT \"LAKE\",\n  FLOOR(\"YEAR\" / 10) * 10 AS decade,\n  ROUND(AVG(TRY_CAST(\"RESULT_VALUE\" AS DOUBLE)), 4)\n    AS avg_phosphorus_mg_L,\n  COUNT(*) AS n_readings\nFROM lake_water_quality\nWHERE \"PARAMETER\" LIKE '%Phosphorus%total%'\nGROUP BY \"LAKE\", decade\nORDER BY \"LAKE\", decade"
+      "sql": "SELECT a.\"MUNICIPALITY NAME\" AS city,\n  ROUND(a.voted_2018 * 100.0 /\n    a.electors_2018, 1) AS turnout_2018,\n  ROUND(b.voted_2022 * 100.0 /\n    b.electors_2022, 1) AS turnout_2022\nFROM election_2018 a\nJOIN election_2022 b\n  ON a.\"MUNICIPALITY NAME\" = b.MUNICIPALITY\nWHERE a.electors_2018 > 100000\nORDER BY turnout_2022 - turnout_2018 DESC"
     },
     "followup": {
-      "question": "Is phosphorus in Lake Erie getting better or worse?",
-      "answer": "Filters to Lake Erie from the same cached 439k readings. Averages by decade.",
-      "punchline": "Lake Erie phosphorus dropped from 0.032 mg/L (1976–1989) to 0.024 (1990s), rebounded to 0.029 in the 2000s, then settled at 0.024 by 2010–2019. Still the most nutrient-rich Great Lake.",
+      "question": "How does Ottawa's turnout compare to other large cities?",
+      "answer": "Joins the 2018 and 2022 election tables. Filters to municipalities with over 100,000 electors and ranks by change in turnout.",
+      "punchline": "Of 14 large municipalities, Ottawa is the only one where turnout rose (+1.2 points). Toronto saw the steepest decline: -15.4 points. London (-14.0), Burlington (-12.2), and Brampton (-9.9) also suffered major drops.",
       "sources": [
         {
-          "title": "Lake Water Quality at Drinking Water Intakes",
-          "url": "https://data.ontario.ca/dataset/lake-water-quality-at-drinking-water-intakes",
-          "org": "Environment, Conservation and Parks"
+          "title": "Municipal election results",
+          "url": "https://data.ontario.ca/dataset/municipal-election-results",
+          "org": "Municipal Affairs and Housing"
         }
       ]
     }
   },
   {
     "tag": "Scale callout",
-    "question": "Where are Ontario's 6,000+ licensed child care centres?",
-    "answer": "Downloads the Dec 2025 XLSX snapshot of all licensed facilities. Groups active centres by city and region.",
-    "punchline": "Ontario has 6,235 active licensed child care facilities across 750 cities. Toronto alone accounts for 972 — nearly 1 in 6. The YMCA of Greater Toronto operates 307 sites, making it the largest single operator.",
+    "question": "How much energy do Ontario's public buildings consume?",
+    "answer": "Downloads the 2024 Broader Public Sector energy report -- 11,857 property records from 491 organizations across municipalities, hospitals, and universities. Ranks by GHG emissions.",
+    "punchline": "Ontario's public sector reported 1.89 million tonnes of CO2e in 2024 across 11,238 buildings. Public hospitals lead at 682,415 tonnes, municipalities follow at 678,341, and post-secondary institutions at 529,849. Toronto's 637 municipal properties emit the most of any city at 67,309 tonnes.",
     "sources": [
       {
-        "title": "Licensed child care facilities in Ontario",
-        "url": "https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario",
-        "org": "Education"
+        "title": "Energy use and greenhouse gas emissions for the Broader Public Sector",
+        "url": "https://data.ontario.ca/dataset/energy-use-and-greenhouse-gas-emissions-for-the-broader-public-sector",
+        "org": "Energy, Northern Development and Mines"
       }
     ],
     "hood": {
       "steps": [
         {
           "tool": "search_datasets",
-          "description": "7efd8b4b"
+          "description": "5e976319"
         },
         {
           "tool": "download_resource",
-          "description": "Dec 2025 XLSX"
+          "description": "2024 XLSX, 11.8k rows"
         },
         {
           "tool": "query_cached",
           "description": ""
         }
       ],
-      "sql": "SELECT City,\n  COUNT(*) AS active_facilities\nFROM child_care\nWHERE \"Licence Status\" = 'Active'\nGROUP BY City\nORDER BY active_facilities DESC\nLIMIT 10"
+      "sql": "SELECT Sector, Subsector,\n  COUNT(*) AS n_properties,\n  SUM(\"Number of Buildings\") AS buildings,\n  ROUND(SUM(TRY_CAST(\n    \"GHG Emissions (Metric Tons CO2e)\"\n    AS DOUBLE)), 0) AS total_ghg\nFROM bps_energy_2024\nGROUP BY Sector, Subsector\nORDER BY total_ghg DESC"
     },
     "followup": {
-      "question": "Which regions are adding the most new facilities?",
-      "answer": "Filters by Original Issue Date since January 2024. Groups new licenses by region.",
-      "punchline": "512 new facilities licensed since Jan 2024. Southwest Ontario and West Region each added over 100 new facilities, outpacing Toronto's 34.",
+      "question": "Which cities have the highest-emitting municipal buildings?",
+      "answer": "Groups the same 2024 data by city, filtering to municipal-sector properties.",
+      "punchline": "Toronto leads with 67,309 tonnes from 637 properties. Scarborough (42,188 tonnes), Brampton (39,886), and Ottawa (39,059) round out the top four. The top 10 cities account for nearly half of all municipal emissions.",
       "sources": [
         {
-          "title": "Licensed child care facilities in Ontario",
-          "url": "https://data.ontario.ca/dataset/licensed-child-care-facilities-in-ontario",
-          "org": "Education"
+          "title": "Energy use and greenhouse gas emissions for the Broader Public Sector",
+          "url": "https://data.ontario.ca/dataset/energy-use-and-greenhouse-gas-emissions-for-the-broader-public-sector",
+          "org": "Energy, Northern Development and Mines"
         }
       ]
     }
   },
   {
-    "tag": "Investigation",
-    "question": "How fast is autism-related special education enrolment growing in Ontario?",
-    "answer": "Downloads 3 years of province-wide special education data (pipe-delimited TXT). Compares enrolment by exceptionality across 2021–22, 2023–24, and 2024–25.",
-    "punchline": "Autism enrolment surged from 27,095 to 35,335 students in three years — a 30.4% increase. It now accounts for 9.7% of all 362,620 special education students, up from 7.7%.",
+    "tag": "Geospatial",
+    "question": "How much is Ontario spending on transit expansion -- and how much goes to Ottawa?",
+    "answer": "Downloads the Ontario Builds transit dataset -- 610 projects with estimated budgets, coordinates, and completion dates. Groups by city and status to compare transit investment across the province.",
+    "punchline": "610 transit projects worth $106.7 billion across Ontario. Toronto dominates at $88.4 billion across 126 projects. Ottawa's 44 O-Train projects total $4.5 billion -- Stage 1 (Confederation Line) is complete at $2.13 billion, and Stage 2 (Trillium Line extension, $2.37 billion) is under construction targeting 2026.",
     "sources": [
       {
-        "title": "Special Education Enrolment by Exceptionality",
-        "url": "https://data.ontario.ca/dataset/special-education-enrolment-by-exceptionality",
-        "org": "Education"
+        "title": "Ontario Builds: key infrastructure projects",
+        "url": "https://data.ontario.ca/dataset/ontario-builds-key-infrastructure-projects",
+        "org": "Infrastructure"
       }
     ],
     "hood": {
       "steps": [
         {
           "tool": "search_datasets",
-          "description": "b498b7ab"
-        },
-        {
-          "tool": "list_resources",
-          "description": "3 years of TXT files"
+          "description": "aefd72d3"
         },
         {
           "tool": "download_resource",
-          "description": "× 3"
+          "description": "610 transit projects"
         },
         {
           "tool": "query_cached",
           "description": ""
         }
       ],
-      "sql": "SELECT \"Academic Year\",\n  \"Area of Exceptionality\",\n  TRY_CAST(\"Total Special Education Enrolment\"\n    AS INTEGER) AS total\nFROM special_education\nWHERE \"Area of Exceptionality\" = 'Autism'\nORDER BY \"Academic Year\""
+      "sql": "SELECT Community,\n  COUNT(*) AS n_projects,\n  SUM(\"Estimated Total Budget ($)\")\n    AS total_budget,\n  SUM(CASE WHEN Status = 'Complete'\n    THEN 1 ELSE 0 END) AS completed\nFROM ontario_builds_transit\nGROUP BY Community\nORDER BY total_budget DESC"
     },
     "followup": {
-      "question": "What's the largest special education category overall?",
-      "answer": "Uses the same 3-year cached data. Ranks all exceptionalities by total enrolment for 2024–25.",
-      "punchline": "Learning Disability is the largest formally identified category at 50,155 students. But 'Non-Identified' dwarfs everything at 190,720 — 52.6% of all special education enrolment.",
+      "question": "What is the status of Ottawa's O-Train expansion?",
+      "answer": "Filters to Ottawa's 44 transit projects. Lists Stage 1 (complete), Stage 2 (under construction), and future planned stations.",
+      "punchline": "Stage 1 (Confederation Line) opened with 13 stations at $2.13 billion. Seven Trillium Line stations are also complete. Stage 2 (Trillium Line extension, $2.37 billion) is the only project under construction. Beyond that, 22 stations are in planning -- 11 on Confederation Line West, 5 on Confederation Line East -- but none have budgets or target dates yet.",
       "sources": [
         {
-          "title": "Special Education Enrolment by Exceptionality",
-          "url": "https://data.ontario.ca/dataset/special-education-enrolment-by-exceptionality",
-          "org": "Education"
+          "title": "Ontario Builds: key infrastructure projects",
+          "url": "https://data.ontario.ca/dataset/ontario-builds-key-infrastructure-projects",
+          "org": "Infrastructure"
         }
       ]
     }
