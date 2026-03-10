@@ -14,16 +14,11 @@ The following issues were fixed in commit `9b854be` and are now enforced by `tes
 - **R1, R2, R4** — tool names, counts, and version disclaimer fixed in README
 - **S1–S7** — tool/resource counts, ghost tools, and missing resources fixed in site
 - **Scriptable pre-release checks** — implemented as `tests/test_docs_accuracy.py` covering tool/resource inventory, category counts, licence attribution (name + URL), and version consistency
+- **R3** — `cache_manage` description fixed: removed false "refresh" action, now accurately says "remove" and "clear"
 
 ---
 
 ## README.md Issues (remaining)
-
-### Critical (factually wrong)
-
-| # | Section | Issue | Scriptable? |
-|---|---------|-------|-------------|
-| R3 | `cache_manage` description | Says actions include "refresh". Actual actions: `"remove"` and `"clear"` only. Refresh is a separate tool (`refresh_cache`) | Yes — parse enum/Literal from function signature, compare to README text |
 
 ### High (missing information)
 
@@ -77,8 +72,8 @@ This would catch R3 (and similar future drift) automatically.
 
 | Category | README | Site | Total |
 |----------|--------|------|-------|
-| Critical (factually wrong) | 1 | 0 | 1 |
+| Critical (factually wrong) | 0 | 0 | 0 |
 | High (missing info) | 3 | 0 | 3 |
 | Medium (incomplete) | 6 | 0 | 6 |
 | Low (minor/aging) | 0 | 2 | 2 |
-| **Total** | **10** | **2** | **12** |
+| **Total** | **9** | **2** | **11** |

@@ -128,7 +128,7 @@ All searches fan out to every portal by default — no need to select a portal. 
 |------|-------------|
 | `download_resource` | Download a resource and cache it in DuckDB (use prefixed ID like `toronto:abc123`) |
 | `cache_info` | Cache statistics + list all cached datasets with staleness |
-| `cache_manage` | Remove single resource, clear all, or refresh (action enum) |
+| `cache_manage` | Remove a single cached resource or clear the entire cache |
 | `refresh_cache` | Re-download cached resources with latest data |
 
 </details>
