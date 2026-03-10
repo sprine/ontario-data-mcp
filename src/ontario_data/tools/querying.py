@@ -216,11 +216,11 @@ async def query_cached(
     """
     cache = get_cache(ctx)
     try:
-        results, fields = cache.query_with_meta(sql)
+        results, fields = cache.query_with_meta(sql, max_rows=MAX_QUERY_ROWS)
 
         # --- Truncation (Item 2) ---
         truncated_total = None
-        if len(results) >= MAX_QUERY_ROWS:
+        if len(results) > MAX_QUERY_ROWS:
             try:
                 count_row = cache.execute_sql(f"SELECT COUNT(*) FROM ({sql})")
                 truncated_total = count_row[0][0]

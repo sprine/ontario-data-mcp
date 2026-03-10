@@ -49,6 +49,9 @@ async def _download_resource_data(
         df = df.drop(columns=internal_cols, errors="ignore")
         return df, resource, dataset
 
+    if not url:
+        raise ValueError(f"Resource '{resource_id}' has no download URL and datastore is inactive")
+
     # Download file directly using shared client with extended timeout
     response = await http_client.get(url, timeout=120.0, follow_redirects=True)
     response.raise_for_status()

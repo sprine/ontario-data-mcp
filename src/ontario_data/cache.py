@@ -329,11 +329,17 @@ class CacheManager:
         rows, _ = self.query_with_meta(sql)
         return rows
 
-    def query_with_meta(self, sql: str) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    def query_with_meta(
+        self, sql: str, max_rows: int | None = None
+    ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
         """Like query() but also returns column metadata.
 
         Returns (rows, fields) where fields is a list of
         {"name": col_name, "type": duckdb_type_name} dicts.
+
+        If max_rows is set, fetches at most max_rows + 1 rows (so the
+        caller can detect truncation) instead of materializing the full
+        result set.
         """
         _validate_sql(sql)
         with self._connect() as conn:
@@ -341,7 +347,10 @@ class CacheManager:
             description = result.description
             columns = [desc[0] for desc in description]
             type_names = [str(desc[1]) for desc in description]
-            raw_rows = result.fetchall()
+            if max_rows is not None:
+                raw_rows = result.fetchmany(max_rows + 1)
+            else:
+                raw_rows = result.fetchall()
             rows = [dict(zip(columns, row)) for row in raw_rows]
             fields = [{"name": col, "type": typ} for col, typ in zip(columns, type_names)]
             return rows, fields

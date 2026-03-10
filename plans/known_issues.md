@@ -16,16 +16,6 @@ File: `src/ontario_data/cache.py` (`_connect` method)
 
 ---
 
-### `fetchall()` materializes all rows before truncation
-
-`query_with_meta()` calls `result.fetchall()` then truncates to 2000. A large query materializes everything first.
-
-Fix: `result.fetchmany(MAX_QUERY_ROWS + 1)` instead of `fetchall()`. One-line change.
-
-Files: `src/ontario_data/cache.py:344`, `src/ontario_data/tools/querying.py:219-229`
-
----
-
 ### No DuckDB query execution timeout
 
 User SQL has no time limit. Accidental cross joins run indefinitely.
@@ -43,16 +33,6 @@ File: `src/ontario_data/cache.py` (`_connect` method)
 `CKANClient` retry (`ckan_client.py:92`) catches `ReadTimeout`, `WriteTimeout` but not `PoolTimeout`/`ConnectTimeout`. Fix: catch `httpx.TimeoutException` (base class) instead.
 
 Both are one-word fixes.
-
----
-
-### Empty URL passed to `http_client.get()`
-
-If a CKAN resource has null/empty `url` and datastore is inactive, `http_client.get("")` raises a confusing connection error.
-
-Fix: `if not url: raise ValueError("Resource has no download URL")`. One line.
-
-Files: `src/ontario_data/tools/retrieval.py:42-53`, `src/ontario_data/tools/geospatial.py:64-69`
 
 ---
 

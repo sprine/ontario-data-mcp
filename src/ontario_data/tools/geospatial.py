@@ -63,6 +63,9 @@ async def load_geodata(
     fmt = (resource.get("format") or "").upper()
     url = resource.get("url", "")
 
+    if not url:
+        raise ValueError(f"Resource '{bare_id}' has no download URL")
+
     await ctx.report_progress(0, 100, "Downloading geospatial data...")
 
     http_client = get_lifespan_state(ctx)["http_client"]
