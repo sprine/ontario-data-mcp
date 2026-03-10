@@ -7,7 +7,7 @@ from fastmcp import Context
 from ontario_data.formatting import format_search_results, md_response
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
-    _lifespan_state,
+    get_lifespan_state,
     fan_out,
     get_deps,
     resolve_dataset,
@@ -44,7 +44,7 @@ async def search_datasets(
         limit: Max results per portal (1-50)
         portal: Narrow to one portal (e.g. "ontario", "toronto"). Default: all portals.
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     filters = {}
     if organization:
         filters["organization"] = organization
@@ -230,7 +230,7 @@ async def list_portals(
     ctx: Context = None,
 ) -> str:
     """List all available data portals with their platform type and descriptions."""
-    state = _lifespan_state(ctx)
+    state = get_lifespan_state(ctx)
     configs = state["portal_configs"]
 
     portals = []

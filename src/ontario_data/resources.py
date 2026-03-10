@@ -6,7 +6,7 @@ from fastmcp import Context
 
 from ontario_data.portals import PORTALS
 from ontario_data.server import mcp
-from ontario_data.utils import _lifespan_state, get_cache, get_deps, parse_portal_id, resolve_dataset
+from ontario_data.utils import get_lifespan_state, get_cache, get_deps, parse_portal_id, resolve_dataset
 
 
 @mcp.resource("ontario://cache/index")
@@ -43,7 +43,7 @@ async def dataset_metadata(dataset_id: str, ctx: Context) -> str:
 @mcp.resource("ontario://portal/stats")
 async def portal_stats(ctx: Context) -> str:
     """Overview statistics across all data portals."""
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     portals = []
     for portal_key, config in configs.items():
         try:

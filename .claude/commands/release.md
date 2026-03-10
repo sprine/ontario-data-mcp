@@ -52,9 +52,13 @@ Stop immediately if any tests fail. This covers:
 
 ### 4. Live smoke test (optional)
 
-Use the `/generating-smoke-tests` skill to generate, run, and clean up a live smoke test. Stop if any assertion fails.
+```bash
+uv run pytest -m live --live -v
+```
 
-This step hits real government APIs. Skip if the APIs are down or you're releasing a docs-only change.
+This runs `tests/test_live_smoke.py` and `tests/test_arcgis_smoke.py` against real government APIs. Stop if any assertion fails.
+
+Skip if the APIs are down or you're releasing a docs-only change.
 
 ### 5. Build
 
@@ -129,6 +133,16 @@ https://pypi.org/project/ontario-data-mcp/{new_version}/
 ```
 
 PyPI CDN propagation takes seconds to minutes — do not run an automated install check here; it will flake.
+
+## Dry run
+
+To validate everything without committing, pushing, or publishing:
+
+```bash
+uv run pytest && uv run pytest -m live --live -v && rm -rf dist && uv build
+```
+
+This runs all unit tests, live smoke tests, and verifies the build succeeds.
 
 ## Rollback
 

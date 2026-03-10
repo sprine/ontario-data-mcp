@@ -232,7 +232,11 @@ class CacheManager:
 
             # Record metadata
             now = datetime.now(timezone.utc)
-            size = df.memory_usage(deep=True).sum()
+            size_row = conn.execute(
+                "SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?",
+                [table_name],
+            ).fetchone()
+            size = size_row[0] if size_row else 0
             conn.execute(
                 """INSERT INTO _cache_metadata
                    (resource_id, dataset_id, table_name, downloaded_at, row_count, size_bytes, source_url, type_warnings)

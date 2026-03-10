@@ -14,7 +14,7 @@ from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
 from ontario_data.formatting import md_response
 from ontario_data.utils import (
-    _lifespan_state,
+    get_lifespan_state,
     get_cache,
     get_deps,
     infer_portal_from_table,
@@ -120,7 +120,7 @@ async def download_resource(
     Args:
         resource_id: Prefixed resource ID (e.g. "toronto:abc123") or bare ID
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     cache = get_cache(ctx)
@@ -151,7 +151,7 @@ async def download_resource(
 
     await ctx.report_progress(0, 100, "Downloading resource...")
 
-    http_client = _lifespan_state(ctx)["http_client"]
+    http_client = get_lifespan_state(ctx)["http_client"]
     if is_arcgis_portal(ctx, portal):
         df, resource, dataset = await _download_arcgis_resource_data(ckan, bare_id, http_client)
     else:
@@ -243,7 +243,7 @@ async def cache_manage(
     if action == "remove":
         if not resource_id:
             raise ValueError("resource_id is required for 'remove' action")
-        configs = _lifespan_state(ctx)["portal_configs"]
+        configs = get_lifespan_state(ctx)["portal_configs"]
         _, bare_id = parse_portal_id(resource_id, set(configs.keys()))
         cache.remove_resource(bare_id)
         return md_response(status="removed", resource_id=bare_id)
@@ -272,13 +272,13 @@ async def refresh_cache(
 
     bare_id = None
     if resource_id:
-        configs = _lifespan_state(ctx)["portal_configs"]
+        configs = get_lifespan_state(ctx)["portal_configs"]
         _, bare_id = parse_portal_id(resource_id, set(configs.keys()))
         cached = [c for c in cached if c["resource_id"] == bare_id]
         if not cached:
             raise ValueError(f"Resource {bare_id} not found in cache")
 
-    http_client = _lifespan_state(ctx)["http_client"]
+    http_client = get_lifespan_state(ctx)["http_client"]
     results = []
     for i, item in enumerate(cached):
         await ctx.report_progress(i, len(cached), f"Refreshing {item['table_name']}...")

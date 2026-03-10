@@ -11,7 +11,7 @@ from ontario_data.cache import InvalidQueryError
 from ontario_data.formatting import format_records
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
-    _lifespan_state,
+    get_lifespan_state,
     arcgis_guard,
     fan_out,
     get_cache,
@@ -129,7 +129,7 @@ async def query_resource(
         limit: Max rows (1-1000)
         offset: Row offset for pagination
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal and is_arcgis_portal(ctx, portal):
@@ -318,7 +318,7 @@ async def preview_data(
         resource_id: Prefixed resource ID (e.g. "toronto:abc123") or bare ID
         rows: Number of rows to preview (1-100)
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal and is_arcgis_portal(ctx, portal):

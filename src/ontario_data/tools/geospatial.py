@@ -8,7 +8,7 @@ from ontario_data.server import READONLY, mcp
 from ontario_data.formatting import format_records, md_response
 from ontario_data.utils import (
     SpatialExtensionError,
-    _lifespan_state,
+    get_lifespan_state,
     arcgis_guard,
     fan_out,
     get_cache,
@@ -38,7 +38,7 @@ async def load_geodata(
     import geopandas as gpd
     import pandas as pd
 
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal and is_arcgis_portal(ctx, portal):
@@ -65,7 +65,7 @@ async def load_geodata(
 
     await ctx.report_progress(0, 100, "Downloading geospatial data...")
 
-    http_client = _lifespan_state(ctx)["http_client"]
+    http_client = get_lifespan_state(ctx)["http_client"]
     response = await http_client.get(url, timeout=120.0, follow_redirects=True)
     response.raise_for_status()
     content = response.content

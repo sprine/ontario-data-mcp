@@ -5,7 +5,7 @@ from fastmcp import Context
 from ontario_data.formatting import md_response
 from ontario_data.server import READONLY, mcp
 from ontario_data.utils import (
-    _lifespan_state,
+    get_lifespan_state,
     arcgis_guard,
     fan_out,
     get_deps,
@@ -104,7 +104,7 @@ async def get_resource_schema(
         resource_id: Prefixed resource ID (e.g. "toronto:abc123") or bare ID
         sample_size: Number of sample rows to include
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal and is_arcgis_portal(ctx, portal):

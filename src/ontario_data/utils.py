@@ -18,7 +18,7 @@ __all__ = [
     "get_deps", "get_cache", "parse_portal_id", "fan_out", "unwrap_first_match",
     "resolve_dataset", "resolve_resource_portal", "strip_internal_fields",
     "make_table_name", "make_geo_table_name", "require_cached", "infer_portal_from_table",
-    "arcgis_guard", "is_arcgis_portal", "_lifespan_state",
+    "arcgis_guard", "is_arcgis_portal", "get_lifespan_state",
 ]
 
 T = TypeVar("T")
@@ -39,7 +39,7 @@ class SpatialExtensionError(Exception):
     pass
 
 
-def _lifespan_state(ctx: Context) -> dict:
+def get_lifespan_state(ctx: Context) -> dict:
     return ctx.lifespan_context
 
 
@@ -49,7 +49,7 @@ def get_deps(ctx: Context, portal: str) -> tuple[PortalClient, CacheManager]:
     Lazily creates the client for the requested portal on first use.
     portal is required — there is no default.
     """
-    state = _lifespan_state(ctx)
+    state = get_lifespan_state(ctx)
     configs = state["portal_configs"]
 
     if portal not in configs:
@@ -106,7 +106,7 @@ async def fan_out(
     If portal is specified, only run against that one portal.
     No timeout — relies on each client's own 30s timeout + retry.
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
 
     if portal:
         keys = [portal]
@@ -166,7 +166,7 @@ async def resolve_dataset(
     portal; otherwise every configured portal is tried sequentially via
     :func:`fan_out`.
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(dataset_id, set(configs.keys()))
 
     async def _show(pk: str):
@@ -192,7 +192,7 @@ async def resolve_resource_portal(
     dict — callers typically need to make their own follow-up API call
     (e.g. ``resource_show`` or ``datastore_search``) after knowing the portal.
     """
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     portal, bare_id = parse_portal_id(resource_id, set(configs.keys()))
 
     if portal:
@@ -209,7 +209,7 @@ async def resolve_resource_portal(
 
 
 def get_cache(ctx: Context) -> CacheManager:
-    return _lifespan_state(ctx)["cache"]
+    return get_lifespan_state(ctx)["cache"]
 
 
 def strip_internal_fields(records: list[dict]) -> list[dict]:
@@ -218,7 +218,7 @@ def strip_internal_fields(records: list[dict]) -> list[dict]:
     return [{k: v for k, v in r.items() if not k.startswith("_")} for r in records]
 
 
-def _slugify(name: str, fallback: str = "unknown", max_len: int = 40) -> str:
+def _slugify_table(name: str, fallback: str = "unknown", max_len: int = 40) -> str:
     """Lowercase, collapse non-alphanumerics to underscores, truncate.
     e.g. 'Ontario COVID-19 Cases' → 'ontario_covid_19_cases'."""
     slug = re.sub(r"[^a-z0-9]", "_", (name or fallback).lower())
@@ -240,14 +240,14 @@ def infer_portal_from_table(table_name: str) -> str:
 def make_table_name(dataset_name: str, resource_id: str, portal: str = "ontario") -> str:
     """Build a deterministic table name like 'ds_ontario_covid_cases_a1b2c3d4'
     so the same resource always lands in the same table."""
-    slug = _slugify(dataset_name)
+    slug = _slugify_table(dataset_name)
     return f"ds_{portal}_{slug}_{resource_id[:8]}"
 
 
 def make_geo_table_name(dataset_name: str, resource_id: str, portal: str = "ontario") -> str:
     """Like make_table_name but prefixed 'geo_' so spatial tables are
     distinguishable in cache listings."""
-    slug = _slugify(dataset_name, fallback="geo")
+    slug = _slugify_table(dataset_name, fallback="geo")
     return f"geo_{portal}_{slug}_{resource_id[:8]}"
 
 
@@ -265,7 +265,7 @@ def arcgis_guard(resource_id: str, alternative: str = "download_resource + query
 
 def is_arcgis_portal(ctx: Context, portal: str) -> bool:
     """Check if a portal is an ArcGIS Hub portal."""
-    configs = _lifespan_state(ctx)["portal_configs"]
+    configs = get_lifespan_state(ctx)["portal_configs"]
     return portal in configs and configs[portal].portal_type == PortalType.ARCGIS_HUB
 
 

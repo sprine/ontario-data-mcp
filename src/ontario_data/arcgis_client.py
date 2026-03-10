@@ -98,7 +98,7 @@ class ArcGISHubClient:
 
             results.append({
                 "id": ds_id,
-                "name": _slugify(props.get("title", "")),
+                "name": _slugify_name(props.get("title", "")),
                 "title": props.get("title", ""),
                 "notes": props.get("description") or props.get("snippet") or "",
                 "metadata_modified": props.get("modified", ""),
@@ -150,7 +150,7 @@ class ArcGISHubClient:
 
         return {
             "id": ds_id,
-            "name": attrs.get("name") or _slugify(attrs.get("title", "")),
+            "name": attrs.get("name") or _slugify_name(attrs.get("title", "")),
             "title": attrs.get("title", ""),
             "notes": attrs.get("description") or "",
             "metadata_modified": attrs.get("modified", ""),
@@ -235,6 +235,6 @@ def _is_layered_type(item_type: str) -> bool:
     return item_type in _LAYERED_TYPES
 
 
-def _slugify(title: str) -> str:
+def _slugify_name(title: str) -> str:
     slug = re.sub(r"[^a-z0-9]", "-", title.lower())
     return re.sub(r"-+", "-", slug).strip("-")[:80]
