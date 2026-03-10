@@ -180,7 +180,7 @@ def cmd_refresh(args: argparse.Namespace) -> None:
                 from ontario_data.ckan_client import CKANClient
 
                 client = CKANClient(base_url=config.base_url, http_client=http)
-                df, resource, dataset = await _download_resource_data(client, bare_id)
+                df, resource, dataset = await _download_resource_data(client, bare_id, http)
 
             cache.store_resource(
                 resource_id=bare_id,
