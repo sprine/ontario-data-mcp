@@ -46,7 +46,7 @@ To auto-approve all tool calls (no confirmation prompts), add to your Claude Cod
 }
 ```
 
-All read-only tools are annotated as such. Tools annotated as destructive only modify local cached data (no remote mutations).
+Tools are annotated as read-only or destructive per the MCP spec. Download tools populate the local cache but are read-only (no remote mutations). Destructive tools (`cache_manage`, `refresh_cache`) only modify local cached data.
 
 <details>
   <summary>With VS Code</summary>

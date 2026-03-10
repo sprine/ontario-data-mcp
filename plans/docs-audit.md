@@ -18,6 +18,7 @@ The following issues were fixed in commit `9b854be` and are now enforced by `tes
 - **R5** — Added MCP Resources section documenting all 5 `@mcp.resource` URIs
 - **R6** — MCP link updated from personal Gist to `https://modelcontextprotocol.io`
 - **R7** — From-source install command updated to use `ontario-data-mcp` entrypoint
+- **R12** — Fixed annotation messaging: clarified that download tools are read-only (populate cache) while only `cache_manage`/`refresh_cache` are destructive
 
 ---
 
@@ -31,7 +32,6 @@ The following issues were fixed in commit `9b854be` and are now enforced by `tes
 | R9 | `compare_datasets` description | Doesn't mention 2–5 dataset limit enforced in code | Yes — parse parameter constraints from source |
 | R10 | `search_datasets` row | Only mentions `portal=` filter. Actual function has 7 params: `query`, `organization`, `resource_format`, `update_frequency`, `sort_by`, `limit`, `portal` | Yes — compare function signature params to README |
 | R11 | `spatial_query` row | Says "Run spatial queries against cached geospatial data" but doesn't mention the 3 operations: `contains_point`, `within_bbox`, `within_radius` | Yes — parse operation enum from source |
-| R12 | `download_resource` annotation | Described as creating/writing cache data but annotated `READONLY` in code, not `DESTRUCTIVE`. README's claim about destructive annotations is incomplete | Partially |
 | R13 | WIP `validate` feature (line 24) | Listed as WIP but zero code exists — purely aspirational | No — requires human decision on whether to keep or remove |
 
 ---
@@ -69,6 +69,6 @@ This would catch R3 (and similar future drift) automatically.
 |----------|--------|------|-------|
 | Critical (factually wrong) | 0 | 0 | 0 |
 | High (missing info) | 0 | 0 | 0 |
-| Medium (incomplete) | 6 | 0 | 6 |
+| Medium (incomplete) | 5 | 0 | 5 |
 | Low (minor/aging) | 0 | 2 | 2 |
-| **Total** | **6** | **2** | **8** |
+| **Total** | **5** | **2** | **7** |
