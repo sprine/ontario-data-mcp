@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 
 from fastmcp import Context
+
+logger = logging.getLogger("ontario_data.quality")
 
 from ontario_data.server import READONLY, mcp
 from ontario_data.staleness import FREQUENCY_DAYS
@@ -105,7 +108,7 @@ async def profile_data(
         if meta_rows and meta_rows[0][0]:
             type_warnings = json.loads(meta_rows[0][0])
     except Exception:
-        pass
+        logger.debug("Failed to read type warnings for table %s", table_name, exc_info=True)
 
     result = dict(
         resource_id=resource_id,

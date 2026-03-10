@@ -89,7 +89,7 @@ class CKANClient:
                     raise CKANError(msg)
                 return data["result"]
 
-            except (httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout) as e:
+            except (httpx.ConnectError, httpx.TimeoutException) as e:
                 if attempt < self.max_retries:
                     delay = self.base_delay * (2 ** attempt) + random.uniform(0, 0.5)
                     logger.warning(

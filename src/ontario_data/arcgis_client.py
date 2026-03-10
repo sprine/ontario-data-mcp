@@ -223,7 +223,7 @@ class ArcGISHubClient:
                 if attrs.get("format") == fmt and attrs.get("url"):
                     return attrs["url"]
             return None
-        except (httpx.HTTPStatusError, httpx.ConnectError):
+        except (httpx.HTTPStatusError, httpx.ConnectError, httpx.TimeoutException):
             return None
 
 

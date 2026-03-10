@@ -26,16 +26,6 @@ File: `src/ontario_data/cache.py` (`_connect` method)
 
 ---
 
-### Missing timeout exception catches
-
-`ArcGISHubClient.get_download_url` (`arcgis_client.py:226`) catches `HTTPStatusError` and `ConnectError` but not `ReadTimeout`/`WriteTimeout` — unhandled exception propagates.
-
-`CKANClient` retry (`ckan_client.py:92`) catches `ReadTimeout`, `WriteTimeout` but not `PoolTimeout`/`ConnectTimeout`. Fix: catch `httpx.TimeoutException` (base class) instead.
-
-Both are one-word fixes.
-
----
-
 ### `infer_portal_from_table` silently falls back to "ontario"
 
 If a cached table name doesn't match `ds_<portal>_` convention, `refresh_cache` uses the Ontario portal for a Toronto/Ottawa resource — produces a confusing 404 from the wrong API.
@@ -53,20 +43,6 @@ Paginate-and-accumulate pattern with no upper bound. While government APIs are s
 Fix: hardcoded cap (`if len(all_records) > 500_000: break` with a log warning). No need for a configurable parameter.
 
 File: `src/ontario_data/ckan_client.py:194-227`
-
----
-
-### Bare `except Exception: pass` swallows errors (5 locations)
-
-Silent exception swallowing makes debugging difficult:
-
-| File | Line(s) | What's swallowed |
-|------|---------|------------------|
-| `querying.py` | 49, 78, 91, 104 | Type warnings / query warnings |
-| `querying.py` | 294 | Data provenance display |
-| `quality.py` | 107 | Type warning metadata |
-
-Fix: change `pass` to `logger.debug(...)`. Leave `cache.py:157-162` (extension install) alone — that silent fallback is intentional.
 
 ---
 

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
 
 from fastmcp import Context
+
+logger = logging.getLogger("ontario_data.querying")
 
 from ontario_data.cache import InvalidQueryError
 from ontario_data.formatting import format_records
@@ -47,7 +50,7 @@ def _get_type_warnings_for_tables(cache, table_names: list[str]) -> list[str]:
                 cols = json.loads(rows[0][0])
                 warnings.extend(cols)
         except Exception:
-            pass
+            logger.debug("Failed to read type warnings for table %s", tname, exc_info=True)
     return warnings
 
 
@@ -76,7 +79,7 @@ def _generate_query_warnings(
                     f"{quantity_cols}. Consider SUM(\"{quantity_cols[0]}\") instead of COUNT(*)."
                 )
         except Exception:
-            pass
+            logger.debug("Failed to check quantity columns for table %s", table, exc_info=True)
 
     # 2. 0 rows from non-empty table
     if not results and table_matches:
@@ -89,7 +92,7 @@ def _generate_query_warnings(
                     f"Check your WHERE/JOIN conditions."
                 )
         except Exception:
-            pass
+            logger.debug("Failed to check row count for table %s", table, exc_info=True)
 
     # 3. Very few rows from GROUP BY on large table
     if 1 <= len(results) <= 3 and _GROUP_BY_RE.search(sql) and table_matches:
@@ -102,7 +105,7 @@ def _generate_query_warnings(
                     f"Verify your GROUP BY columns are correct."
                 )
         except Exception:
-            pass
+            logger.debug("Failed to check GROUP BY for table %s", table, exc_info=True)
 
     return warnings
 
@@ -292,7 +295,7 @@ async def query_cached(
                         f"Status: {status}"
                     )
             except Exception:
-                pass
+                logger.debug("Failed to build data provenance for tables %s", table_names_in_sql, exc_info=True)
 
         return "\n".join(parts)
     except Exception as e:
