@@ -64,7 +64,8 @@ mcp = FastMCP(
         "- Check unit columns before comparing datasets (e.g. mg/L vs µg/L)\n"
         "- Values may contain semicolons — use LIKE patterns instead of exact string matches\n"
         "- Column names may vary across resources — always check with get_resource_schema\n"
-        "- Some resources are XLSX-only: downloadable but not queryable via remote datastore API"
+        "- Some resources are XLSX-only: downloadable but not queryable via remote datastore API\n"
+        "- After making a data claim, call validate_result with the SQL and claim text to verify accuracy"
     ),
     version=version("ontario-data-mcp"),
     lifespan=lifespan,
