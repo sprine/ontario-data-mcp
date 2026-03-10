@@ -6,7 +6,7 @@
 > **Beta:** This project is under active development. The data structure and tool interfaces may change.
 > LLM-generated analysis may contain errors. Always verify critical findings against the returned source data.
 
-This is an [MCP server](https://gist.github.com/sprine/3a6f2c30c73cc0fe8a7a472a4af771d3) for discovering, downloading, querying, and analyzing datasets from Ontario's Open Data portals. It allows asking questions of the data in English (or Spanish, Chinese, French, etc).
+This is an [MCP server](https://modelcontextprotocol.io) for discovering, downloading, querying, and analyzing datasets from Ontario's Open Data portals. It allows asking questions of the data in English (or Spanish, Chinese, French, etc).
 
 It currently supports the Ontario, Toronto, and Ottawa portals, and utilizes a shared [DuckDB](https://duckdb.org/) cache for fast SQL queries, statistical analysis, and geospatial operations.
 
@@ -80,7 +80,7 @@ To connect from source to Claude Code:
 > **Note:** MCP subprocesses don't inherit your shell's PATH, so you must use the absolute path to `uv` (find it with `which uv`).
 
 ```bash
-claude mcp add ontario-data -- /absolute/path/to/uv run --directory /path/to/ontario-data-mcp fastmcp run src/ontario_data/server.py
+claude mcp add ontario-data -- /absolute/path/to/uv run --directory /path/to/ontario-data-mcp ontario-data-mcp
 ```
 </details>
 
@@ -165,6 +165,18 @@ All searches fan out to every portal by default — no need to select a portal. 
 | `list_geo_datasets` | Find datasets containing geospatial resources |
 
 </details>
+
+## MCP Resources
+
+Resources the agent can read for context without calling a tool:
+
+| URI | Description |
+|-----|-------------|
+| `ontario://cache/index` | List of all locally cached datasets with freshness info |
+| `ontario://dataset/{dataset_id}` | Full metadata for a specific dataset (supports prefixed IDs) |
+| `ontario://portal/stats` | Overview statistics across all data portals |
+| `ontario://schema/{table_name}` | Column schema, types, sample values, and type warnings for a cached table |
+| `ontario://guides/duckdb-sql` | DuckDB SQL reference for Ontario open data analysis |
 
 ## Prompts
 

@@ -15,18 +15,13 @@ The following issues were fixed in commit `9b854be` and are now enforced by `tes
 - **S1–S7** — tool/resource counts, ghost tools, and missing resources fixed in site
 - **Scriptable pre-release checks** — implemented as `tests/test_docs_accuracy.py` covering tool/resource inventory, category counts, licence attribution (name + URL), and version consistency
 - **R3** — `cache_manage` description fixed: removed false "refresh" action, now accurately says "remove" and "clear"
+- **R5** — Added MCP Resources section documenting all 5 `@mcp.resource` URIs
+- **R6** — MCP link updated from personal Gist to `https://modelcontextprotocol.io`
+- **R7** — From-source install command updated to use `ontario-data-mcp` entrypoint
 
 ---
 
 ## README.md Issues (remaining)
-
-### High (missing information)
-
-| # | Section | Issue | Scriptable? |
-|---|---------|-------|-------------|
-| R5 | (absent) | 5 MCP resources (`ontario://cache/index`, `ontario://dataset/{id}`, `ontario://portal/stats`, `ontario://schema/{table_name}`, `ontario://guides/duckdb-sql`) are completely undocumented | Yes — assert every `@mcp.resource` has a corresponding README section |
-| R6 | MCP link (line 9) | Links to a personal Gist instead of `https://modelcontextprotocol.io` | No — requires human judgement on canonical URL |
-| R7 | `from source` install (line 83) | Uses `fastmcp run src/ontario_data/server.py` instead of simpler `uv run ontario-data-mcp` entrypoint | No — style/clarity judgement |
 
 ### Medium (incomplete or misleading)
 
@@ -73,7 +68,7 @@ This would catch R3 (and similar future drift) automatically.
 | Category | README | Site | Total |
 |----------|--------|------|-------|
 | Critical (factually wrong) | 0 | 0 | 0 |
-| High (missing info) | 3 | 0 | 3 |
+| High (missing info) | 0 | 0 | 0 |
 | Medium (incomplete) | 6 | 0 | 6 |
 | Low (minor/aging) | 0 | 2 | 2 |
-| **Total** | **9** | **2** | **11** |
+| **Total** | **6** | **2** | **8** |
