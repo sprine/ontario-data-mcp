@@ -416,6 +416,54 @@ class TestProfileDataTypeWarnings:
         assert "TRY_CAST" in result
         assert "year" in result
 
+    @pytest.mark.asyncio
+    async def test_numeric_varchar_stats_computed(self, cache):
+        """Numeric stats (min/max/avg/std) are computed for flagged VARCHAR columns."""
+        from ontario_data.tools.quality import profile_data
+
+        df = pd.DataFrame({
+            "amount": ["10", "20", "30", "40"],
+            "label": ["a", "b", "c", "d"],
+        })
+        cache.store_resource(
+            resource_id="test-numstats",
+            dataset_id="test-ds",
+            table_name="ds_quality_numstats_test",
+            df=df,
+            source_url="http://example.com",
+        )
+        ctx = make_mock_context(cache)
+        result = await profile_data(resource_id="test-numstats", ctx=ctx)
+        assert "numeric_varchar_stats" in result
+        # Should contain actual numeric values for the "amount" column
+        assert "10.0" in result  # min
+        assert "40.0" in result  # max
+        assert "25.0" in result  # avg
+
+    @pytest.mark.asyncio
+    async def test_numeric_varchar_stats_handles_mixed_values(self, cache):
+        """Numeric stats handle columns with mix of numeric and non-numeric values."""
+        from ontario_data.tools.quality import profile_data
+
+        # >80% numeric to pass detection threshold (9/10 = 90%)
+        df = pd.DataFrame({
+            "value": ["100", "200", "300", "400", "500", "600", "700", "800", "900", "N/A"],
+            "name": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
+        })
+        cache.store_resource(
+            resource_id="test-mixed",
+            dataset_id="test-ds",
+            table_name="ds_quality_mixed_test",
+            df=df,
+            source_url="http://example.com",
+        )
+        ctx = make_mock_context(cache)
+        result = await profile_data(resource_id="test-mixed", ctx=ctx)
+        # Should still produce stats — TRY_CAST skips non-numeric values
+        assert "numeric_varchar_stats" in result
+        # Should have 9 numeric values (N/A is skipped by TRY_CAST)
+        assert "numeric_count" in result
+
 
 class TestVarcharDetectionAtDownload:
     """Tests for Item 9: detect VARCHAR-as-number at download time."""

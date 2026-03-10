@@ -119,14 +119,6 @@ File: `src/ontario_data/tools/metadata.py:165`
 
 ---
 
-### `profile_data` TRY_CAST stats for numeric VARCHARs
-
-Type warnings are surfaced, but no numeric stats computed for VARCHAR columns flagged as numeric. Feature request, not a bug.
-
-File: `src/ontario_data/tools/quality.py`
-
----
-
 ### SEP-1303 error verification test
 
 Missing: a test that calls `query_cached` with invalid SQL and asserts `isError: true` in the MCP response.
