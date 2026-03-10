@@ -69,6 +69,82 @@
     return html;
   }
 
+  function initNav(track) {
+    var section = track.closest('.carousel-section');
+    var cards = track.querySelectorAll('.carousel-card');
+    var nav = section ? section.querySelector('.carousel-nav') : null;
+    if (!nav || cards.length < 2) {
+      if (nav) nav.style.display = 'none';
+      return;
+    }
+
+    var dotsContainer = nav.querySelector('.carousel-dots');
+    var prevBtn = nav.querySelector('.carousel-prev');
+    var nextBtn = nav.querySelector('.carousel-next');
+
+    for (var i = 0; i < cards.length; i++) {
+      (function (idx) {
+        var dot = document.createElement('button');
+        dot.className = 'carousel-dot' + (idx === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Go to example ' + (idx + 1));
+        dot.addEventListener('click', function () { scrollToCard(idx); });
+        dotsContainer.appendChild(dot);
+      })(i);
+    }
+
+    var dots = dotsContainer.querySelectorAll('.carousel-dot');
+
+    function scrollToCard(index) {
+      var card = cards[index];
+      if (!card) return;
+      var cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      var trackCenter = track.clientWidth / 2;
+      track.scrollTo({ left: cardCenter - trackCenter, behavior: 'smooth' });
+    }
+
+    function getActiveIndex() {
+      var center = track.scrollLeft + track.clientWidth / 2;
+      var closest = 0;
+      var closestDist = Infinity;
+      for (var i = 0; i < cards.length; i++) {
+        var cardCenter = cards[i].offsetLeft + cards[i].offsetWidth / 2;
+        var dist = Math.abs(cardCenter - center);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = i;
+        }
+      }
+      return closest;
+    }
+
+    function updateDots() {
+      var active = getActiveIndex();
+      for (var i = 0; i < dots.length; i++) {
+        dots[i].classList.toggle('active', i === active);
+      }
+      prevBtn.disabled = active === 0;
+      nextBtn.disabled = active === cards.length - 1;
+    }
+
+    prevBtn.addEventListener('click', function () {
+      var active = getActiveIndex();
+      if (active > 0) scrollToCard(active - 1);
+    });
+
+    nextBtn.addEventListener('click', function () {
+      var active = getActiveIndex();
+      if (active < cards.length - 1) scrollToCard(active + 1);
+    });
+
+    var scrollTimer;
+    track.addEventListener('scroll', function () {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(updateDots, 50);
+    }, { passive: true });
+
+    updateDots();
+  }
+
   function render(examples) {
     var track = document.querySelector('.carousel-track');
     if (!track || !examples || !examples.length) return;
@@ -80,6 +156,8 @@
 
     var section = track.closest('.carousel-section');
     if (section) section.style.display = '';
+
+    initNav(track);
   }
 
   function init() {

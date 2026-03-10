@@ -23,19 +23,6 @@
       text-align: center;
       background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(11,110,79,0.07) 0%, transparent 70%);
     }
-    .badge {
-      display: inline-block;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #0B6E4F;
-      background: rgba(11,110,79,0.08);
-      border: 1px solid rgba(11,110,79,0.2);
-      border-radius: 100px;
-      padding: 6px 16px;
-      margin-bottom: 24px;
-    }
     .hero h1 {
       font-size: clamp(2.2rem, 5vw, 3.4rem);
       font-weight: 700;
@@ -275,7 +262,6 @@
       gap: 16px;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
-      scroll-padding: 0 24px;
       padding: 8px 24px 24px;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
@@ -283,7 +269,7 @@
     .carousel-track::-webkit-scrollbar { display: none; }
     .carousel-card {
       flex: 0 0 400px;
-      scroll-snap-align: start;
+      scroll-snap-align: center;
       border: 1px solid #eee;
       border-radius: 15px;
       padding: 25px;
@@ -363,11 +349,61 @@
     .carousel-card .hood-code .str { color: #f1fa8c; font-style: italic; }
     .carousel-card .hood-code .num { color: #bd93f9; }
     .carousel-card .hood-code .comment { color: #7283b5; font-style: italic; }
-    .carousel-hint {
-      text-align: center;
-      font-size: 0.94rem;
-      color: #888;
-      margin-top: 8px;
+    /* Carousel navigation */
+    .carousel-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 16px;
+      padding: 0 24px;
+    }
+    .carousel-prev, .carousel-next {
+      background: none;
+      border: 1px solid #ddd;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      font-size: 1rem;
+      color: #555;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .carousel-prev:hover, .carousel-next:hover {
+      border-color: #0B6E4F;
+      color: #0B6E4F;
+    }
+    .carousel-prev:disabled, .carousel-next:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+    .carousel-prev:disabled:hover, .carousel-next:disabled:hover {
+      border-color: #ddd;
+      color: #555;
+    }
+    .carousel-dots {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .carousel-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ddd;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .carousel-dot:hover { background: #aaa; }
+    .carousel-dot.active {
+      background: #0B6E4F;
+      transform: scale(1.25);
     }
     /* Follow-up inside carousel card */
     .carousel-card .followup-content {
@@ -429,7 +465,7 @@
       <div class="stat-label">datasets</div>
     </div>
     <div class="stat">
-      <div class="stat-num" data-target="22">0</div>
+      <div class="stat-num" data-target="23">0</div>
       <div class="stat-label">tools</div>
     </div>
     <div class="stat">
@@ -485,7 +521,11 @@
       <p>Real questions, real data, real SQL. Expand any card to see the tool calls or the follow-up question.</p>
     </div>
     <div class="carousel-track"></div>
-    <div class="carousel-hint">&larr; Scroll for more &rarr;</div>
+    <div class="carousel-nav">
+      <button class="carousel-prev" aria-label="Previous example">&#8592;</button>
+      <div class="carousel-dots"></div>
+      <button class="carousel-next" aria-label="Next example">&#8594;</button>
+    </div>
   </section>
 
 
@@ -570,7 +610,7 @@
   <section aria-labelledby="tools-heading">
     <div class="container--wide">
       <div class="section-header">
-        <h2 id="tools-heading">22 tools under the hood</h2>
+        <h2 id="tools-heading">23 tools under the hood</h2>
         <p>Expand any category to see the individual tools.</p>
       </div>
       <div class="tools-grid">
@@ -618,11 +658,11 @@
           <summary>
             <div class="tool-card-head">
               <span class="tool-card-name">Data Quality</span>
-              <span class="tool-card-count">2 tools</span>
+              <span class="tool-card-count">3 tools</span>
             </div>
             <div class="tool-card-desc">Freshness checks, completeness analysis, and statistical profiles.</div>
           </summary>
-          <div class="tool-card-detail">check_freshness, profile_data</div>
+          <div class="tool-card-detail">check_freshness, profile_data, validate_result</div>
         </details>
         <details class="tool-card">
           <summary>
