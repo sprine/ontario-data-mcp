@@ -37,36 +37,11 @@
       margin: 0 auto 40px;
       line-height: 1.7;
     }
-    .install-box {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      background: #151D1B;
-      border-radius: 10px;
-      padding: 14px 20px;
-      font-size: 0.95rem;
-    }
-    .install-box code { color: #a8d8a8; }
-    .install-box button {
-      background: rgba(255,255,255,0.1);
-      border: none; color: #8A9593; cursor: pointer;
-      font-size: 0.75rem; font-weight: 500;
-      padding: 5px 12px; border-radius: 6px;
-      transition: all 0.15s;
-    }
-    .install-box button:hover { background: rgba(255,255,255,0.18); color: #fff; }
     .links { margin-top: 28px; font-size: 0.85rem; display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
     .links a { color: #586462; text-decoration: none; transition: color 0.15s; }
     .links a:hover { color: #0B6E4F; }
 
-    /* Stats ribbon */
-    .stats {
-      display: flex; justify-content: center; gap: 48px;
-      padding: 40px 24px; border-bottom: 1px solid #EAE8E3;
-    }
-    .stat { text-align: center; }
     .stat-num { font-weight: 700; letter-spacing: -0.02em; color: #B07D24; }
-    .stat-label { font-size: 0.78rem; color: #697774; margin-top: 2px; }
 
     /* Sections */
     section { padding: 80px 24px; }
@@ -115,8 +90,6 @@
     .hero-install .tabs { justify-content: center; }
     .hero-install .source-note { text-align: center; }
 
-    /* Install */
-    .install-inner { max-width: 640px; margin: 0 auto; }
     .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
     .tab-btn {
       background: none; border: none;
@@ -125,7 +98,6 @@
     }
     .tab-btn:hover { color: #333; }
     .tab-btn.active { background: #EAE8E3; color: #1C2826; }
-    .bg-muted .tab-btn.active { background: #FAFAF7; }
     .code-block { background: #151D1B; border-radius: 10px; padding: 24px; position: relative; }
     .code-block p { font-size: 0.8rem; color: #8A9895; margin-bottom: 12px; }
     .code-block pre { font-size: 0.85rem; color: #a8d8a8; overflow-x: auto; line-height: 1.7; }
@@ -138,29 +110,6 @@
     .code-block .copy-btn:hover { color: #8A9895; background: rgba(255,255,255,0.12); }
     .source-note { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #697774; }
     .source-note code { font-size: 0.75rem; color: #586462; }
-
-    /* CTA strip */
-    .cta-strip {
-      text-align: center;
-      padding: 48px 24px;
-      border-top: 1px solid #EAE8E3;
-      border-bottom: 1px solid #EAE8E3;
-    }
-    .cta-strip p {
-      font-size: 1.1rem;
-      color: #4A5856;
-      margin-bottom: 20px;
-    }
-    .cta-strip .install-box { margin-bottom: 12px; }
-    .cta-strip .cta-alt {
-      font-size: 0.85rem;
-      color: #697774;
-    }
-    .cta-strip .cta-alt a {
-      color: #0B6E4F;
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
 
     /* Feedback */
     .feedback { text-align: center; font-size: 0.85rem; color: #586462; padding: 32px 24px; }
@@ -429,7 +378,6 @@
 
     @media (max-width: 640px) {
       .hero { padding: 72px 24px 56px; }
-      .stats { gap: 24px; flex-wrap: wrap; }
       .steps { grid-template-columns: repeat(2, 1fr); gap: 24px; }
       .tools-grid { grid-template-columns: 1fr; }
       .ticker-label { padding: 14px 14px; font-size: 0.72rem; }
@@ -537,7 +485,6 @@
     </div>
   </section>
 
-  <!-- Examples carousel (with follow-ups merged) -->
   <!-- Examples carousel (rendered from JSON by carousel.js) -->
   <section class="carousel-section" aria-labelledby="examples-heading" role="region" aria-roledescription="carousel" style="display:none">
     <div class="carousel-header">
