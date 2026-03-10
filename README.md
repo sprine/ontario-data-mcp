@@ -3,7 +3,7 @@
 # ontario-data-mcp
 
 > [!IMPORTANT]  
-> **Beta:** This project is under active development. The data structure and tool interfaces may change, as may the data sources until v0.1.
+> **Beta:** This project is under active development. The data structure and tool interfaces may change.
 > LLM-generated analysis may contain errors. Always verify critical findings against the returned source data.
 
 This is an [MCP server](https://gist.github.com/sprine/3a6f2c30c73cc0fe8a7a472a4af771d3) for discovering, downloading, querying, and analyzing datasets from Ontario's Open Data portals. It allows asking questions of the data in English (or Spanish, Chinese, French, etc).
@@ -146,11 +146,10 @@ All searches fan out to every portal by default — no need to select a portal. 
 </details>
 
 <details>
-<summary><b>Data Quality</b> (3 tools)</summary>
+<summary><b>Data Quality</b> (2 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
-| `check_data_quality` | Analyze nulls, type consistency, duplicates, outliers |
 | `check_freshness` | Check if a dataset is current vs. its update schedule |
 | `profile_data` | Statistical profile using DuckDB SUMMARIZE |
 
