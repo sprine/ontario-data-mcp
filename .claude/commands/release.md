@@ -13,58 +13,64 @@ Everything after the bump type is used as the commit message body. If no message
 
 ## Steps
 
-### 1. Clean dist
+### 1. Preflight checks
+
+Verify the working tree is ready for release. Stop immediately if any check fails.
 
 ```bash
-rm -rf dist
-```
+# Must be on main
+[ "$(git branch --show-current)" = "main" ] || { echo "ERROR: not on main"; exit 1; }
 
-Always start fresh.
+# Working tree must be clean (no staged or unstaged changes)
+git diff --quiet && git diff --cached --quiet || { echo "ERROR: dirty working tree"; exit 1; }
+```
 
 ### 2. Determine version bump
 
 Parse `$ARGUMENTS` for the bump type. Default to `patch` if not specified or if the first word isn't patch/minor/major.
 
 Read the current version from `pyproject.toml` and compute the new version:
-- `patch`: 0.1.5 → 0.1.6
-- `minor`: 0.1.5 → 0.2.0
-- `major`: 0.1.5 → 1.0.0
+- `patch`: 0.1.7 → 0.1.8
+- `minor`: 0.1.7 → 0.2.0
+- `major`: 0.1.7 → 1.0.0
 
-### 3. Run unit tests
+Verify the tag `v{new_version}` does not already exist:
+
+```bash
+git tag -l "v{new_version}" | grep -q . && { echo "ERROR: tag v{new_version} already exists"; exit 1; }
+```
+
+### 3. Run tests
 
 ```bash
 uv run pytest
 ```
 
-Stop immediately if any tests fail. Do not proceed.
+Stop immediately if any tests fail. This covers:
+- All unit tests
+- Doc-accuracy checks (tool/resource counts, licence attribution, version consistency)
 
-### 4. Smoke test: server startup
-
-Start the server and verify it initializes without errors:
-
-```bash
-uv run ontario-data-mcp &
-SERVER_PID=$!
-sleep 3
-kill $SERVER_PID 2>/dev/null
-wait $SERVER_PID 2>/dev/null
-```
-
-Verify the output contains "Starting MCP server". If it shows an error (other than the kill signal), stop and report.
-
-### 5. Smoke test: live multi-tool test
+### 4. Live smoke test (optional)
 
 Use the `/generating-smoke-tests` skill to generate, run, and clean up a live smoke test. Stop if any assertion fails.
 
-### 6. Licence compliance check
+This step hits real government APIs. Skip if the APIs are down or you're releasing a docs-only change.
 
-Read the `PORTALS` dict from `src/ontario_data/portals.py` and collect every portal's `licence_name`. For each licence name, verify that the exact string appears in both `README.md` and `site/index.html`.
+### 5. Build
 
-Stop if any attribution is missing. Each data portal's licence requires its own attribution statement — omitting one violates the licence terms.
+Build early so a failure doesn't leave a tagged commit with no PyPI release.
 
-### 7. Bump version and update changelog
+```bash
+rm -rf dist && uv build
+```
 
-Edit `pyproject.toml` to set the new version. Then run `uv lock` to update the lockfile.
+### 6. Bump version and update changelog
+
+Edit `pyproject.toml` to set the new version. Then update the lockfile:
+
+```bash
+uv lock && uv sync
+```
 
 Add a new entry to `CHANGELOG.md` at the top (below the header). Follow the existing format:
 
@@ -77,7 +83,7 @@ Add a new entry to `CHANGELOG.md` at the top (below the header). Follow the exis
 
 Derive the changelog entry from the commit message and the actual changes being released.
 
-### 8. Commit, tag, and push
+### 7. Commit, tag, and push
 
 **Ask for confirmation before committing.**
 
@@ -95,42 +101,49 @@ Wait for user approval. Then:
 
 **Ask for confirmation before pushing.**
 
-Then push to origin with tags:
+Verify HEAD is on main, then push:
 
 ```bash
+[ "$(git branch --show-current)" = "main" ] || { echo "ERROR: not on main"; exit 1; }
 git push origin main --tags
 ```
 
-### 9. Build and publish
+### 8. Publish
 
 **Ask for confirmation before publishing.**
 
 Show the user the version being published. Then:
 
 ```bash
-uv build
-uv publish --token "$(grep -A2 '\[pypi\]' ~/.pypirc | grep password | sed 's/password = //')"
+uv publish
 ```
 
-### 10. Verify
+`uv publish` reads credentials from `~/.pypirc` natively. Do NOT pass tokens via command-line arguments (they leak into the process list).
 
-Check the package is available on PyPI:
+### 9. Verify
 
-```bash
-uv pip install --dry-run ontario-data-mcp=={new_version} --index-url https://pypi.org/simple/
+Print the PyPI URL for manual verification:
+
+```
+https://pypi.org/project/ontario-data-mcp/{new_version}/
 ```
 
-Report the published version and PyPI URL: https://pypi.org/project/ontario-data-mcp/{new_version}/
+PyPI CDN propagation takes seconds to minutes — do not run an automated install check here; it will flake.
+
+## Rollback
+
+If publish fails after push:
+1. **Same version:** PyPI publishes are immutable. You cannot re-publish. Bump to the next patch, fix, and release again.
+2. **Delete the remote tag:** `git push origin :refs/tags/v{version}` and `git tag -d v{version}`
+3. **Revert the commit:** `git revert HEAD && git push origin main`
 
 ## Success Criteria
 
-- [ ] dist/ cleaned
-- [ ] All unit tests pass
-- [ ] Server starts without errors
-- [ ] Live multi-tool smoke test passes (search, metadata, download, query, cache)
-- [ ] All portal licence attributions present in README.md and site/index.html
+- [ ] On main with clean working tree
+- [ ] Tag `v{new_version}` does not pre-exist
+- [ ] All unit tests pass (includes doc-accuracy and licence checks)
+- [ ] `uv build` succeeds
 - [ ] Version bumped in pyproject.toml, uv.lock, and CHANGELOG.md
 - [ ] User confirmed commit → committed and tagged `v{new_version}`
 - [ ] User confirmed push → pushed to origin with tags
-- [ ] User confirmed publish → published to PyPI
-- [ ] Verified on PyPI
+- [ ] User confirmed publish → published to PyPI via `uv publish`
