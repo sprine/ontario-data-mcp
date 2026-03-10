@@ -1,6 +1,6 @@
 [project]
 name = "ontario-data-mcp"
-version = "0.1.7"
+version = "0.2.0"
 description = "MCP server for searching, downloading, and analyzing datasets from Ontario, Toronto, and Ottawa open data portals"
 readme = "README.md"
 requires-python = ">=3.10"

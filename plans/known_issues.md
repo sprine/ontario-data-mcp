@@ -103,7 +103,6 @@ Fix when touching those tools. File: `README.md`
 | Issue |
 |-------|
 | "6,900+ datasets" count will drift over time |
-| FastMCP link in footer may be stale |
 | Ticker `url` not passed through `escapeHtml()` (safe since URLs come from static `examples.json`) |
 | Clipboard `writeText()` has no `.catch()` |
 

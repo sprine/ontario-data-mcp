@@ -21,7 +21,7 @@ Open an issue here: https://github.com/sprine/ontario-data-mcp/issues
 * `find` - search across supported Ontario open data portals
 * `download` - retrieve and cache datasets
 * `query` - run SQL, statistical, and geospatial analysis via DuckDB
-* **WIP** A `validate` step to verify query outputs against original source files and metadata.
+* `validate` — verify that data claims are supported by query results
 * A shared DuckDB cache for high-performance analytics
 
 ```
@@ -146,12 +146,13 @@ All searches fan out to every portal by default — no need to select a portal. 
 </details>
 
 <details>
-<summary><b>Data Quality</b> (2 tools)</summary>
+<summary><b>Data Quality</b> (3 tools)</summary>
 
 | Tool | Description |
 |------|-------------|
 | `check_freshness` | Check if a dataset is current vs. its update schedule |
 | `profile_data` | Statistical profile using DuckDB SUMMARIZE |
+| `validate_result` | Validate that a data claim is supported by query results |
 
 </details>
 

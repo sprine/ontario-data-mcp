@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-03-10
+
+### Added
+
+- **`validate_result` tool** for claim-to-data backtrace verification — re-executes SQL and checks numeric/term claims against actual query results.
+- **Auto-cast numeric VARCHAR columns** to DOUBLE at download time (including comma-formatted numbers like "1,234,567").
+- **`ontario://schema/{table_name}` MCP Resource** for pre-loaded column types.
+- Column types, row truncation, SQL echo, and heuristic warnings in `query_cached` output.
+- Data provenance (source table, resource ID, download time) in `query_cached` results.
+- Numeric stats for VARCHAR columns flagged as numeric in `profile_data`.
+- Carousel prev/next navigation buttons and dot indicators on landing page.
+- Refreshed landing page examples with real Ontario data.
+- Permanent live smoke tests for Ontario, Toronto, and Ottawa portals.
+- Deterministic doc-accuracy tests to catch README/site drift.
+
+### Changed
+
+- Wire all tools to markdown formatters, drop raw JSON responses.
+- Enrich tool descriptions with workflow sequencing and accuracy guidance.
+- Parameterize spatial queries and add coordinate validation.
+- Document `validate_result` in README tool tables and site landing page.
+- Consolidate duplicated code per plan-review: deduplicate, simplify, delete dead code.
+
+### Fixed
+
+- **Security:** fix SQL injection bypasses and exception crash.
+- Fix Ottawa 404s on dataset lookup and `list_topics` output overflow.
+- Fix prefixed IDs breaking `require_cached` lookups and dataset metadata cache.
+- Fix CLI cache refresh hardcoded to Ontario portal.
+- Fix CLI refresh crash for CKAN portals (missing `http_client` arg).
+- Fix `sql_query` raising raw `KeyError` for invalid portal.
+- Fix `fetchall()` full materialization and empty URL download crashes.
+- Fix timeout exception catches and replace bare `except`/`pass` with `logger.debug`.
+- Fix `cache_manage` description: remove false "refresh" action.
+- Fix 3 tautological test assertions that always passed.
+
 ## [0.1.7] - 2026-02-20
 
 ### Added
