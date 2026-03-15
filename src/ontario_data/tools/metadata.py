@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastmcp import Context
+from fastmcp.tools.tool import ToolResult
 
 from ontario_data.formatting import md_response
 from ontario_data.server import READONLY, mcp
@@ -14,6 +15,33 @@ from ontario_data.utils import (
     resolve_dataset,
     unwrap_first_match,
 )
+
+_RESOURCE_SCHEMA_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "resource_id": {"type": "string"},
+        "total_records": {"type": "integer"},
+        "num_columns": {"type": "integer"},
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "type": {"type": "string"},
+                    "sample_values": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+                "required": ["name", "type"],
+            },
+        },
+        "datastore_active": {"type": "boolean"},
+        "hint": {"type": "string"},
+    },
+    "required": ["resource_id"],
+}
 
 
 @mcp.tool(annotations=READONLY)
@@ -92,12 +120,12 @@ async def list_resources(
     )
 
 
-@mcp.tool(annotations=READONLY)
+@mcp.tool(annotations=READONLY, output_schema=_RESOURCE_SCHEMA_OUTPUT_SCHEMA)
 async def get_resource_schema(
     resource_id: str,
     sample_size: int = 5,
     ctx: Context = None,
-) -> str:
+) -> ToolResult:
     """Get the column schema and sample values for a datastore resource.
 
     Args:
@@ -148,7 +176,8 @@ async def get_resource_schema(
         results = await fan_out(ctx, None, _schema, first_match=True)
         _, data = unwrap_first_match(results, bare_id, "Resource")
 
-    return md_response(**data)
+    markdown = md_response(**data)
+    return ToolResult(content=markdown, structured_content=data)
 
 
 @mcp.tool(annotations=READONLY)

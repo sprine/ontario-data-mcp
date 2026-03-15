@@ -66,3 +66,13 @@ async def test_annotation_values_are_correct():
                 assert tool.annotations.destructiveHint is False, (
                     f"{tool.name} should be destructiveHint=False"
                 )
+
+
+@pytest.mark.asyncio
+async def test_get_resource_schema_has_output_schema():
+    """get_resource_schema declares outputSchema with fields array."""
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+        grs = next(t for t in tools if t.name == "get_resource_schema")
+        assert grs.outputSchema is not None
+        assert "fields" in grs.outputSchema.get("properties", {})
