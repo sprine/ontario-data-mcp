@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2026-03-15
+
+### Added
+- Structured output (`outputSchema` + `ToolResult`) for `get_resource_schema` and `query_cached`
+- Scientific notation column detection and auto-cast to DOUBLE in `store_resource`
+- Whitespace stripping from column names at store time
+
+### Changed
+- `store_resource` offloaded to thread pool to unblock the event loop during downloads
+- DuckDB bumped to >=1.5.0 for geometry type, non-blocking checkpoints, and `read_duckdb()`
+- Fixed ArcGIS org dataset count; removed dead code in `query_cached`
+
+### Fixed
+- MCP wire-format error handling in `query_cached` (SEP-1303)
+- Fall back to latin-1 when a CSV contains non-UTF-8 bytes (e.g. accented characters in older Ontario government data)
+
 ## [0.2.0] - 2026-03-10
 
 ### Added

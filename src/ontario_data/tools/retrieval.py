@@ -28,6 +28,14 @@ from ontario_data.utils import (
 logger = logging.getLogger("ontario_data.retrieval")
 
 
+def _read_csv_bytes(content: bytes) -> pd.DataFrame:
+    """Read CSV bytes, falling back to latin-1 if the file isn't valid UTF-8."""
+    try:
+        return pd.read_csv(io.BytesIO(content), encoding="utf-8")
+    except UnicodeDecodeError:
+        return pd.read_csv(io.BytesIO(content), encoding="latin-1")
+
+
 async def _download_resource_data(
     ckan: CKANClient,
     resource_id: str,
@@ -59,7 +67,7 @@ async def _download_resource_data(
     content = response.content
 
     if fmt in ("CSV", "TXT"):
-        df = pd.read_csv(io.BytesIO(content))
+        df = _read_csv_bytes(content)
     elif fmt in ("XLS", "XLSX"):
         df = pd.read_excel(io.BytesIO(content))
     elif fmt == "JSON":
@@ -89,7 +97,7 @@ async def _download_arcgis_resource_data(
     if csv_url:
         resp = await http_client.get(csv_url, timeout=120.0, follow_redirects=True)
         resp.raise_for_status()
-        df = pd.read_csv(io.BytesIO(resp.content))
+        df = _read_csv_bytes(resp.content)
         resource_meta = {
             "id": resource_id,
             "package_id": resource_id,
