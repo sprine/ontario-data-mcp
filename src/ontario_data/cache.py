@@ -184,11 +184,12 @@ class CacheManager:
     def _detect_numeric_varchars(conn, table_name: str) -> list[dict]:
         """Detect VARCHAR columns whose values look numeric.
 
-        Returns a list of dicts with 'name' and 'has_commas' keys.
+        Returns a list of dicts with 'name', 'has_commas', and 'has_sci' keys.
         """
         columns = conn.execute(f'DESCRIBE "{table_name}"').fetchall()
         plain_re = re.compile(r"^-?\d+\.?\d*$")
         comma_re = re.compile(r"^-?\d{1,3}(,\d{3})+(\.\d+)?$")
+        sci_re = re.compile(r"^-?\d+\.?\d*[eE][+-]?\d+$")
         suspects: list[dict] = []
         for col in columns:
             col_name, col_type = col[0], str(col[1])
@@ -203,9 +204,14 @@ class CacheManager:
                 continue
             plain_count = sum(1 for v in values if plain_re.match(v))
             comma_count = sum(1 for v in values if comma_re.match(v))
-            numeric_count = plain_count + comma_count
+            sci_count = sum(1 for v in values if sci_re.match(v))
+            numeric_count = plain_count + comma_count + sci_count
             if numeric_count / len(values) > 0.8:
-                suspects.append({"name": col_name, "has_commas": comma_count > 0})
+                suspects.append({
+                    "name": col_name,
+                    "has_commas": comma_count > 0,
+                    "has_sci": sci_count > 0,
+                })
         return suspects
 
     def store_resource(

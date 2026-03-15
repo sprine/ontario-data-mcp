@@ -68,6 +68,18 @@ class TestStoreDataFrame:
         rows = cache.query("SELECT Name FROM test_ws2")
         assert rows[0]["Name"] == "  Alice  "
 
+    def test_detects_scientific_notation_numerics(self, cache):
+        """Columns with scientific notation strings are cast to DOUBLE."""
+        df = pd.DataFrame([
+            {"measurement": "1.23e-5", "label": "trace"},
+            {"measurement": "4.56E+10", "label": "large"},
+            {"measurement": "7.89e0", "label": "unit"},
+        ])
+        cache.store_resource("res_sci", "ds1", "test_sci", df, "http://example.com")
+        rows = cache.query('SELECT measurement FROM test_sci WHERE measurement < 0.001')
+        assert len(rows) == 1
+        assert abs(rows[0]["measurement"] - 1.23e-5) < 1e-10
+
 
 class TestCacheQueries:
     def test_list_cached(self, cache):
