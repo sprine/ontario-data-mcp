@@ -54,6 +54,20 @@ class TestStoreDataFrame:
         result = cache.execute_sql("SELECT count(*) FROM tbl")
         assert result[0][0] == 3
 
+    def test_strips_whitespace_from_column_names(self, cache):
+        """Columns with leading/trailing spaces are normalized at storage time."""
+        df = pd.DataFrame([{"  Count  ": 1, " Name ": "Alice"}])
+        cache.store_resource("res_ws1", "ds1", "test_ws", df, "http://example.com")
+        rows = cache.query("SELECT * FROM test_ws")
+        assert rows[0] == {"Count": 1, "Name": "Alice"}
+
+    def test_strips_whitespace_does_not_alter_internal_content(self, cache):
+        """Whitespace inside column values is left unchanged."""
+        df = pd.DataFrame([{"Name": "  Alice  "}])
+        cache.store_resource("res_ws2", "ds1", "test_ws2", df, "http://example.com")
+        rows = cache.query("SELECT Name FROM test_ws2")
+        assert rows[0]["Name"] == "  Alice  "
+
 
 class TestCacheQueries:
     def test_list_cached(self, cache):

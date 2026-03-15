@@ -218,6 +218,10 @@ class CacheManager:
     ):
         """Upsert: drops the previous table for this resource_id (if any)
         before creating the new one, so re-downloads are safe."""
+        # Normalize column names: strip leading/trailing whitespace
+        df = df.copy()
+        df.columns = df.columns.str.strip()
+
         def _do(conn):
             # Drop existing table if re-caching
             old = conn.execute(

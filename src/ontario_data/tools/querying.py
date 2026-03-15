@@ -186,6 +186,7 @@ async def query_cached(
     Use SUM(quantity_col) not COUNT(*) when rows contain per-row counts (e.g.
     a "count" or "number_of" column). COUNT(*) counts rows, not quantities.
     Column names vary across resources in the same dataset — always DESCRIBE first.
+    Use SELECT * RENAME ("old col" AS new_col) to normalize column names when joining across datasets.
     Values containing semicolons should be matched with LIKE patterns, not = equality.
     Quote table names with double quotes in SQL.
 
