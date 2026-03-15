@@ -216,17 +216,39 @@ class TestResourceShow:
 
 class TestCompatMethods:
     @pytest.mark.asyncio
-    async def test_organization_list_returns_single_org(self):
+    async def test_organization_list_returns_single_org_with_count(self):
+        mock_response = httpx.Response(
+            200,
+            request=_FAKE_REQUEST,
+            json=make_ogc_search_response([], total=665),
+        )
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.get.return_value = mock_response
+
         client = ArcGISHubClient(
             base_url="https://open.ottawa.ca",
-            http_client=AsyncMock(),
+            http_client=mock_client,
             org_name="ottawa",
             org_title="City of Ottawa",
         )
         orgs = await client.organization_list()
         assert len(orgs) == 1
         assert orgs[0]["title"] == "City of Ottawa"
-        assert "package_count" not in orgs[0]
+        assert orgs[0]["package_count"] == 665
+
+    @pytest.mark.asyncio
+    async def test_organization_list_without_counts(self):
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        client = ArcGISHubClient(
+            base_url="https://open.ottawa.ca",
+            http_client=mock_client,
+            org_name="ottawa",
+            org_title="City of Ottawa",
+        )
+        orgs = await client.organization_list(include_dataset_count=False)
+        assert len(orgs) == 1
+        assert orgs[0]["package_count"] == 0
+        mock_client.get.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_tag_list_returns_empty(self):

@@ -192,10 +192,18 @@ class ArcGISHubClient:
         all_fields: bool = False,
         include_dataset_count: bool = True,
     ) -> list[dict]:
+        package_count = 0
+        if include_dataset_count:
+            try:
+                result = await self.package_search(rows=0)
+                package_count = result.get("count", 0)
+            except Exception:
+                logger.debug("Failed to fetch dataset count for %s", self._org["name"], exc_info=True)
         return [{
             "name": self._org["name"],
             "title": self._org["title"],
             "description": f"Single-org portal — all datasets belong to {self._org['title']}.",
+            "package_count": package_count,
         }]
 
     async def tag_list(self, query: str | None = None, all_fields: bool = False) -> list:

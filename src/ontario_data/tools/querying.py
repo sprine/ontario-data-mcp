@@ -265,7 +265,6 @@ async def query_cached(
     except Exception as e:
         cached = cache.list_cached()
         table_names = [c["table_name"] for c in cached]
-        msg = str(e).lower()
         hints = ["Quote table names with double quotes."]
         augmented = f"{e}\n\nAvailable tables: {table_names}\nHints: {' '.join(hints)}"
         raise InvalidQueryError(augmented) from e
