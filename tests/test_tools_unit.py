@@ -61,9 +61,10 @@ class TestQueryCached:
             sql='SELECT * FROM "ds_test_data_test_r1" LIMIT 2',
             ctx=ctx,
         )
-        assert "**2 rows**" in result
-        assert "Alice" in result
-        assert "Bob" in result
+        text = result.content[0].text
+        assert "**2 rows**" in text
+        assert "Alice" in text
+        assert "Bob" in text
 
     @pytest.mark.asyncio
     async def test_rejects_drop(self, populated_cache):
@@ -80,6 +81,23 @@ class TestQueryCached:
         ctx = make_mock_context(populated_cache)
         with pytest.raises(Exception, match="Available tables"):
             await query_cached(sql='SELECT * FROM "nonexistent_table"', ctx=ctx)
+
+    @pytest.mark.asyncio
+    async def test_query_cached_returns_structured_content(self, cache):
+        """query_cached returns ToolResult with structured_content alongside text."""
+        from fastmcp.tools.tool import ToolResult
+        from ontario_data.tools.querying import query_cached
+
+        df = pd.DataFrame([{"city": "Toronto", "pop": 2930000}])
+        cache.store_resource("r1", "ds1", "test_cities", df, "http://example.com")
+
+        ctx = make_mock_context(cache)
+        result = await query_cached('SELECT * FROM "test_cities"', ctx=ctx)
+
+        assert isinstance(result, ToolResult)
+        assert result.structured_content is not None
+        assert "rows" in result.structured_content
+        assert result.structured_content["rows"][0]["city"] == "Toronto"
 
 
 class TestCacheInfo:
@@ -182,8 +200,9 @@ class TestQueryCachedColumnTypes:
             sql='SELECT * FROM "ds_test_data_test_r1" LIMIT 2',
             ctx=ctx,
         )
+        text = result.content[0].text
         # Should include column type info
-        assert "VARCHAR" in result or "BIGINT" in result or "INTEGER" in result
+        assert "VARCHAR" in text or "BIGINT" in text or "INTEGER" in text
 
     @pytest.mark.asyncio
     async def test_numeric_varchars_auto_cast(self, cache):
@@ -207,13 +226,14 @@ class TestQueryCachedColumnTypes:
             sql='SELECT * FROM "ds_varchar_test"',
             ctx=ctx,
         )
+        text = result.content[0].text
         # Numeric columns should be DOUBLE, not VARCHAR
-        assert "year (DOUBLE)" in result
-        assert "value (DOUBLE)" in result
+        assert "year (DOUBLE)" in text
+        assert "value (DOUBLE)" in text
         # String column stays VARCHAR
-        assert "name (VARCHAR)" in result
+        assert "name (VARCHAR)" in text
         # No type warnings surfaced to user
-        assert "TRY_CAST" not in result
+        assert "TRY_CAST" not in text
 
 
 class TestQueryCachedTruncation:
@@ -239,9 +259,10 @@ class TestQueryCachedTruncation:
             sql='SELECT * FROM "ds_big_table"',
             ctx=ctx,
         )
-        assert "truncated" in result.lower()
-        assert "2,000" in result
-        assert "5,000" in result
+        text = result.content[0].text
+        assert "truncated" in text.lower()
+        assert "2,000" in text
+        assert "5,000" in text
 
     @pytest.mark.asyncio
     async def test_no_truncation_with_limit(self, populated_cache):
@@ -252,7 +273,8 @@ class TestQueryCachedTruncation:
             sql='SELECT * FROM "ds_test_data_test_r1" LIMIT 2',
             ctx=ctx,
         )
-        assert "truncated" not in result.lower()
+        text = result.content[0].text
+        assert "truncated" not in text.lower()
 
 
 class TestQueryCachedEchoSQL:
@@ -265,8 +287,9 @@ class TestQueryCachedEchoSQL:
         sql = 'SELECT * FROM "ds_test_data_test_r1" LIMIT 2'
         ctx = make_mock_context(populated_cache)
         result = await query_cached(sql=sql, ctx=ctx)
-        assert sql in result
-        assert "**Query:**" in result
+        text = result.content[0].text
+        assert sql in text
+        assert "**Query:**" in text
 
 
 class TestQueryCachedHeuristicWarnings:
@@ -292,8 +315,9 @@ class TestQueryCachedHeuristicWarnings:
             sql='SELECT COUNT(*) FROM "ds_count_test"',
             ctx=ctx,
         )
-        assert "SUM" in result
-        assert "No_of_Exceedances" in result
+        text = result.content[0].text
+        assert "SUM" in text
+        assert "No_of_Exceedances" in text
 
     @pytest.mark.asyncio
     async def test_zero_rows_warning(self, populated_cache):
@@ -304,7 +328,8 @@ class TestQueryCachedHeuristicWarnings:
             sql='SELECT * FROM "ds_test_data_test_r1" WHERE name = \'Nonexistent\'',
             ctx=ctx,
         )
-        assert "0 rows returned but table has" in result
+        text = result.content[0].text
+        assert "0 rows returned but table has" in text
 
     @pytest.mark.asyncio
     async def test_few_groups_warning(self, cache):
@@ -326,7 +351,8 @@ class TestQueryCachedHeuristicWarnings:
             sql='SELECT category, COUNT(*) FROM "ds_groups_test" GROUP BY category',
             ctx=ctx,
         )
-        assert "Only 2 groups from" in result
+        text = result.content[0].text
+        assert "Only 2 groups from" in text
 
 
 class TestSpatialQueryValidation:
@@ -388,9 +414,10 @@ class TestQueryCachedProvenance:
             sql='SELECT * FROM "ds_test_data_test_r1" LIMIT 2',
             ctx=ctx,
         )
-        assert "**Source:**" in result
-        assert "test-r1" in result
-        assert "Downloaded:" in result
+        text = result.content[0].text
+        assert "**Source:**" in text
+        assert "test-r1" in text
+        assert "Downloaded:" in text
 
 
 class TestProfileDataAutoCast:

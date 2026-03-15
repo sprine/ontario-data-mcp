@@ -34,6 +34,17 @@ async def test_query_cached_invalid_sql_returns_is_error():
 
 
 @pytest.mark.asyncio
+async def test_query_cached_has_output_schema():
+    """query_cached declares outputSchema for structured clients."""
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+        qc = next(t for t in tools if t.name == "query_cached")
+        assert qc.outputSchema is not None
+        assert qc.outputSchema.get("type") == "object"
+        assert "rows" in qc.outputSchema.get("properties", {})
+
+
+@pytest.mark.asyncio
 async def test_annotation_values_are_correct():
     """All tools are READONLY except cache_manage and refresh_cache which are DESTRUCTIVE."""
     destructive_tools = {"cache_manage", "refresh_cache"}

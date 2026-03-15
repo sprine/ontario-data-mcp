@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastmcp import Context
+from fastmcp.tools.tool import ToolResult
 
 logger = logging.getLogger("ontario_data.querying")
 
@@ -25,6 +26,37 @@ from ontario_data.utils import (
 )
 
 MAX_QUERY_ROWS = 2000
+
+_QUERY_CACHED_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "sql": {"type": "string", "description": "The SQL query that was executed"},
+        "rows": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Result rows as JSON objects",
+        },
+        "columns": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Column names in result order",
+        },
+        "total_rows": {
+            "type": "integer",
+            "description": "Total rows matched (may exceed rows if truncated)",
+        },
+        "truncated": {
+            "type": "boolean",
+            "description": "True if results were truncated to MAX_QUERY_ROWS",
+        },
+        "warnings": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Heuristic warnings (e.g. COUNT(*) vs SUM suggestion)",
+        },
+    },
+    "required": ["sql", "rows", "columns", "truncated", "warnings"],
+}
 
 _COUNT_STAR_RE = re.compile(r"\bCOUNT\s*\(\s*\*\s*\)", re.IGNORECASE)
 _GROUP_BY_RE = re.compile(r"\bGROUP\s+BY\b", re.IGNORECASE)
@@ -173,11 +205,11 @@ async def sql_query(
     return format_records(clean_records, row_count=len(clean_records), fields=field_info)
 
 
-@mcp.tool(annotations=READONLY)
+@mcp.tool(annotations=READONLY, output_schema=_QUERY_CACHED_OUTPUT_SCHEMA)
 async def query_cached(
     sql: str,
     ctx: Context = None,
-) -> str:
+) -> ToolResult:
     """Run a SQL query against locally cached data in DuckDB.
 
     Use table names from download_resource or cache_info.
@@ -262,7 +294,19 @@ async def query_cached(
             except Exception:
                 logger.debug("Failed to build data provenance for tables %s", table_names_in_sql, exc_info=True)
 
-        return "\n".join(parts)
+        markdown = "\n".join(parts)
+        col_names = [f["name"] for f in fields] if fields else []
+        return ToolResult(
+            content=markdown,
+            structured_content={
+                "sql": sql,
+                "rows": results,
+                "columns": col_names,
+                "total_rows": truncated_total if truncated_total is not None else len(results),
+                "truncated": truncated_total is not None,
+                "warnings": warnings,
+            },
+        )
     except Exception as e:
         cached = cache.list_cached()
         table_names = [c["table_name"] for c in cached]
