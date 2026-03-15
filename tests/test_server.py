@@ -21,6 +21,19 @@ async def test_all_tools_have_annotations():
 
 
 @pytest.mark.asyncio
+async def test_query_cached_invalid_sql_returns_is_error():
+    """SEP-1303: invalid SQL via MCP wire format returns isError=True."""
+    async with Client(mcp) as client:
+        result = await client.call_tool_mcp(
+            name="query_cached",
+            arguments={"sql": "DROP TABLE foo"},
+        )
+        assert result.isError is True
+        assert len(result.content) > 0
+        assert "read-only" in result.content[0].text.lower()
+
+
+@pytest.mark.asyncio
 async def test_annotation_values_are_correct():
     """All tools are READONLY except cache_manage and refresh_cache which are DESTRUCTIVE."""
     destructive_tools = {"cache_manage", "refresh_cache"}
