@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 from datetime import datetime, timezone
@@ -154,14 +155,19 @@ async def download_resource(
     await ctx.report_progress(70, 100, "Storing in DuckDB...")
 
     table_name = make_table_name(dataset.get("name", ""), bare_id, portal=portal)
-    cache.store_resource(
+    await asyncio.to_thread(
+        cache.store_resource,
         resource_id=bare_id,
         dataset_id=dataset.get("id", ""),
         table_name=table_name,
         df=df,
         source_url=resource.get("url", ""),
     )
-    cache.store_dataset_metadata(dataset.get("id", ""), dataset)
+    await asyncio.to_thread(
+        cache.store_dataset_metadata,
+        dataset.get("id", ""),
+        dataset,
+    )
 
     # Set staleness expiry based on update frequency
     update_freq = dataset.get("update_frequency")
@@ -277,7 +283,8 @@ async def refresh_cache(
                 df, resource, dataset = await _download_arcgis_resource_data(ckan, item["resource_id"], http_client)
             else:
                 df, resource, dataset = await _download_resource_data(ckan, item["resource_id"], http_client)
-            cache.store_resource(
+            await asyncio.to_thread(
+                cache.store_resource,
                 resource_id=item["resource_id"],
                 dataset_id=item["dataset_id"],
                 table_name=item["table_name"],
