@@ -74,7 +74,14 @@ class ArcGISHubClient:
             params=params,
         )
         resp.raise_for_status()
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError:
+            raise httpx.DecodingError(
+                f"package_search returned non-JSON response "
+                f"(HTTP {resp.status_code}, "
+                f"content-type: {resp.headers.get('content-type', 'unknown')})"
+            )
 
         results = []
         for feature in data.get("features", []):
@@ -154,7 +161,21 @@ class ArcGISHubClient:
                         break
 
         resp.raise_for_status()
-        attrs = resp.json()["data"]["attributes"]
+        try:
+            body = resp.json()
+        except ValueError:
+            raise httpx.DecodingError(
+                f"package_show returned non-JSON response for '{id}' "
+                f"(HTTP {resp.status_code}, "
+                f"content-type: {resp.headers.get('content-type', 'unknown')})"
+            )
+        try:
+            attrs = body["data"]["attributes"]
+        except (KeyError, TypeError):
+            raise httpx.DecodingError(
+                f"package_show for '{id}' returned unexpected structure "
+                f"(missing data.attributes)"
+            )
 
         tags_raw = attrs.get("tags") or []
         tags = [{"name": t} for t in tags_raw] if isinstance(tags_raw, list) else []
@@ -271,7 +292,14 @@ class ArcGISHubClient:
                         )
                         return None
                 resp.raise_for_status()
-                data = resp.json().get("data", [])
+                try:
+                    data = resp.json().get("data", [])
+                except ValueError:
+                    logger.warning(
+                        "Downloads API returned non-JSON for %s (HTTP %d)",
+                        dataset_id, resp.status_code,
+                    )
+                    return None
                 for d in data:
                     attrs = d.get("attributes", {})
                     if attrs.get("format") == fmt and attrs.get("url"):

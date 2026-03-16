@@ -82,7 +82,14 @@ class CKANClient:
                     continue
 
                 response.raise_for_status()
-                data = response.json()
+                try:
+                    data = response.json()
+                except ValueError:
+                    raise CKANError(
+                        f"{action} returned non-JSON response "
+                        f"(HTTP {response.status_code}, "
+                        f"content-type: {response.headers.get('content-type', 'unknown')})"
+                    )
                 if not data.get("success"):
                     error = data.get("error", {})
                     msg = error.get("message", str(error))
