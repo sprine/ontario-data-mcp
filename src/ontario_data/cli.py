@@ -172,6 +172,7 @@ def cmd_refresh(args: argparse.Namespace) -> None:
                     http_client=http,
                     org_name=portal,
                     org_title=config.name.replace(" Open Data", ""),
+                    owner_filter=config.owner_filter,
                 )
                 df, resource, dataset = await _download_arcgis_resource_data(
                     client, bare_id, http

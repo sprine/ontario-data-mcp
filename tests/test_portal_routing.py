@@ -9,8 +9,8 @@ from ontario_data.portals import PORTALS, PortalType
 
 
 class TestPortalRegistry:
-    def test_has_three_portals(self):
-        assert set(PORTALS.keys()) == {"ontario", "toronto", "ottawa"}
+    def test_has_six_portals(self):
+        assert set(PORTALS.keys()) == {"ontario", "toronto", "ottawa", "waterloo", "kitchener", "region-waterloo"}
 
     def test_ontario_is_ckan(self):
         assert PORTALS["ontario"].portal_type == PortalType.CKAN
@@ -127,8 +127,8 @@ class TestFanOut:
             raise ValueError(f"not found on {pk}")
 
         results = await fan_out(ctx, None, _fn, first_match=True)
-        # Should have errors for all 3 portals
-        assert len(results) == 3
+        # Should have errors for all portals
+        assert len(results) == len(PORTALS)
         portals = [r[0] for r in results]
         assert "ontario" in portals
         assert "toronto" in portals
@@ -145,10 +145,10 @@ class TestFanOut:
             return f"result_{pk}"
 
         results = await fan_out(ctx, None, _fn)
-        # All 3 portals
-        assert len(results) == 3
+        # All portals
+        assert len(results) == len(PORTALS)
         portals = {r[0] for r in results}
-        assert portals == {"ontario", "toronto", "ottawa"}
+        assert {"ontario", "toronto", "ottawa"}.issubset(portals)
         assert all(r[2] is None for r in results)
 
     @pytest.mark.asyncio

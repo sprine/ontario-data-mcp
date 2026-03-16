@@ -23,11 +23,13 @@ class ArcGISHubClient:
         http_client: httpx.AsyncClient | None = None,
         org_name: str = "ottawa",
         org_title: str = "City of Ottawa",
+        owner_filter: str | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self._http = http_client
         self._owns_client = http_client is None
         self._org = {"title": org_title, "name": org_name}
+        self._owner_filter = owner_filter
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._http is None:
@@ -62,6 +64,8 @@ class ArcGISHubClient:
             params["startindex"] = start
         if query and query != "*:*":
             params["q"] = query
+        if self._owner_filter:
+            params["filter"] = f"owner={self._owner_filter}"
 
         resp = await client.get(
             f"{self.base_url}/api/search/v1/collections/all/items",

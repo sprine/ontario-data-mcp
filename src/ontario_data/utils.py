@@ -72,6 +72,7 @@ def get_deps(ctx: Context, portal: str) -> tuple[PortalClient, CacheManager]:
                 http_client=state["http_client"],
                 org_name=portal,
                 org_title=config.name.replace(" Open Data", ""),
+                owner_filter=config.owner_filter,
             )
         else:
             raise ValueError(f"Portal '{portal}' uses unknown type {config.portal_type}.")

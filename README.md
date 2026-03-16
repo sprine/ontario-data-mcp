@@ -8,7 +8,7 @@
 
 This is an [MCP server](https://modelcontextprotocol.io) for discovering, downloading, querying, and analyzing datasets from Ontario's Open Data portals. It allows asking questions of the data in English (or Spanish, Chinese, French, etc).
 
-It currently supports the Ontario, Toronto, and Ottawa portals, and utilizes a shared [DuckDB](https://duckdb.org/) cache for fast SQL queries, statistical analysis, and geospatial operations.
+It currently supports the Ontario, Toronto, Ottawa, Waterloo, Kitchener, and Region of Waterloo portals, and utilizes a shared [DuckDB](https://duckdb.org/) cache for fast SQL queries, statistical analysis, and geospatial operations.
 
 ## Contributing
 
@@ -93,6 +93,9 @@ All searches fan out to every portal by default — no need to select a portal. 
 | `ontario` | CKAN | ~5,700 |
 | `toronto` | CKAN | ~533 |
 | `ottawa` | ArcGIS Hub | ~665 |
+| `waterloo` | ArcGIS Hub | ~129 |
+| `kitchener` | ArcGIS Hub | ~219 |
+| `region-waterloo` | ArcGIS Hub | ~125 |
 
 ## List of tools available to the AI agent
 
@@ -211,3 +214,6 @@ Data accessed through this tool is provided under the following open government 
 - Contains information licensed under the [Open Government Licence – Ontario](https://www.ontario.ca/page/open-government-licence-ontario).
 - Contains information licensed under the [Open Government Licence – Toronto](https://open.toronto.ca/open-data-licence/).
 - Contains information licensed under the [Open Government Licence – City of Ottawa](https://open.ottawa.ca/pages/open-data-licence).
+- Contains information licensed under the [City of Waterloo Open Data Licence](https://data.waterloo.ca/pages/open-data-licence).
+- Contains information licensed under the [Open Government Licence - The Corporation of the City of Kitchener](https://www.kitchener.ca/council-and-city-administration/data-and-maps/open-data-licence/).
+- Contains information licensed under the [Region of Waterloo Open Data Licence v.2.0](https://www.regionofwaterloo.ca/en/regional-government/open-data.aspx).

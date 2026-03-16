@@ -51,7 +51,7 @@ mcp = FastMCP(
     "Ontario Data Catalogue",
     instructions=(
         "Search, download, cache, and analyze datasets from Ontario-region open data portals "
-        "(Ontario, Toronto, Ottawa).\n\n"
+        "(Ontario, Toronto, Ottawa, Waterloo, Kitchener, Region of Waterloo).\n\n"
         "All searches fan out to every portal by default — no need to select a portal.\n"
         "Dataset and resource IDs are prefixed with their portal (e.g. toronto:abc123).\n"
         "To narrow a search to one portal, use the optional portal parameter.\n\n"
