@@ -148,8 +148,11 @@ class CacheManager:
                     cached_at TIMESTAMP
                 )
             """)
-            # Install and load extensions
-            for ext in ["httpfs", "json"]:
+            # Install and load extensions.
+            # httpfs is intentionally excluded: it enables reading arbitrary
+            # local/remote files via SQL (e.g. read_csv('file:///etc/passwd')),
+            # which is a security risk in a user-facing query tool.
+            for ext in ["json"]:
                 try:
                     conn.execute(f"INSTALL {ext}")
                     conn.execute(f"LOAD {ext}")
@@ -224,54 +227,66 @@ class CacheManager:
     ):
         """Upsert: drops the previous table for this resource_id (if any)
         before creating the new one, so re-downloads are safe."""
-        # Normalize column names: strip leading/trailing whitespace
         df = df.copy()
+
+        if len(df.columns) == 0:
+            raise ValueError(
+                f"Cannot cache resource '{resource_id}': DataFrame has no columns"
+            )
+
+        # Normalize column names: strip leading/trailing whitespace
         df.columns = df.columns.str.strip()
 
         def _do(conn):
-            # Drop existing table if re-caching
-            old = conn.execute(
-                "SELECT table_name FROM _cache_metadata WHERE resource_id = ?",
-                [resource_id],
-            ).fetchone()
-            if old:
-                conn.execute(f'DROP TABLE IF EXISTS "{old[0]}"')
-                conn.execute(
-                    "DELETE FROM _cache_metadata WHERE resource_id = ?", [resource_id]
-                )
-
-            # Create table from DataFrame
-            conn.execute(f'CREATE TABLE "{table_name}" AS SELECT * FROM df')
-
-            # Detect VARCHAR columns that look numeric and auto-cast to DOUBLE
-            numeric_varchars = self._detect_numeric_varchars(conn, table_name)
-            for col_info in numeric_varchars:
-                c = col_info["name"].replace('"', '""')
-                if col_info["has_commas"]:
-                    expr = f'TRY_CAST(REPLACE("{c}", \',\', \'\') AS DOUBLE)'
-                else:
-                    expr = f'TRY_CAST("{c}" AS DOUBLE)'
-                try:
+            conn.execute("BEGIN")
+            try:
+                # Drop existing table if re-caching
+                old = conn.execute(
+                    "SELECT table_name FROM _cache_metadata WHERE resource_id = ?",
+                    [resource_id],
+                ).fetchone()
+                if old:
+                    conn.execute(f'DROP TABLE IF EXISTS "{old[0]}"')
                     conn.execute(
-                        f'ALTER TABLE "{table_name}" ALTER "{c}" '
-                        f'TYPE DOUBLE USING {expr}'
+                        "DELETE FROM _cache_metadata WHERE resource_id = ?", [resource_id]
                     )
-                except Exception:
-                    logger.debug("Failed to auto-cast column %s in %s", c, table_name, exc_info=True)
 
-            # Record metadata
-            now = datetime.now(timezone.utc)
-            size_row = conn.execute(
-                "SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?",
-                [table_name],
-            ).fetchone()
-            size = size_row[0] if size_row else 0
-            conn.execute(
-                """INSERT INTO _cache_metadata
-                   (resource_id, dataset_id, table_name, downloaded_at, row_count, size_bytes, source_url, type_warnings)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                [resource_id, dataset_id, table_name, now, len(df), int(size), source_url, None],
-            )
+                # Create table from DataFrame
+                conn.execute(f'CREATE TABLE "{table_name}" AS SELECT * FROM df')
+
+                # Detect VARCHAR columns that look numeric and auto-cast to DOUBLE
+                numeric_varchars = self._detect_numeric_varchars(conn, table_name)
+                for col_info in numeric_varchars:
+                    c = col_info["name"].replace('"', '""')
+                    if col_info["has_commas"]:
+                        expr = f'TRY_CAST(REPLACE("{c}", \',\', \'\') AS DOUBLE)'
+                    else:
+                        expr = f'TRY_CAST("{c}" AS DOUBLE)'
+                    try:
+                        conn.execute(
+                            f'ALTER TABLE "{table_name}" ALTER "{c}" '
+                            f'TYPE DOUBLE USING {expr}'
+                        )
+                    except Exception:
+                        logger.debug("Failed to auto-cast column %s in %s", c, table_name, exc_info=True)
+
+                # Record metadata
+                now = datetime.now(timezone.utc)
+                size_row = conn.execute(
+                    "SELECT estimated_size FROM duckdb_tables() WHERE table_name = ?",
+                    [table_name],
+                ).fetchone()
+                size = size_row[0] if size_row else 0
+                conn.execute(
+                    """INSERT INTO _cache_metadata
+                       (resource_id, dataset_id, table_name, downloaded_at, row_count, size_bytes, source_url, type_warnings)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    [resource_id, dataset_id, table_name, now, len(df), int(size), source_url, None],
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
 
         self._with_retry(_do)
 

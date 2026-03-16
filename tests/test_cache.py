@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
 from ontario_data.cache import CacheManager, InvalidQueryError
+import duckdb
 
 
 @pytest.fixture
@@ -142,6 +143,39 @@ class TestSemicolonIntegration:
         cache.store_resource("r1", "ds1", "tbl", df, "http://example.com")
         with pytest.raises(InvalidQueryError):
             cache.query("SELECT * FROM tbl; DROP TABLE tbl")
+
+
+class TestEmptyDataFrame:
+    def test_store_zero_row_dataframe(self, cache):
+        """0-row DataFrames are cached without error; metadata records row_count=0."""
+        df = pd.DataFrame({"name": pd.Series([], dtype=str), "value": pd.Series([], dtype=float)})
+        cache.store_resource("r_empty", "ds1", "empty_tbl", df, "http://example.com/empty.csv")
+
+        assert cache.is_cached("r_empty")
+        meta = cache.get_resource_meta("r_empty")
+        assert meta["row_count"] == 0
+
+        rows = cache.query("SELECT * FROM empty_tbl")
+        assert rows == []
+
+    def test_store_no_columns_raises(self, cache):
+        """DataFrames with no columns are rejected — they produce unusable tables."""
+        df = pd.DataFrame()
+        with pytest.raises(ValueError, match="no columns"):
+            cache.store_resource("r_nocols", "ds1", "nocols_tbl", df, "http://example.com")
+
+    def test_transaction_rolls_back_on_duplicate_table(self, cache):
+        """If CREATE TABLE fails (duplicate name without a prior cache entry),
+        the transaction rolls back and no partial metadata row is left."""
+        df = pd.DataFrame({"x": [1, 2]})
+        # Manually create a table with the target name so CREATE TABLE will conflict.
+        cache.execute_sql('CREATE TABLE orphan_tbl (x INTEGER)')
+
+        with pytest.raises(Exception):
+            cache.store_resource("r_dup", "ds1", "orphan_tbl", df, "http://example.com")
+
+        # Metadata must NOT have been written.
+        assert not cache.is_cached("r_dup")
 
 
 class TestDatasetMetadata:

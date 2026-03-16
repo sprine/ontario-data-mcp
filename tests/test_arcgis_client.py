@@ -281,3 +281,97 @@ class TestDownloadMethods:
         )
         url = await client.get_download_url("abc123_0", fmt="csv")
         assert url is None
+
+    @pytest.mark.asyncio
+    async def test_get_download_url_retries_on_429_then_succeeds(self):
+        """A 429 is retried; the eventual 200 returns the URL."""
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.get.side_effect = [
+            httpx.Response(429, request=_FAKE_REQUEST),
+            httpx.Response(
+                200, request=_FAKE_REQUEST,
+                json=make_downloads_api_response("https://example.com/data.csv"),
+            ),
+        ]
+
+        client = ArcGISHubClient(
+            base_url="https://open.ottawa.ca", http_client=mock_client
+        )
+        url = await client.get_download_url("abc123_0", fmt="csv")
+        assert url == "https://example.com/data.csv"
+        assert mock_client.get.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_get_download_url_retries_on_500_then_succeeds(self):
+        """A 500 is retried; the eventual 200 returns the URL."""
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.get.side_effect = [
+            httpx.Response(500, request=_FAKE_REQUEST),
+            httpx.Response(
+                200, request=_FAKE_REQUEST,
+                json=make_downloads_api_response("https://example.com/data.csv"),
+            ),
+        ]
+
+        client = ArcGISHubClient(
+            base_url="https://open.ottawa.ca", http_client=mock_client
+        )
+        url = await client.get_download_url("abc123_0", fmt="csv")
+        assert url == "https://example.com/data.csv"
+
+    @pytest.mark.asyncio
+    async def test_get_download_url_returns_none_after_exhausted_retries(self):
+        """Persistent 429s exhaust retries and return None rather than raising."""
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.get.return_value = httpx.Response(429, request=_FAKE_REQUEST)
+
+        client = ArcGISHubClient(
+            base_url="https://open.ottawa.ca", http_client=mock_client
+        )
+        url = await client.get_download_url("abc123_0", fmt="csv")
+        assert url is None
+        # Should have tried max_retries + 1 = 4 times
+        assert mock_client.get.call_count == 4
+
+    @pytest.mark.asyncio
+    async def test_get_download_url_returns_none_on_connect_error(self):
+        """Network errors exhaust retries gracefully and return None."""
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.get.side_effect = httpx.ConnectError("connection refused")
+
+        client = ArcGISHubClient(
+            base_url="https://open.ottawa.ca", http_client=mock_client
+        )
+        url = await client.get_download_url("abc123_0", fmt="csv")
+        assert url is None
+
+
+class TestLayerIndexFallback:
+    @pytest.mark.asyncio
+    async def test_package_show_falls_back_to_alternative_layer(self):
+        """When _0 returns 404, package_show tries _1, _2, … and succeeds."""
+        layer1_data = make_hub_v3_dataset(ds_id="abc123_1", title="Bus Stops")
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.get.side_effect = [
+            httpx.Response(404, request=_FAKE_REQUEST),   # abc123_0 → 404
+            httpx.Response(200, request=_FAKE_REQUEST, json=layer1_data),  # abc123_1 → 200
+        ]
+
+        client = ArcGISHubClient(
+            base_url="https://open.ottawa.ca", http_client=mock_client
+        )
+        ds = await client.package_show("abc123_0")
+        assert ds["id"] == "abc123_1"
+        assert ds["title"] == "Bus Stops"
+
+    @pytest.mark.asyncio
+    async def test_package_show_raises_when_no_layer_found(self):
+        """All layer indices returning 404 causes the final raise_for_status to raise."""
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.get.return_value = httpx.Response(404, request=_FAKE_REQUEST)
+
+        client = ArcGISHubClient(
+            base_url="https://open.ottawa.ca", http_client=mock_client
+        )
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.package_show("abc123_0")

@@ -1,7 +1,9 @@
 """Async client for ArcGIS Hub portals (duck-types CKANClient)."""
 from __future__ import annotations
 
+import asyncio
 import logging
+import random
 import re
 from typing import Any
 
@@ -127,11 +129,29 @@ class ArcGISHubClient:
         client = await self._get_client()
         resp = await client.get(f"{self.base_url}/api/v3/datasets/{id}")
 
-        # If bare item ID returns 404, try appending _0 (Feature Service layer)
-        if resp.status_code == 404 and "_" not in id:
-            resp = await client.get(f"{self.base_url}/api/v3/datasets/{id}_0")
-            if resp.is_success:
-                id = f"{id}_0"
+        if resp.status_code == 404:
+            # Bare item ID → try appending _0 (Feature Service layer convention)
+            if "_" not in id:
+                resp = await client.get(f"{self.base_url}/api/v3/datasets/{id}_0")
+                if resp.is_success:
+                    id = f"{id}_0"
+            # Layer-suffixed ID → the expected layer index may not exist;
+            # try other indices (0–4) before giving up.
+            elif re.search(r"_\d+$", id):
+                base = re.sub(r"_\d+$", "", id)
+                for layer_idx in range(5):
+                    candidate = f"{base}_{layer_idx}"
+                    if candidate == id:
+                        continue
+                    alt = await client.get(f"{self.base_url}/api/v3/datasets/{candidate}")
+                    if alt.is_success:
+                        logger.info(
+                            "Dataset layer '%s' not found; using '%s' instead",
+                            id, candidate,
+                        )
+                        resp = alt
+                        id = candidate
+                        break
 
         resp.raise_for_status()
         attrs = resp.json()["data"]["attributes"]
@@ -215,28 +235,64 @@ class ArcGISHubClient:
 
     # ── Download support ───────────────────────────────────────────
 
+    _RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
     async def get_download_url(self, dataset_id: str, fmt: str = "csv") -> str | None:
         """Try to get a bulk download URL from the Downloads API.
 
-        Returns the URL string, or None if not available.
+        Retries on 429/5xx and transient network errors with exponential
+        backoff. Returns the URL string, or None if not available.
         """
         client = await self._get_client()
-        try:
-            resp = await client.get(
-                f"{self.base_url}/api/v3/datasets/{dataset_id}/downloads",
-                params={"spatialRefId": "4326", "format": fmt},
-            )
-            if resp.status_code == 404:
+        max_retries = 3
+        for attempt in range(max_retries + 1):
+            try:
+                resp = await client.get(
+                    f"{self.base_url}/api/v3/datasets/{dataset_id}/downloads",
+                    params={"spatialRefId": "4326", "format": fmt},
+                )
+                if resp.status_code == 404:
+                    return None
+                if resp.status_code in self._RETRYABLE_STATUS_CODES:
+                    if attempt < max_retries:
+                        delay = 1.0 * (2 ** attempt) + random.uniform(0, 0.5)
+                        logger.warning(
+                            "Retryable HTTP %d from Downloads API for %s "
+                            "(attempt %d/%d), retrying in %.1fs",
+                            resp.status_code, dataset_id, attempt + 1, max_retries, delay,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        logger.warning(
+                            "Downloads API returned %d for %s after %d attempts; "
+                            "no download URL available",
+                            resp.status_code, dataset_id, max_retries + 1,
+                        )
+                        return None
+                resp.raise_for_status()
+                data = resp.json().get("data", [])
+                for d in data:
+                    attrs = d.get("attributes", {})
+                    if attrs.get("format") == fmt and attrs.get("url"):
+                        return attrs["url"]
                 return None
-            resp.raise_for_status()
-            data = resp.json().get("data", [])
-            for d in data:
-                attrs = d.get("attributes", {})
-                if attrs.get("format") == fmt and attrs.get("url"):
-                    return attrs["url"]
-            return None
-        except (httpx.HTTPStatusError, httpx.ConnectError, httpx.TimeoutException):
-            return None
+            except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                if attempt < max_retries:
+                    delay = 1.0 * (2 ** attempt)
+                    logger.warning(
+                        "Network error from Downloads API for %s "
+                        "(attempt %d/%d): %s — retrying in %.1fs",
+                        dataset_id, attempt + 1, max_retries, exc, delay,
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    logger.warning(
+                        "Downloads API unreachable for %s after %d attempts: %s",
+                        dataset_id, max_retries + 1, exc,
+                    )
+                    return None
+        return None
 
 
 _LAYERED_TYPES = {"Feature Service", "Map Service"}
