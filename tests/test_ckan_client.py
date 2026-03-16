@@ -144,35 +144,3 @@ class TestErrorHandling:
             await client.package_show("anything")
 
 
-class TestPagination:
-    @respx.mock
-    @pytest.mark.asyncio
-    async def test_paginate_all_results(self, client):
-        call_count = 0
-
-        def handler(request):
-            nonlocal call_count
-            start = int(request.url.params.get("start", 0))
-            if start == 0:
-                call_count += 1
-                return httpx.Response(200, json={
-                    "success": True,
-                    "result": {
-                        "count": 3,
-                        "results": [{"id": "a"}, {"id": "b"}],
-                    },
-                })
-            else:
-                call_count += 1
-                return httpx.Response(200, json={
-                    "success": True,
-                    "result": {
-                        "count": 3,
-                        "results": [{"id": "c"}],
-                    },
-                })
-
-        respx.get(f"{BASE_URL}/api/3/action/package_search").mock(side_effect=handler)
-        results = await client.package_search_all(query="test", page_size=2)
-        assert len(results) == 3
-        assert call_count == 2

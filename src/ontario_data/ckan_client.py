@@ -126,47 +126,11 @@ class CKANClient:
             params["facet"] = "true"
         return await self._request("package_search", params)
 
-    async def package_search_all(
-        self,
-        query: str = "*:*",
-        filters: dict[str, str] | None = None,
-        sort: str | None = None,
-        page_size: int = 100,
-    ) -> list[dict[str, Any]]:
-        """Auto-paginate package_search until all results are collected."""
-        all_results = []
-        start = 0
-        while True:
-            result = await self.package_search(
-                query=query, filters=filters, sort=sort, rows=page_size, start=start,
-            )
-            all_results.extend(result["results"])
-            if len(all_results) >= result["count"]:
-                break
-            start += page_size
-        return all_results
-
     async def package_show(self, id: str) -> dict[str, Any]:
         return await self._request("package_show", {"id": id})
 
     async def resource_show(self, id: str) -> dict[str, Any]:
         return await self._request("resource_show", {"id": id})
-
-    async def resource_search(
-        self,
-        query: str | list[str],
-        order_by: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
-    ) -> dict[str, Any]:
-        params: dict[str, Any] = {"query": query}
-        if order_by:
-            params["order_by"] = order_by
-        if limit is not None:
-            params["limit"] = limit
-        if offset is not None:
-            params["offset"] = offset
-        return await self._request("resource_search", params)
 
     async def datastore_search(
         self,
@@ -247,22 +211,3 @@ class CKANClient:
             "include_dataset_count": include_dataset_count,
         })
 
-    async def group_list(
-        self,
-        sort: str = "package_count desc",
-        all_fields: bool = False,
-        include_dataset_count: bool = True,
-    ) -> list:
-        return await self._request("group_list", {
-            "sort": sort,
-            "all_fields": all_fields,
-            "include_dataset_count": include_dataset_count,
-        })
-
-    async def package_list(self, limit: int | None = None, offset: int | None = None) -> list[str]:
-        params: dict[str, Any] = {}
-        if limit is not None:
-            params["limit"] = limit
-        if offset is not None:
-            params["offset"] = offset
-        return await self._request("package_list", params)
