@@ -83,13 +83,5 @@ from ontario_data import prompts  # noqa: E402, F401
 from ontario_data import resources  # noqa: E402, F401
 
 
-def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "cache":
-        from ontario_data.cli import run
-        run(sys.argv[2:])
-    else:
-        mcp.run()
-
-
 if __name__ == "__main__":
-    main()
+    mcp.run()

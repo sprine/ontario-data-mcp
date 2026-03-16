@@ -37,7 +37,7 @@ Changelog = "https://github.com/sprine/ontario-data-mcp/blob/main/CHANGELOG.md"
 Issues = "https://github.com/sprine/ontario-data-mcp/issues"
 
 [project.scripts]
-ontario-data-mcp = "ontario_data.server:main"
+ontario-data-mcp = "ontario_data.__main__:main"
 
 [build-system]
 requires = ["hatchling"]

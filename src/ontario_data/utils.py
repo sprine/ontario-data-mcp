@@ -3,13 +3,14 @@ from __future__ import annotations
 import asyncio
 import re
 from collections.abc import Awaitable, Callable
-from typing import TypeVar
-
-from fastmcp import Context
+from typing import TYPE_CHECKING, TypeVar
 
 from ontario_data.cache import CacheManager, InvalidQueryError  # noqa: F401
 from ontario_data.portals import PORTALS, PortalType
 from ontario_data.protocols import PortalClient
+
+if TYPE_CHECKING:
+    from fastmcp import Context
 
 # Re-export for consumers
 __all__ = [
