@@ -186,23 +186,40 @@ async def spatial_query(
         """
         params = [longitude, latitude, longitude, latitude]
     elif operation == "within_radius" and latitude is not None and longitude is not None and radius_km is not None:
-        degree_radius = radius_km / 111.0
+        import math
+        # Haversine-based radius query (correct at all latitudes).
+        # Use a degree bounding box as a cheap pre-filter, with cosine
+        # correction so the longitude band isn't ~40% too narrow at Ontario latitudes.
+        lat_delta = radius_km / 111.0
+        cos_lat = math.cos(math.radians(latitude))
+        lon_delta = radius_km / (111.0 * cos_lat) if cos_lat > 0.01 else 360.0
         sql = f"""
-            SELECT *, ST_Distance(
-                ST_GeomFromText(geometry_wkt),
-                ST_Point(?, ?)
-            ) * 111.0 as distance_km
-            FROM "{table_name}"
-            WHERE geometry_wkt IS NOT NULL
-            AND ST_DWithin(
-                ST_GeomFromText(geometry_wkt),
-                ST_Point(?, ?),
-                ?
+            WITH centroid AS (
+                SELECT ST_Centroid(ST_GeomFromText(geometry_wkt)) AS c, *
+                FROM "{table_name}"
+                WHERE geometry_wkt IS NOT NULL
+                  AND ST_Y(ST_Centroid(ST_GeomFromText(geometry_wkt)))
+                      BETWEEN ? - ? AND ? + ?
+                  AND ST_X(ST_Centroid(ST_GeomFromText(geometry_wkt)))
+                      BETWEEN ? - ? AND ? + ?
             )
+            SELECT * EXCLUDE (c),
+                   2 * 6371 * ASIN(SQRT(
+                       POWER(SIN(RADIANS(ST_Y(c) - ?) / 2), 2) +
+                       COS(RADIANS(?)) * COS(RADIANS(ST_Y(c))) *
+                       POWER(SIN(RADIANS(ST_X(c) - ?) / 2), 2)
+                   )) AS distance_km
+            FROM centroid
+            WHERE distance_km <= ?
             ORDER BY distance_km
             LIMIT {limit}
         """
-        params = [longitude, latitude, longitude, latitude, degree_radius]
+        params = [
+            latitude, lat_delta, latitude, lat_delta,   # lat bbox
+            longitude, lon_delta, longitude, lon_delta,  # lon bbox
+            latitude, latitude, longitude,               # haversine
+            radius_km,                                   # final filter
+        ]
     elif operation == "within_bbox" and bbox and len(bbox) == 4:
         sql = f"""
             SELECT *
