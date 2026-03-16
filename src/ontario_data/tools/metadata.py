@@ -56,7 +56,8 @@ async def get_dataset_info(
     """
     portal, bare_id, ds = await resolve_dataset(ctx, dataset_id)
     _, cache = get_deps(ctx, portal)
-    cache.store_dataset_metadata(ds["id"], ds)
+    if not cache.get_dataset_metadata(ds["id"]):
+        cache.store_dataset_metadata(ds["id"], ds)
 
     resources = []
     for r in ds.get("resources", []):
