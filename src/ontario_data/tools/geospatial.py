@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 from fastmcp import Context
 
@@ -105,7 +106,8 @@ async def load_geodata(
 
     table_name = make_geo_table_name(dataset.get("name", ""), bare_id, portal=portal)
 
-    cache.store_resource(
+    await asyncio.to_thread(
+        cache.store_resource,
         resource_id=bare_id,
         dataset_id=dataset_id,
         table_name=table_name,

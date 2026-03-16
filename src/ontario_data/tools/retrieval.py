@@ -180,7 +180,7 @@ async def download_resource(
     # Set staleness expiry based on update frequency
     update_freq = dataset.get("update_frequency")
     expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
-    cache.update_expires_at(bare_id, expires_at)
+    await asyncio.to_thread(cache.update_expires_at, bare_id, expires_at)
 
     await ctx.report_progress(100, 100, "Done")
 
@@ -301,7 +301,7 @@ async def refresh_cache(
             )
             update_freq = dataset.get("update_frequency")
             expires_at = compute_expires_at(datetime.now(timezone.utc), update_freq)
-            cache.update_expires_at(item["resource_id"], expires_at)
+            await asyncio.to_thread(cache.update_expires_at, item["resource_id"], expires_at)
             results.append({"resource_id": item["resource_id"], "status": "refreshed", "new_row_count": len(df)})
         except Exception as e:
             results.append({"resource_id": item["resource_id"], "status": "error", "error": str(e)})
