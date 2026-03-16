@@ -9,6 +9,8 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
+import threading
+
 import duckdb
 import pandas as pd
 
@@ -104,6 +106,22 @@ class CacheManager:
         try:
             for ext in self._extensions:
                 conn.execute(f"LOAD {ext}")
+            yield conn
+        finally:
+            conn.close()
+
+    @contextmanager
+    def _connect_sandboxed(self):
+        """Like _connect but disables file/network access for user-supplied SQL.
+
+        Prevents read_csv('/etc/passwd'), httpfs, etc. — defense in depth
+        on top of _validate_sql().
+        """
+        conn = duckdb.connect(self.db_path)
+        try:
+            for ext in self._extensions:
+                conn.execute(f"LOAD {ext}")
+            conn.execute("SET enable_external_access = false")
             yield conn
         finally:
             conn.close()
@@ -325,26 +343,38 @@ class CacheManager:
 
     def remove_resource(self, resource_id: str):
         def _do(conn):
-            result = conn.execute(
-                "SELECT table_name FROM _cache_metadata WHERE resource_id = ?",
-                [resource_id],
-            ).fetchone()
-            if result:
-                conn.execute(f'DROP TABLE IF EXISTS "{result[0]}"')
-            conn.execute(
-                "DELETE FROM _cache_metadata WHERE resource_id = ?", [resource_id]
-            )
+            conn.execute("BEGIN")
+            try:
+                result = conn.execute(
+                    "SELECT table_name FROM _cache_metadata WHERE resource_id = ?",
+                    [resource_id],
+                ).fetchone()
+                if result:
+                    conn.execute(f'DROP TABLE IF EXISTS "{result[0]}"')
+                conn.execute(
+                    "DELETE FROM _cache_metadata WHERE resource_id = ?", [resource_id]
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
 
         self._with_retry(_do)
 
     def remove_all(self):
         def _do(conn):
-            rows = conn.execute(
-                "SELECT table_name FROM _cache_metadata"
-            ).fetchall()
-            for row in rows:
-                conn.execute(f'DROP TABLE IF EXISTS "{row[0]}"')
-            conn.execute("DELETE FROM _cache_metadata")
+            conn.execute("BEGIN")
+            try:
+                rows = conn.execute(
+                    "SELECT table_name FROM _cache_metadata"
+                ).fetchall()
+                for row in rows:
+                    conn.execute(f'DROP TABLE IF EXISTS "{row[0]}"')
+                conn.execute("DELETE FROM _cache_metadata")
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
 
         self._with_retry(_do)
 
@@ -372,6 +402,9 @@ class CacheManager:
         rows, _ = self.query_with_meta(sql)
         return rows
 
+    # Timeout (seconds) for user-supplied SQL executed via query/query_with_meta.
+    QUERY_TIMEOUT = 30
+
     def query_with_meta(
         self, sql: str, max_rows: int | None = None
     ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
@@ -383,17 +416,30 @@ class CacheManager:
         If max_rows is set, fetches at most max_rows + 1 rows (so the
         caller can detect truncation) instead of materializing the full
         result set.
+
+        User-supplied SQL is subject to a QUERY_TIMEOUT second timeout
+        to prevent runaway queries (e.g. accidental cross joins).
         """
         _validate_sql(sql)
-        with self._connect() as conn:
-            result = conn.execute(sql)
-            description = result.description
-            columns = [desc[0] for desc in description]
-            type_names = [str(desc[1]) for desc in description]
-            if max_rows is not None:
-                raw_rows = result.fetchmany(max_rows + 1)
-            else:
-                raw_rows = result.fetchall()
+        with self._connect_sandboxed() as conn:
+            timer = threading.Timer(self.QUERY_TIMEOUT, conn.interrupt)
+            timer.start()
+            try:
+                result = conn.execute(sql)
+                description = result.description
+                columns = [desc[0] for desc in description]
+                type_names = [str(desc[1]) for desc in description]
+                if max_rows is not None:
+                    raw_rows = result.fetchmany(max_rows + 1)
+                else:
+                    raw_rows = result.fetchall()
+            except duckdb.InterruptException:
+                raise InvalidQueryError(
+                    f"Query exceeded {self.QUERY_TIMEOUT}s timeout. "
+                    f"Simplify the query or add filters to reduce the result set."
+                )
+            finally:
+                timer.cancel()
             rows = [dict(zip(columns, row)) for row in raw_rows]
             fields = [{"name": col, "type": typ} for col, typ in zip(columns, type_names)]
             return rows, fields

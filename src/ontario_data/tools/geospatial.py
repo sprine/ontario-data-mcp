@@ -149,6 +149,10 @@ async def spatial_query(
         bbox: Bounding box as [min_lng, min_lat, max_lng, max_lat] (for within_bbox)
         limit: Max results
     """
+    # Clamp limit to a safe range — negative values (e.g. -1) would bypass
+    # the intended cap in DuckDB, and very large values could exhaust memory.
+    limit = max(1, min(limit, 10_000))
+
     cache = get_cache(ctx)
     table_name = require_cached(cache, resource_id)
 

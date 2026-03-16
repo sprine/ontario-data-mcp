@@ -162,6 +162,8 @@ class CKANClient:
             params["sort"] = sort
         return await self._request("datastore_search", params)
 
+    MAX_RECORDS = 500_000
+
     async def datastore_search_all(
         self,
         resource_id: str,
@@ -185,13 +187,19 @@ class CKANClient:
                 offset=offset,
             )
             if result_fields is None:
-                result_fields = result["fields"]
+                result_fields = result.get("fields", [])
             if total is None:
-                total = result["total"]
-            records = result["records"]
+                total = result.get("total", 0)
+            records = result.get("records", [])
             if not records:
                 break
             all_records.extend(records)
+            if len(all_records) >= self.MAX_RECORDS:
+                logger.warning(
+                    "datastore_search_all hit %d record cap for resource %s (total: %s)",
+                    self.MAX_RECORDS, resource_id, total,
+                )
+                break
             if len(all_records) >= total:
                 break
             offset += page_size
