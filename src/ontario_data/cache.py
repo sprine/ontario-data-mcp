@@ -245,15 +245,13 @@ class CacheManager:
     ):
         """Upsert: drops the previous table for this resource_id (if any)
         before creating the new one, so re-downloads are safe."""
-        df = df.copy()
-
         if len(df.columns) == 0:
             raise ValueError(
                 f"Cannot cache resource '{resource_id}': DataFrame has no columns"
             )
 
-        # Normalize column names: strip leading/trailing whitespace
-        df.columns = df.columns.str.strip()
+        # Normalize column names without mutating the caller's DataFrame
+        df = df.rename(columns=str.strip)
 
         def _do(conn):
             conn.execute("BEGIN")
