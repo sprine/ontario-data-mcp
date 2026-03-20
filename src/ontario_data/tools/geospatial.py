@@ -77,21 +77,18 @@ async def load_geodata(
         gdf = gpd.read_file(io.BytesIO(content), driver="GeoJSON")
     elif fmt == "KML":
         gdf = gpd.read_file(io.BytesIO(content), driver="KML")
-    elif fmt in ("SHP", "ZIP"):
+    elif fmt == "ZIP" or (fmt == "SHP" and content[:4] == b"PK\x03\x04"):
         import os
         import tempfile
         import zipfile
         with tempfile.TemporaryDirectory() as tmpdir:
-            if fmt == "ZIP" or content[:4] == b"PK\x03\x04":
-                with zipfile.ZipFile(io.BytesIO(content)) as zf:
-                    for member in zf.namelist():
-                        dest = os.path.realpath(os.path.join(tmpdir, member))
-                        if not dest.startswith(os.path.realpath(tmpdir) + os.sep) and dest != os.path.realpath(tmpdir):
-                            raise ValueError(f"Zip entry '{member}' would extract outside target directory")
-                    zf.extractall(tmpdir)
-                gdf = gpd.read_file(tmpdir)
-            else:
-                raise ValueError("SHP files must be provided as ZIP archives")
+            with zipfile.ZipFile(io.BytesIO(content)) as zf:
+                for member in zf.namelist():
+                    dest = os.path.realpath(os.path.join(tmpdir, member))
+                    if not dest.startswith(os.path.realpath(tmpdir) + os.sep) and dest != os.path.realpath(tmpdir):
+                        raise ValueError(f"Zip entry '{member}' would extract outside target directory")
+                zf.extractall(tmpdir)
+            gdf = gpd.read_file(tmpdir)
     else:
         raise ValueError(f"Unsupported geospatial format: {fmt}")
 

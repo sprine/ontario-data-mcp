@@ -53,12 +53,18 @@ class ArcGISHubClient:
         sort: str | None = None,
         rows: int = 10,
         start: int = 0,
-        facet_fields: list[str] | None = None,
     ) -> dict[str, Any]:
         """Search datasets via OGC Records API.
 
         Returns {"count": int, "results": [...]} matching CKANClient shape.
         """
+        if filters:
+            logger.debug(
+                "ArcGIS OGC Records API does not support CKAN-style filters; "
+                "ignoring filters=%s",
+                filters,
+            )
+
         client = await self._get_client()
         # OGC Records API uses 1-based startindex
         params: dict[str, Any] = {"limit": rows}

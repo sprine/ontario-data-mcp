@@ -120,7 +120,6 @@ class CKANClient:
         sort: str | None = None,
         rows: int = 10,
         start: int = 0,
-        facet_fields: list[str] | None = None,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {"q": query, "rows": rows, "start": start}
         if filters:
@@ -128,9 +127,6 @@ class CKANClient:
             params["fq"] = " ".join(fq_parts)
         if sort:
             params["sort"] = sort
-        if facet_fields:
-            params["facet.field"] = str(facet_fields)
-            params["facet"] = "true"
         return await self._request("package_search", params)
 
     async def package_show(self, id: str) -> dict[str, Any]:

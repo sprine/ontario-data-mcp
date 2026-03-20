@@ -205,8 +205,8 @@ async def resolve_resource_portal(
         return pk
 
     results = await fan_out(ctx, None, _try, first_match=True)
-    unwrap_first_match(results, bare_id, "Resource")
-    return results[0][0], bare_id
+    portal, _ = unwrap_first_match(results, bare_id, "Resource")
+    return portal, bare_id
 
 
 def get_cache(ctx: Context) -> CacheManager:
