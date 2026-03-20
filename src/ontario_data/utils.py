@@ -135,6 +135,9 @@ async def fan_out(
     return list(await asyncio.gather(*[_safe(k) for k in keys]))
 
 
+_TRANSIENT_INDICATORS = ("429", "500", "502", "503", "504", "timeout", "timed out", "connect")
+
+
 def unwrap_first_match(
     results: list[tuple[str, T | None, str | None]],
     bare_id: str,
@@ -144,6 +147,9 @@ def unwrap_first_match(
 
     Returns ``(portal, result)``.  Raises :class:`ValueError` with a
     consistent, user-friendly message when every portal failed.
+
+    Distinguishes transient errors (rate limits, 5xx, timeouts) from genuine
+    not-found responses so callers know whether to retry vs. search again.
     """
     if results and results[0][2] is None:
         return results[0][0], results[0][1]
@@ -152,6 +158,16 @@ def unwrap_first_match(
         if results
         else "no portals available"
     )
+    has_transient = any(
+        any(indicator in (err or "").lower() for indicator in _TRANSIENT_INDICATORS)
+        for _, _, err in (results or [])
+    )
+    if has_transient:
+        raise ValueError(
+            f"{entity_type} '{bare_id}': one or more portals returned a transient error "
+            f"(rate limit or server error) — retry, or use a prefixed ID "
+            f"(e.g. 'ontario:{bare_id}') to target one portal. Details: {errors}"
+        )
     raise ValueError(
         f"{entity_type} '{bare_id}' not found. Tried: {errors}. "
         f"Use search_datasets to find the correct prefixed ID."
