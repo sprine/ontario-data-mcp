@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2026-03-19
+
+### Added
+- Waterloo, Kitchener, and Region of Waterloo open data portals
+- Dependabot configuration for automated dependency updates
+- Design rationale comments across all tool modules
+
+### Fixed
+- Zip Slip path-traversal vulnerability and memory doubling in `store_resource`
+- Transient errors now surfaced distinctly in `unwrap_first_match`
+- Ready-to-use SQL included in `download_resource` already-cached hint
+- Ignored ArcGIS filters now logged; removed dead code and unused params
+- `update_expires_at` and `load_geodata` store offloaded to thread pool
+- Hardened DuckDB queries and cache operations (5 P1 fixes)
+- Guarded `response.json()` in CKAN and ArcGIS clients
+- Haversine formula for `within_radius` spatial queries
+- Skipped metadata write in `get_dataset_info` when already cached
+- Lazy imports for CLI — skip full server load on cache commands
+- Hardened cache, ArcGIS client, and removed httpfs exploit
+
+### Removed
+- 4 dead `CKANClient` methods and unused `json` import
+
 ## [0.2.1] - 2026-03-15
 
 ### Added
