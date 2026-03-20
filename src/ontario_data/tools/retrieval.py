@@ -1,3 +1,35 @@
+"""Retrieval and cache management tools.
+
+These four tools own the local DuckDB cache lifecycle: download → inspect →
+manage → refresh. They form the bridge between remote portal data and the
+fast local SQL queries in querying.py.
+
+Why a two-step download-then-query workflow instead of auto-caching?
+
+An auto-caching query tool was considered (one call that downloads silently
+if needed). Rejected because:
+1. Downloads range from 2 seconds to 2 minutes and 50–500MB. The model
+   should control when to pay that cost, not have it triggered implicitly.
+2. SQL must reference the table name, which is only known after downloading.
+   An auto-cache tool can't eliminate this — it just hides it, making the
+   flow harder to debug when downloads fail or timeout.
+3. Explicit download means the model sees row count, column list, and dtypes
+   before writing SQL — reducing query errors from type assumptions.
+
+The hint in download_resource always includes the ready-to-use SELECT
+statement so the model can query immediately without a cache_info call.
+
+Why separate cache tools instead of one "cache" tool with a mode parameter?
+
+- ``download_resource`` — READONLY (annotated as such per MCP spec). Populates
+  the cache but makes no remote mutations. Cannot be merged with destructive ops.
+- ``cache_info`` — zero-argument listing of what's cached. Different access
+  pattern from ``cache_manage`` (which requires action + optional resource_id).
+- ``cache_manage`` — DESTRUCTIVE (annotated). Kept separate from READONLY tools
+  so MCP clients that auto-approve read-only tools don't accidentally clear data.
+- ``refresh_cache`` — DESTRUCTIVE. Re-download operation that overwrites cached
+  data. Separate from cache_manage to make intent explicit (refresh ≠ delete).
+"""
 from __future__ import annotations
 
 import asyncio

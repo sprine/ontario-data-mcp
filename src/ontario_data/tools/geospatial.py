@@ -1,3 +1,36 @@
+"""Geospatial tools: load and query geographic datasets.
+
+These three tools handle the spatial data workflow separately from the tabular
+workflow in retrieval.py and querying.py, for structural reasons.
+
+Why separate from the main retrieval/query tools?
+
+- ``load_geodata`` — downloads SHP, KML, and GeoJSON resources and stores them
+  with spatial column handling (geometry_wkt, spatial index). Kept separate from
+  ``download_resource`` because: (1) it requires geopandas which may not be
+  installed, (2) it uses a different table prefix (geo_ vs ds_) so spatial tables
+  are distinguishable in cache listings, (3) it has different format handling
+  (ZIP extraction, coordinate validation). Merging into download_resource would
+  make that tool conditionally depend on geopandas and add spatial branching to
+  a tool that non-spatial users never need.
+- ``spatial_query`` — runs point-in-polygon, bounding-box, and radius queries
+  against geo-cached tables using DuckDB spatial extension. Kept separate from
+  ``query_cached`` because: (1) it constructs the spatial SQL for the model so
+  the model doesn't need to know DuckDB spatial syntax; (2) it validates that
+  the spatial extension is available and gives a clear error if not; (3) it
+  accepts geographic parameters (lat/lng, radius_km, bbox) rather than raw SQL.
+- ``list_geo_datasets`` — searches specifically for datasets with spatial resource
+  formats (SHP, KML, GeoJSON, WMS, WFS). Kept separate from ``search_datasets``
+  because spatial format filtering requires awareness of which format strings
+  indicate geographic data — the model would need to know to pass
+  resource_format="SHP" OR "KML" OR "GEOJSON" etc. to search_datasets, and
+  would still miss WMS/WFS service endpoints.
+
+Consolidation considered and rejected: merging load_geodata into spatial_query
+(auto-load on first query) would hide the geopandas import error until query
+time, and would lose the explicit "did this load correctly?" confirmation step
+that is useful for large shapefiles that may fail mid-parse.
+"""
 from __future__ import annotations
 
 import asyncio

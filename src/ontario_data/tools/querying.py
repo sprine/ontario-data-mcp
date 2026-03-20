@@ -1,3 +1,36 @@
+"""Querying tools: run SQL against cached or remote data.
+
+These four tools expose two distinct backends — local DuckDB and the remote
+CKAN datastore API — as separate tools rather than a unified interface. The
+split is intentional and each tool exists for a specific reason.
+
+Why not one merged query tool that auto-selects the backend?
+
+- ``query_cached`` — the primary query tool. Fast, composable, supports full
+  DuckDB SQL (CTEs, window functions, JOINs across multiple cached datasets).
+  Should be the default after any download_resource call.
+- ``query_resource`` — CKAN Datastore structured API (filters as dict, no SQL).
+  Exists for quick filtered fetches on datastore-active resources *without
+  downloading* the full dataset first. Useful when the model only needs a
+  filtered slice, not the whole table. Cannot be merged with query_cached
+  because it requires no prior download.
+- ``sql_query`` — CKAN Datastore raw SQL endpoint (remote). Exists for
+  one-off exploratory queries on datastore resources when downloading isn't
+  warranted. Rate-limited (429-prone); the docstring warns to prefer
+  query_cached for repeated use. ArcGIS portals have no datastore, so this
+  tool is CKAN-only.
+- ``preview_data`` — fetches the first N rows via CKAN datastore *without
+  downloading the full resource*. Distinct from query_resource because it
+  has no filter/field parameters — it's purely "show me what this looks like"
+  before deciding whether to download. Replacing this with LIMIT 10 in
+  query_cached would require a full download of potentially 500MB to see 10 rows.
+
+Consolidation considered: query_resource and preview_data could theoretically
+merge (preview_data is query_resource with limit and no filters). Kept separate
+because preview_data's zero-argument simplicity signals clearly to the model
+that it's a "just show me" call, while query_resource's filter/field/sort params
+imply purposeful data extraction. Different mental models, different use cases.
+"""
 from __future__ import annotations
 
 import logging

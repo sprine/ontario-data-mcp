@@ -1,3 +1,30 @@
+"""Data quality tools: freshness, profiling, and statistical summaries.
+
+These two tools answer "is this data good?" separately from "what does this
+data say?" — a distinction that matters for data journalism and policy analysis
+where stale or unreliable data can lead to incorrect conclusions.
+
+Why separate from the querying tools?
+
+- ``check_freshness`` — compares a dataset's last-modified timestamp against its
+  declared update frequency to flag stale data. This operates on dataset metadata
+  (no download required) and uses a frequency-to-days mapping (staleness.py).
+  Kept separate from get_dataset_info because: (1) it computes a derived
+  staleness verdict rather than surfacing raw metadata; (2) it should be called
+  *before* downloading to avoid caching stale data.
+- ``profile_data`` — runs DuckDB SUMMARIZE over a cached table, returning min,
+  max, mean, null counts, and approximate distinct values per column. Requires
+  a prior download_resource call. Kept separate from query_cached because:
+  (1) SUMMARIZE syntax is non-obvious and model-generated SUMMARIZE queries are
+  often malformed; (2) profile_data adds null-percentage and duplicate-row
+  detection on top of raw SUMMARIZE output; (3) it's a distinct task
+  (understand the shape of data) vs. query_cached (answer a specific question).
+
+Consolidation considered: profile_data could theoretically be expressed as a
+query_cached call with SUMMARIZE. In practice, models frequently write incorrect
+SUMMARIZE syntax. A dedicated tool that handles this correctly is more reliable
+than hoping the model writes the right incantation every time.
+"""
 from __future__ import annotations
 
 import logging

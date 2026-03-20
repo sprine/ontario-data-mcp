@@ -1,3 +1,29 @@
+"""Discovery tools: search and browse the open data catalogue.
+
+These five tools cover the pre-download phase — finding what exists before
+committing to a download. They fan out to all portals in parallel so a single
+call covers Ontario, Toronto, Ottawa, and the Waterloo-region portals at once.
+
+Why separate tools instead of one "browse" tool with a mode parameter?
+
+- ``search_datasets`` — full-text search with filters; the primary entry point.
+- ``list_organizations`` — ministry/org enumeration needed when the user wants to
+  explore by publisher rather than topic (e.g. "what does the Ministry of Health
+  publish?"). Search can't answer this efficiently.
+- ``list_topics`` — tag enumeration for open-ended topic browsing. A user asking
+  "what environmental data exists?" benefits from seeing all 80 environment-tagged
+  topics rather than a search result capped at 5-50.
+- ``find_related_datasets`` — serendipitous discovery via shared tags and org.
+  Useful after finding one dataset; search would require the model to re-derive
+  the query from scratch.
+- ``list_portals`` — lightweight registry lookup; no network fan-out, pure config.
+  Kept separate so the model can inspect available portals without any API call.
+
+Consolidation considered and rejected: merging these into a single tool with a
+``mode`` parameter would make the docstring unreadably long and force the model to
+choose the right mode before knowing which is appropriate. Five short, focused
+docstrings are more reliable for tool selection than one long one with branches.
+"""
 from __future__ import annotations
 
 import logging

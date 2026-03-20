@@ -1,3 +1,34 @@
+"""Metadata tools: inspect dataset and resource details before querying.
+
+These four tools answer "what is in this dataset and how is it shaped?"
+before the model commits to a download or writes a SQL query.
+
+Why separate tools instead of folding into get_dataset_info?
+
+- ``get_dataset_info`` — full dataset metadata: description, tags, license,
+  maintainer, all resources with URLs. High token cost. Use when the model
+  needs to understand what a dataset is before acting on it.
+- ``list_resources`` — concise resource listing with download URLs and
+  data-range fields only. Use when ``get_dataset_info`` has already been
+  called and the model just needs to pick a specific resource file to
+  download. Avoids re-emitting the full metadata blob.
+- ``get_resource_schema`` — column names, types, and sample values via the
+  CKAN datastore API (no download required). Critical for writing correct
+  SQL — column names and types vary unpredictably across resources in the
+  same dataset (e.g. "TotalEV" vs "Total EV"). Cannot be folded into
+  get_dataset_info because it requires a separate datastore API call.
+- ``compare_datasets`` — side-by-side diff of two or more datasets.
+  Useful for cross-portal comparisons before deciding which to download.
+  Resolves multiple dataset IDs concurrently; separate tool avoids
+  making get_dataset_info's signature handle lists.
+
+Consolidation considered: list_resources could theoretically be removed
+since get_dataset_info includes resources. Kept because get_dataset_info
+returns substantially more tokens (description, maintainer, tags, license)
+that are noise when the model already knows what dataset it has and just
+needs to pick a file. The token cost difference is meaningful on large datasets
+with many resources.
+"""
 from __future__ import annotations
 
 from fastmcp import Context

@@ -1,3 +1,27 @@
+"""Validation tool: verify data claims against query results.
+
+Why a standalone validate_result tool rather than folding into query_cached?
+
+The validate_result tool was considered for merging into query_cached as an
+optional ``claim=`` parameter. Rejected because:
+
+1. Validation is a *second pass* — it re-executes the SQL and checks the result
+   against a completed claim. The model formulates the claim *after* seeing query
+   results, not before. An optional parameter on query_cached would require the
+   model to predict its claim before seeing the data, which it can't do reliably.
+2. validate_result can be called on *any* past SQL, not just the most recent
+   query_cached call. The model can validate a claim made earlier in a
+   conversation by passing the original SQL. This retrospective use case is
+   incompatible with folding it into query_cached.
+3. Keeping it separate preserves the MCP resource boundary: query_cached returns
+   data, validate_result returns a verdict. Mixing them into one tool conflates
+   two distinct steps in the analysis workflow.
+
+Usage note: this tool is most effective when the SQL is kept tight — one query
+that directly produces the number being claimed. Complex CTEs with intermediate
+results are harder to validate because the claim extractor matches numbers
+against final output rows only.
+"""
 from __future__ import annotations
 
 from fastmcp import Context
