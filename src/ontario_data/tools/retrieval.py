@@ -144,7 +144,7 @@ async def download_resource(
             row_count=meta["row_count"],
             downloaded_at=str(meta["downloaded_at"]),
             staleness=staleness,
-            hint="Use query_cached tool with SQL to analyze this data. Use refresh_cache(resource_id=...) to re-download.",
+            hint=f'Ready to query: SELECT * FROM "{table_name}" LIMIT 10. Use refresh_cache(resource_id=...) to re-download.',
         )
 
     if not portal:
