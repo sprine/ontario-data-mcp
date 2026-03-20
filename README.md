@@ -24,9 +24,45 @@ Open an issue here: https://github.com/sprine/ontario-data-mcp/issues
 * `validate` — verify that data claims are supported by query results
 * A shared DuckDB cache for high-performance analytics
 
+## Architecture
+
+```mermaid
+flowchart TD
+    Client["AI Client<br/>(Claude Code · VS Code · etc.)"]
+
+    subgraph Server["ontario-data-mcp (FastMCP)"]
+        direction TB
+
+        subgraph Tools["MCP Tools"]
+            direction LR
+            T1["Discovery"]
+            T2["Metadata"]
+            T3["Retrieval"]
+            T4["Querying"]
+            T5["Geospatial"]
+            T6["Quality & Validation"]
+        end
+
+        PC["Portal Clients<br/>CKANClient · ArcGISHubClient"]
+        Cache[("DuckDB Cache<br/>~/.cache/ontario-data/")]
+
+        Tools -->|"fan out to all portals"| PC
+        T3 & T5 -->|"download → store"| Cache
+        T4 & T6 -->|"SQL queries"| Cache
+    end
+
+    subgraph Portals["Open Data Portals"]
+        direction LR
+        CKAN["Ontario · Toronto<br/>CKAN API"]
+        ArcGIS["Ottawa · Waterloo · Kitchener<br/>Region of Waterloo<br/>ArcGIS Hub"]
+    end
+
+    Client <-->|"MCP Protocol"| Tools
+    PC -->|"CKAN 2.8"| CKAN
+    PC -->|"OGC Records / Hub v3"| ArcGIS
 ```
-Portal APIs find → Dataset download → DuckDB cache → MCP tools (find, download, query)
-```
+
+**Data flow:** Discovery and metadata tools fan out to all portals in parallel. Retrieval tools download data and store it in a local DuckDB cache. Querying and quality tools run fast SQL locally against the cache — no repeated API calls.
 
 ## Installation
 
