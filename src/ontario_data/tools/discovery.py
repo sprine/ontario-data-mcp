@@ -44,13 +44,14 @@ logger = logging.getLogger("ontario_data.discovery")
 
 @mcp.tool(annotations=READONLY)
 async def search_datasets(
-    query: str,
+    query: str = "",
     organization: str | None = None,
     resource_format: str | None = None,
     update_frequency: str | None = None,
     sort_by: str = "relevance asc, metadata_modified desc",
     limit: int = 5,
     portal: str | None = None,
+    q: str | None = None,
     ctx: Context = None,
 ) -> str:
     """Search for datasets across all open data portals (Ontario, Toronto, Ottawa).
@@ -69,7 +70,12 @@ async def search_datasets(
         sort_by: Sort order (default: relevance)
         limit: Max results per portal (1-50)
         portal: Narrow to one portal (e.g. "ontario", "toronto"). Default: all portals.
+        q: Alias for query (some models send 'q' instead of 'query')
     """
+    # Accept 'q' as an alias for 'query' — models sometimes guess the short name.
+    query = query or q or ""
+    if not query.strip():
+        return md_response("⚠️ Please provide a search query.", is_error=True)
     configs = get_lifespan_state(ctx)["portal_configs"]
     filters = {}
     if organization:
