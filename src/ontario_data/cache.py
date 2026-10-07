@@ -16,6 +16,9 @@ import pandas as pd
 
 logger = logging.getLogger("ontario_data.cache")
 
+# Memory ceiling for user-supplied SQL (DuckDB size string, e.g. "2GB").
+_QUERY_MEMORY_LIMIT = os.environ.get("ONTARIO_DATA_QUERY_MEMORY_LIMIT", "2GB")
+
 # SQL statements allowed for user queries
 _ALLOWED_PREFIXES = ("select", "with", "explain", "describe", "show", "pragma", "summarize")
 
@@ -122,6 +125,10 @@ class CacheManager:
             for ext in self._extensions:
                 conn.execute(f"LOAD {ext}")
             conn.execute("SET enable_external_access = false")
+            conn.execute(f"SET memory_limit = '{_QUERY_MEMORY_LIMIT}'")
+            # Freeze settings so user SQL (e.g. PRAGMA memory_limit) can't
+            # undo the sandbox for the lifetime of this connection.
+            conn.execute("SET lock_configuration = true")
             yield conn
         finally:
             conn.close()

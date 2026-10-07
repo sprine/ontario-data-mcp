@@ -47,6 +47,7 @@ from ontario_data.server import DESTRUCTIVE, READONLY, mcp
 from ontario_data.staleness import compute_expires_at, get_staleness_info
 from ontario_data.formatting import md_response
 from ontario_data.utils import (
+    fetch_bounded,
     get_lifespan_state,
     get_cache,
     get_deps,
@@ -94,9 +95,7 @@ async def _download_resource_data(
         raise ValueError(f"Resource '{resource_id}' has no download URL and datastore is inactive")
 
     # Download file directly using shared client with extended timeout
-    response = await http_client.get(url, timeout=120.0, follow_redirects=True)
-    response.raise_for_status()
-    content = response.content
+    content = await fetch_bounded(http_client, url)
 
     if fmt in ("CSV", "TXT"):
         df = _read_csv_bytes(content)
@@ -127,9 +126,7 @@ async def _download_arcgis_resource_data(
 
     csv_url = await client.get_download_url(resource_id, fmt="csv")
     if csv_url:
-        resp = await http_client.get(csv_url, timeout=120.0, follow_redirects=True)
-        resp.raise_for_status()
-        df = _read_csv_bytes(resp.content)
+        df = _read_csv_bytes(await fetch_bounded(http_client, csv_url))
         resource_meta = {
             "id": resource_id,
             "package_id": resource_id,

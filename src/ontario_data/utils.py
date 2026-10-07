@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, TypeVar
@@ -19,6 +20,7 @@ __all__ = [
     "resolve_dataset", "resolve_resource_portal", "strip_internal_fields",
     "make_table_name", "make_geo_table_name", "require_cached", "infer_portal_from_table",
     "arcgis_guard", "is_arcgis_portal", "get_lifespan_state",
+    "fetch_bounded", "DownloadTooLargeError",
 ]
 
 T = TypeVar("T")
@@ -303,3 +305,40 @@ def require_cached(cache: CacheManager, resource_id: str) -> str:
     return table_name
 
 
+
+
+class DownloadTooLargeError(Exception):
+    """Raised when a remote file exceeds the configured download cap."""
+    pass
+
+
+MAX_DOWNLOAD_BYTES = int(float(os.environ.get("ONTARIO_DATA_MAX_DOWNLOAD_MB", "500")) * 1024 * 1024)
+
+
+async def fetch_bounded(
+    http_client, url: str, *, timeout: float = 120.0, max_bytes: int = MAX_DOWNLOAD_BYTES
+) -> bytes:
+    """GET a URL, streaming the body and aborting once it exceeds max_bytes.
+
+    Portal metadata controls these URLs, so a huge or malicious file must not
+    be able to exhaust process memory.
+    """
+    async with http_client.stream("GET", url, timeout=timeout, follow_redirects=True) as resp:
+        resp.raise_for_status()
+        declared = resp.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > max_bytes:
+            raise DownloadTooLargeError(
+                f"{url} is {int(declared) / 1e6:.0f} MB, over the {max_bytes / 1e6:.0f} MB cap "
+                f"(set ONTARIO_DATA_MAX_DOWNLOAD_MB to raise it)."
+            )
+        chunks: list[bytes] = []
+        received = 0
+        async for chunk in resp.aiter_bytes():
+            received += len(chunk)
+            if received > max_bytes:
+                raise DownloadTooLargeError(
+                    f"{url} exceeded the {max_bytes / 1e6:.0f} MB cap "
+                    f"(set ONTARIO_DATA_MAX_DOWNLOAD_MB to raise it)."
+                )
+            chunks.append(chunk)
+        return b"".join(chunks)
