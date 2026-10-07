@@ -40,6 +40,7 @@ from fastmcp import Context
 from ontario_data.server import READONLY, mcp
 from ontario_data.formatting import format_records, md_response
 from ontario_data.utils import (
+    fetch_bounded,
     SpatialExtensionError,
     get_lifespan_state,
     arcgis_guard,
@@ -100,9 +101,7 @@ async def load_geodata(
     await ctx.report_progress(0, 100, "Downloading geospatial data...")
 
     http_client = get_lifespan_state(ctx)["http_client"]
-    response = await http_client.get(url, timeout=120.0, follow_redirects=True)
-    response.raise_for_status()
-    content = response.content
+    content = await fetch_bounded(http_client, url)
 
     await ctx.report_progress(50, 100, "Parsing geospatial data...")
 
